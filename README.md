@@ -1,4 +1,4 @@
-# money_management
+# campus_app
 
 A new Flutter project.
 
