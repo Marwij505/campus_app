@@ -1,8 +1,11 @@
 /// Halaman hanya mengenal kontrak ini. Saat backend siap, implementasinya
 /// dapat diganti ke HTTP API tanpa mengganti desain halaman.
 abstract interface class AuthService {
-  Future<void> login({required String identity, required String password,
-    required bool rememberSession});
+  Future<void> login({
+    required String identity,
+    required String password,
+    required bool rememberSession,
+  });
   Future<void> requestPasswordReset(String email);
 }
 
@@ -26,8 +29,11 @@ class DemoAuthService implements AuthService {
   void logout() => _expiresAt = null;
 
   @override
-  Future<void> login({required String identity, required String password,
-      required bool rememberSession}) async {
+  Future<void> login({
+    required String identity,
+    required String password,
+    required bool rememberSession,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 850));
     if (identity != demoIdentity || password != demoPassword) {
       throw const AuthException('NIM / NIP atau password salah.');

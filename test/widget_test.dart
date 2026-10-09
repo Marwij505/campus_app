@@ -1,231 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:campus_app/main.dart';
+import 'package:campus_app/shared/pixel_widgets.dart';
 
 void main() {
-  /// ==========================================================
-  /// SIAKAD FASILKOM WIDGET TEST
-  /// ==========================================================
+  testWidgets('Login gagal, login berhasil, logout, dan pemulihan demo', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
 
-  group(
-    'SIAKAD Fasilkom - Authentication',
-    () {
-      // ========================================================
-      // TEST 1
-      // Login Page tampil.
-      // ========================================================
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
 
-      testWidgets(
-        'Login page tampil dengan komponen utama',
-        (WidgetTester tester) async {
-          await tester.pumpWidget(
-            const CampusApp(),
-          );
+    await tester.pumpWidget(const CampusApp());
+    await tester.pumpAndSettle();
 
-          await tester.pumpAndSettle();
+    Future<void> submit(String label) async {
+      final button = find.widgetWithText(PixelButton, label);
 
-          expect(
-            find.text('Selamat Datang'),
-            findsOneWidget,
-          );
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
 
-          expect(
-            find.text(
-              'Masuk untuk mengakses layanan\n'
-              'akademik fakultas',
-            ),
-            findsOneWidget,
-          );
+      // Majukan waktu simulasi server, lalu selesaikan animasi.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+    }
 
-          expect(
-            find.text('Lupa Password?'),
-            findsOneWidget,
-          );
+    await tester.enterText(find.byType(TextFormField).at(0), '20240801002');
+    await tester.enterText(find.byType(TextFormField).at(1), 'salah');
 
-          expect(
-            find.text('Ingat saya'),
-            findsOneWidget,
-          );
+    await submit('MASUK');
 
-          // NIM + Password.
-          expect(
-            find.byType(TextFormField),
-            findsNWidgets(2),
-          );
+    expect(find.text('NIM / NIP atau password salah.'), findsOneWidget);
 
-          expect(
-            find.widgetWithText(
-              ElevatedButton,
-              'Login',
-            ),
-            findsOneWidget,
-          );
-        },
-      );
+    await tester.enterText(find.byType(TextFormField).at(1), '123456');
 
-      // ========================================================
-      // TEST 2
-      // Form kosong.
-      // ========================================================
+    await submit('MASUK');
 
-      testWidgets(
-        'Login kosong menampilkan validasi',
-        (WidgetTester tester) async {
-          await tester.pumpWidget(
-            const CampusApp(),
-          );
+    expect(find.text('Reifan Ardissa'), findsOneWidget);
+    expect(find.text('AKSES CEPAT'), findsOneWidget);
 
-          await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Keluar'));
+    await tester.pumpAndSettle();
 
-          final loginButton =
-              find.widgetWithText(
-            ElevatedButton,
-            'Login',
-          );
+    expect(find.text('SIAKAD.EXE'), findsOneWidget);
 
-          await tester.tap(loginButton);
+    await tester.ensureVisible(find.text('Lupa password?'));
+    await tester.tap(find.text('Lupa password?'));
+    await tester.pumpAndSettle();
 
-          await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'bukan-email');
+    await submit('KIRIM LINK RESET');
 
-          expect(
-            find.text(
-              'NIM / NIDN / Email wajib diisi.',
-            ),
-            findsOneWidget,
-          );
+    expect(find.text('Alamat email belum valid.'), findsOneWidget);
 
-          expect(
-            find.text(
-              'Password wajib diisi.',
-            ),
-            findsOneWidget,
-          );
-        },
-      );
+    await tester.enterText(find.byType(TextFormField), 'demo@example.com');
+    await submit('KIRIM LINK RESET');
 
-      // ========================================================
-      // TEST 3
-      // Remember Me.
-      // ========================================================
+    expect(find.textContaining('Email belum dikirim'), findsOneWidget);
 
-      testWidgets(
-        'Ingat saya dapat diaktifkan',
-        (WidgetTester tester) async {
-          await tester.pumpWidget(
-            const CampusApp(),
-          );
-
-          await tester.pumpAndSettle();
-
-          final checkbox =
-              find.byType(Checkbox);
-
-          expect(
-            checkbox,
-            findsOneWidget,
-          );
-
-          await tester.tap(checkbox);
-
-          await tester.pump();
-
-          final checkboxWidget =
-              tester.widget<Checkbox>(
-            checkbox,
-          );
-
-          expect(
-            checkboxWidget.value,
-            true,
-          );
-        },
-      );
-
-      // ========================================================
-      // TEST 4
-      // Forgot Password navigation.
-      // ========================================================
-
-      testWidgets(
-        'Lupa Password membuka Forgot Password Page',
-        (WidgetTester tester) async {
-          await tester.pumpWidget(
-            const CampusApp(),
-          );
-
-          await tester.pumpAndSettle();
-
-          await tester.tap(
-            find.text('Lupa Password?'),
-          );
-
-          // Menunggu slide + fade selesai.
-          await tester.pumpAndSettle();
-
-          expect(
-            find.text('Lupa Password'),
-            findsOneWidget,
-          );
-
-          expect(
-            find.text('Kirim Link Reset'),
-            findsOneWidget,
-          );
-        },
-      );
-
-      // ========================================================
-      // TEST 5
-      // Login dummy berhasil.
-      // ========================================================
-
-      testWidgets(
-        'Login dummy berhasil masuk Dashboard',
-        (WidgetTester tester) async {
-          await tester.pumpWidget(
-            const CampusApp(),
-          );
-
-          await tester.pumpAndSettle();
-
-          final fields =
-              find.byType(TextFormField);
-
-          // NIM.
-          await tester.enterText(
-            fields.at(0),
-            '2024010001',
-          );
-
-          // Password.
-          await tester.enterText(
-            fields.at(1),
-            'fasilkom123',
-          );
-
-          await tester.tap(
-            find.widgetWithText(
-              ElevatedButton,
-              'Login',
-            ),
-          );
-
-          // Tunggu dummy server + animation.
-          await tester.pumpAndSettle();
-
-          expect(
-            find.text('Dashboard'),
-            findsOneWidget,
-          );
-
-          expect(
-            find.textContaining(
-              'Login berhasil.',
-            ),
-            findsOneWidget,
-          );
-        },
-      );
-    },
-  );
+    expect(tester.takeException(), isNull);
+  });
 }

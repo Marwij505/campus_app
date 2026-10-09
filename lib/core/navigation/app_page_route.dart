@@ -15,8 +15,13 @@ abstract final class AppPageRoute {
     Duration reverseDuration = const Duration(milliseconds: 280),
   }) => _route<T>(page, Offset.zero, 0.97, duration, reverseDuration);
 
-  static Route<T> _route<T>(Widget page, Offset offset, double scale,
-      Duration duration, Duration reverseDuration) => PageRouteBuilder<T>(
+  static Route<T> _route<T>(
+    Widget page,
+    Offset offset,
+    double scale,
+    Duration duration,
+    Duration reverseDuration,
+  ) => PageRouteBuilder<T>(
     transitionDuration: duration,
     reverseTransitionDuration: reverseDuration,
     pageBuilder: (context, animation, secondaryAnimation) => page,
