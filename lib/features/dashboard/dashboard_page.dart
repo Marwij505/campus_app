@@ -15,6 +15,7 @@ import '../../data/dashboard_repository.dart';
 import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import 'dashboard_widgets.dart';
+import 'executive_menu.dart';
 import 'information_panels.dart';
 import 'profile_panel.dart';
 import 'study_progress_panel.dart';
@@ -342,41 +343,8 @@ class _DashboardPageState extends State<DashboardPage> {
                           Icons.account_balance_outlined,
                           () => _unavailable('Pembayaran'),
                         ),
-                        // Menu Akademik membuka pilihan tambahan seperti KRS dan jadwal.
-                        PopupMenuButton<String>(
-                          tooltip: 'Menu Akademik',
-                          onSelected: (label) => _quickAction(label),
-                          itemBuilder: (context) => [
-                            for (final label in [
-                              'KRS',
-                              'Jadwal Kuliah',
-                              'Nilai & Presensi',
-                            ])
-                              PopupMenuItem(value: label, child: Text(label)),
-                          ],
-                          child: const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Akademik',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                                Icon(Icons.arrow_drop_down, size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
-                        _topMenu(
-                          'Tugas Akhir',
-                          Icons.school_outlined,
-                          () => _unavailable('Tugas Akhir'),
-                        ),
-                        _topMenu(
-                          'Layanan',
-                          Icons.support_agent,
-                          () => _showSection(_counselingKey),
-                        ),
+                        // Tiga kelompok menu berbagi daftar dengan versi HP.
+                        ExecutiveDesktopMenu(onSelected: _quickAction),
                       ],
                     ),
                   ),
@@ -431,7 +399,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     _navigate(0);
                   },
                 ),
-                for (final entry in _quickEntries)
+                // Akses utama tetap langsung; pilihan akademik dikelompokkan di bawah.
+                for (final entry in _quickEntries.where(
+                  (entry) => ['Biodata', 'Pembayaran', 'Tagihan'].contains(entry.label),
+                ))
                   ListTile(
                     leading: Icon(entry.icon),
                     title: Text(entry.label),
@@ -440,6 +411,13 @@ class _DashboardPageState extends State<DashboardPage> {
                       _quickAction(entry.label);
                     },
                   ),
+                // Tutup menu geser sebelum menjalankan navigasi halaman induk.
+                ExecutiveMobileMenu(
+                  onSelected: (destination) {
+                    Navigator.pop(context);
+                    _quickAction(destination);
+                  },
+                ),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.logout),
