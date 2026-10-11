@@ -1,3 +1,8 @@
+// Kumpulan komponen autentikasi alternatif dengan latar laboratorium hasil gambar kode.
+// Halaman login utama sekarang memakai komponen di shared/pixel_widgets.dart.
+// Berkas ini tetap dijelaskan agar perannya tidak tertukar dengan komponen aktif.
+// Row menyusun ke samping, Column ke bawah, Stack menumpuk lapisan, dan child adalah isi.
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,20 +11,26 @@ import '../graphics/pixel_lab_painter.dart';
 import '../theme/retro_theme.dart';
 
 /// Latar, header fakultas, footer, dan posisi kartu yang sama pada dua halaman.
+// Kerangka autentikasi alternatif dengan header, ilustrasi lab, dan footer.
 class RetroAuthScaffold extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const RetroAuthScaffold({super.key, required this.child});
+  // Tampilan isi diberikan dari luar sehingga kerangka dapat digunakan berulang.
   final Widget child;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Scaffold(
     // Tinggi body otomatis menyesuaikan keyboard; konten dapat digulir.
     resizeToAvoidBottomInset: true,
     body: Stack(
       fit: StackFit.expand,
       children: [
+        // Pisahkan kanvas latar yang statis dari pembaruan komponen form di atasnya.
         const RepaintBoundary(child: CustomPaint(painter: PixelLabPainter())),
         // Lapisan tipis menjaga keterbacaan kartu, sementara lab tetap terlihat.
         ColoredBox(color: RetroTheme.ink.withValues(alpha: 0.10)),
+        // Hindarkan isi dari bagian layar yang dipakai kamera atau kontrol sistem.
         SafeArea(
           child: Column(
             children: [
@@ -53,15 +64,18 @@ class RetroAuthScaffold extends StatelessWidget {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     return SingleChildScrollView(
+                      // Izinkan gerakan gulir menutup keyboard ketika pengguna ingin melihat bagian lain.
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(18, 30, 22, 34),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
+                          // Isi minimal setinggi ruang yang tersisa, tetapi tidak pernah memiliki tinggi negatif.
                           minHeight: math.max(0.0, constraints.maxHeight - 64),
                         ),
                         child: Center(
                           child: ConstrainedBox(
+                            // Cegah form melebar berlebihan pada monitor besar.
                             constraints: const BoxConstraints(maxWidth: 390),
                             child: child,
                           ),
@@ -93,15 +107,21 @@ class RetroAuthScaffold extends StatelessWidget {
 }
 
 /// Logo geometris pengganti sementara, bukan logo resmi institusi.
+// Logo geometris alternatif yang ukurannya dapat diatur.
 class PixelLogo extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const PixelLogo({super.key, this.size = 64, this.showLabel = true});
+  // Ukuran dasar logo; potongan di dalamnya memakai proporsi ukuran ini.
   final double size;
+  // Tentukan apakah tulisan FASILKOM ikut ditampilkan di bawah menara.
   final bool showLabel;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Semantics(
     label: 'Ikon Fasilkom',
     image: true,
+    // Pembaca layar cukup membaca nama logo dari pembungkus, tanpa mengulang bagian dekoratif.
     child: ExcludeSemantics(
       child: Container(
         width: size,
@@ -122,6 +142,7 @@ class PixelLogo extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  // Gambar tiga menara dengan pola yang sama; menara tengah dibuat lebih tinggi.
                   children: List.generate(
                     3,
                     (i) => Container(
@@ -149,7 +170,9 @@ class PixelLogo extends StatelessWidget {
 }
 
 /// Kartu seperti jendela komputer retro: title bar, brand biru, dan isi form.
+// Bingkai jendela retro untuk menampung form dari pemanggil.
 class RetroWindow extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const RetroWindow({
     super.key,
     required this.fileName,
@@ -158,13 +181,19 @@ class RetroWindow extends StatelessWidget {
     required this.child,
     this.onBack,
   });
+  // Nama dekoratif bilah jendela, bukan berkas yang dibuka atau dieksekusi.
   final String fileName;
+  // Judul utama yang menjelaskan fungsi kartu.
   final String title;
+  // Keterangan singkat di atas judul.
   final String subtitle;
+  // Tampilan isi diberikan dari luar sehingga kerangka dapat digunakan berulang.
   final Widget child;
+  // Fungsi kembali opsional untuk mengaktifkan tombol tutup.
   final VoidCallback? onBack;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     decoration: BoxDecoration(
@@ -192,6 +221,7 @@ class RetroWindow extends StatelessWidget {
                   style: RetroTheme.pixel(11, color: Colors.white),
                 ),
               ),
+              // Tampilkan tombol kembali hanya jika aksi tersebut memang diberikan.
               if (onBack != null)
                 IconButton(
                   tooltip: 'Kembali ke login',
@@ -265,13 +295,19 @@ class RetroWindow extends StatelessWidget {
 
 /// Kemunculan kartu: transparan + geser 16px. child tidak dibangun ulang
 /// pada setiap frame sehingga animasi lebih ringan.
+// Efek muncul sekali dari transparan menjadi terlihat sambil bergeser sedikit.
 class RetroEntrance extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const RetroEntrance({super.key, required this.child});
+  // Tampilan isi diberikan dari luar sehingga kerangka dapat digunakan berulang.
   final Widget child;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) {
+    // Lewati efek gerak bila pengaturan aksesibilitas meminta animasi dikurangi.
     if (MediaQuery.disableAnimationsOf(context)) return child;
+    // Naikkan nilai dari 0 ke 1 untuk membuat isi muncul dan bergeser ke posisi normal.
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 520),
@@ -290,7 +326,9 @@ class RetroEntrance extends StatelessWidget {
 
 /// Label di atas input + border persegi. TextFormField tetap mendukung
 /// validasi, autofill, keyboard Android, dan pembaca layar.
+// Kolom isian alternatif dengan label, validasi, ikon, dan bingkai kotak.
 class RetroField extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const RetroField({
     super.key,
     required this.label,
@@ -307,22 +345,37 @@ class RetroField extends StatelessWidget {
     this.autofillHints,
     this.enableSuggestions = true,
   });
+  // Tulisan yang membantu pengguna mengenali kolom atau tombol.
   final String label;
+  // Contoh isian yang terlihat samar ketika kolom masih kosong.
   final String hint;
+  // Pengelola isi teks dibuat oleh pemakai komponen, lalu diteruskan ke TextFormField.
   final TextEditingController controller;
+  // Pemeriksa kolom mengembalikan pesan jika salah dan null jika benar.
   final String? Function(String?) validator;
+  // Simbol yang ditampilkan bersama kolom atau tombol.
   final IconData icon;
+  // Samarkan karakter saat kolom dipakai untuk password.
   final bool obscureText;
+  // Isi tambahan di ujung kolom, seperti tombol untuk membuka tampilan password.
   final Widget? suffix;
+  // Atur apakah kolom sedang boleh diubah pengguna.
   final bool enabled;
+  // Pilih jenis papan ketik yang sesuai dengan jenis isian.
   final TextInputType keyboardType;
+  // Atur tombol lanjut/selesai pada papan ketik.
   final TextInputAction textInputAction;
+  // Fungsi opsional yang menerima isi ketika pengguna mengirim lewat keyboard.
   final ValueChanged<String>? onSubmitted;
+  // Petunjuk untuk fasilitas pengisian otomatis perangkat.
   final Iterable<String>? autofillHints;
+  // Tentukan apakah saran kata dari keyboard boleh muncul.
   final bool enableSuggestions;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) {
+    // Buat bingkai yang sama dengan warna dan ketebalan berbeda sesuai keadaan input.
     OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
       borderRadius: BorderRadius.zero,
       borderSide: BorderSide(color: color, width: width),
@@ -361,6 +414,7 @@ class RetroField extends StatelessWidget {
               border: border(RetroTheme.ink, 3),
               enabledBorder: border(RetroTheme.ink, 3),
               disabledBorder: border(RetroTheme.muted, 2),
+              // Bingkai berubah saat kolom dipilih; bingkai error berubah ketika validasi gagal.
               focusedBorder: border(RetroTheme.titleBar, 3),
               errorBorder: border(RetroTheme.red, 2),
               focusedErrorBorder: border(RetroTheme.red, 3),
@@ -374,7 +428,9 @@ class RetroField extends StatelessWidget {
 }
 
 /// Tombol pixel dengan efek ditekan 3px, bayangan tegas, dan loading.
+// Tombol alternatif dengan efek tekanan, ikon, dan status loading.
 class RetroButton extends StatefulWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const RetroButton({
     super.key,
     required this.label,
@@ -382,21 +438,31 @@ class RetroButton extends StatefulWidget {
     this.loading = false,
     this.icon = Icons.chevron_right,
   });
+  // Tulisan yang membantu pengguna mengenali kolom atau tombol.
   final String label;
+  // Aksi tombol dari pemakai; null berarti tombol tidak aktif.
   final VoidCallback? onPressed;
+  // Penanda untuk mengganti tulisan tombol dengan indikator proses.
   final bool loading;
+  // Simbol yang ditampilkan bersama kolom atau tombol.
   final IconData icon;
 
   @override
+  // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<RetroButton> createState() => _RetroButtonState();
 }
 
+// Pengatur efek tekanan dan keadaan aktif tombol.
 class _RetroButtonState extends State<RetroButton> {
+  // Keadaan sesaat ketika jari menekan, untuk menggerakkan tombol dan bayangannya.
   bool _pressed = false;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) {
+    // Nonaktifkan tombol selama loading atau ketika tidak ada tindakan yang diberikan.
     final disabled = widget.loading || widget.onPressed == null;
+    // Pilih durasi nol bagi pengguna yang mengurangi animasi.
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 120);
@@ -407,6 +473,7 @@ class _RetroButtonState extends State<RetroButton> {
       label: widget.loading ? 'Sedang memproses' : widget.label,
       child: AnimatedContainer(
         duration: duration,
+        // Geser tombol sedikit ke bawah saat ditekan untuk memberi kesan fisik.
         transform: Matrix4.translationValues(0, _pressed ? 3 : 0, 0),
         decoration: BoxDecoration(
           color: disabled ? const Color(0xFF9BE4BB) : RetroTheme.green,
@@ -421,7 +488,9 @@ class _RetroButtonState extends State<RetroButton> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            // Aksi hanya diteruskan saat tombol aktif.
             onTap: disabled ? null : widget.onPressed,
+            // Perbarui efek tekan ketika sentuhan mulai atau dilepas.
             onHighlightChanged: (value) => setState(() => _pressed = value),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 56),
@@ -431,6 +500,7 @@ class _RetroButtonState extends State<RetroButton> {
                   vertical: 14,
                 ),
                 child: Center(
+                  // Tukar label dan indikator loading dengan perpindahan singkat.
                   child: AnimatedSwitcher(
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
@@ -472,13 +542,19 @@ class _RetroButtonState extends State<RetroButton> {
 }
 
 /// Pesan hasil yang ikut dianimasikan tanpa menutupi form.
+// Kotak pesan hasil dengan warna sesuai keberhasilan proses.
 class RetroNotice extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const RetroNotice({super.key, required this.message, this.success = false});
+  // Pesan yang ingin dijelaskan kepada pengguna setelah proses.
   final String message;
+  // Warna hijau untuk hasil berhasil, merah untuk pesan kesalahan.
   final bool success;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Semantics(
+    // Pembaca layar diberi tahu ketika isi pesan berubah.
     liveRegion: true,
     child: Container(
       width: double.infinity,

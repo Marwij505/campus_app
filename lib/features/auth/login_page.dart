@@ -1,3 +1,8 @@
+// Layar tempat pengguna memasukkan identitas dan password.
+// Urutan proses: periksa isian, panggil layanan login, lalu kirim profil ke AuthGate.
+// Halaman mengurus interaksi pengguna; pemeriksaan akun berada di AuthService.
+// Nama berawalan _ hanya bisa digunakan di dalam pustaka Dart berkas ini.
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_motion.dart';
@@ -7,40 +12,58 @@ import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import 'forgot_password_page.dart';
 
+// Form masuk yang menerima layanan login dan fungsi pemberitahuan keberhasilan.
 class LoginPage extends StatefulWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const LoginPage({super.key, required this.service, required this.onLogin});
 
+  // Layanan yang diberikan induk halaman untuk memeriksa akun.
   final AuthService service;
+  // Fungsi balasan yang memberi tahu induk bahwa login berhasil beserta profilnya.
   final ValueChanged<StudentProfile> onLogin;
 
   @override
+  // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<LoginPage> createState() => _LoginPageState();
 }
 
+// Menyimpan isian, pilihan sesi, status tunggu, dan kesalahan selama halaman dibuka.
 class _LoginPageState extends State<LoginPage> {
+  // Kunci untuk menemukan Form dan menjalankan seluruh pemeriksaan isian sekaligus.
   final _form = GlobalKey<FormState>();
+  // Controller menyimpan dan membaca teks yang sedang diketik pada kolom identitas.
   final _identity = TextEditingController();
+  // Controller terpisah untuk membaca password persis seperti yang diketik.
   final _password = TextEditingController();
 
+  // true menyamarkan tulisan password; false menampilkannya.
   bool _hidden = true;
+  // Menyimpan pilihan lama sesi demo, bukan menyimpan password ke perangkat.
   bool _remember = false;
+  // Penanda proses login sedang berlangsung; tombol dan input sementara dikunci.
   bool _loading = false;
+  // Pesan gagal yang ditampilkan; null berarti tidak ada pesan kesalahan.
   String? _error;
 
+  // Jalankan alur login setelah tombol MASUK atau tombol selesai di keyboard ditekan.
   Future<void> _login() async {
     // Cegah submit ganda dari tombol maupun keyboard.
     if (_loading) return;
 
+    // Tutup fokus input agar keyboard tidak menghalangi hasil proses.
     FocusScope.of(context).unfocus();
 
+    // Jika validator menemukan kolom kosong, tampilkan pesannya dan hentikan proses.
     if (!_form.currentState!.validate()) return;
 
     setState(() {
+      // setState meminta layar menampilkan indikator tunggu dan menghapus pesan lama.
       _loading = true;
       _error = null;
     });
 
     try {
+      // Tunggu hasil layanan tanpa membekukan layar. trim membuang spasi tepi pada identitas.
       final student = await widget.service.login(
         identity: _identity.text.trim(),
         password: _password.text,
@@ -52,18 +75,21 @@ class _LoginPageState extends State<LoginPage> {
 
       widget.onLogin(student);
     } on AuthException catch (error) {
+      // Kesalahan akun yang dikenali boleh ditampilkan dengan pesan dari layanan.
       if (mounted) {
         setState(() {
           _error = error.message;
         });
       }
     } catch (_) {
+      // Kesalahan lain mendapat pesan umum agar pengguna tetap mendapat penjelasan.
       if (mounted) {
         setState(() {
           _error = 'Tidak dapat masuk. Coba lagi.';
         });
       }
     } finally {
+      // Bagian ini tetap dijalankan setelah berhasil atau gagal untuk mengakhiri loading.
       if (mounted) {
         setState(() {
           _loading = false;
@@ -81,6 +107,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => AuthLayout(
     child: Entrance(
       child: AuthWindow(
@@ -88,6 +115,7 @@ class _LoginPageState extends State<LoginPage> {
         subtitle: 'SISTEM AKADEMIK',
         title: 'SIAKAD FASILKOM',
 
+        // Kelompokkan identitas dan password agar pengisian otomatis mengenalinya sebagai satu akun.
         child: AutofillGroup(
           child: Form(
             key: _form,
@@ -105,6 +133,7 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 PixelField(
+                  // Kolom identitas: wajib terisi sebelum layanan login dipanggil.
                   label: 'NIM / NIP',
                   hint: 'Masukkan NIM / NIP',
                   controller: _identity,
@@ -115,6 +144,7 @@ class _LoginPageState extends State<LoginPage> {
                     if (value == null || value.trim().isEmpty) {
                       return 'NIM / NIP wajib diisi.';
                     }
+                    // Pada validator, null berarti isian lolos pemeriksaan.
                     return null;
                   },
                 ),
@@ -122,6 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 20),
 
                 PixelField(
+                  // Kolom password: tampilannya mengikuti _hidden, isinya tetap sama.
                   label: 'PASSWORD',
                   hint: 'Masukkan password',
                   controller: _password,
@@ -134,9 +165,11 @@ class _LoginPageState extends State<LoginPage> {
                     if (value == null || value.isEmpty) {
                       return 'Password wajib diisi.';
                     }
+                    // Pada validator, null berarti isian lolos pemeriksaan.
                     return null;
                   },
 
+                  // Ikon mata hanya mengubah terlihat/tidaknya password, bukan nilainya.
                   suffix: IconButton(
                     tooltip: _hidden
                         ? 'Tampilkan password'
@@ -201,6 +234,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Tinggi area pesan berubah secara halus.
                 AnimatedSize(
                   duration: AppMotion.duration(context, 220),
+                  // Pesan kesalahan hanya memakan ruang bila memang ada isi pesan.
                   child: _error == null
                       ? const SizedBox.shrink()
                       : Padding(
@@ -224,6 +258,7 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: _loading
                         ? null
                         : () {
+                            // Tambahkan halaman pemulihan ke tumpukan navigasi agar pengguna bisa kembali.
                             Navigator.of(context).push(
                               AppMotion.route(
                                 ForgotPasswordPage(service: widget.service),

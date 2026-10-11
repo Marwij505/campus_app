@@ -1,3 +1,7 @@
+// Panel informasi beranda: konseling, pengumuman, panduan, dan jadwal kuliah.
+// Masing-masing menerima daftar data serta fungsi untuk menangani ketukan pengguna.
+// Komponen hanya menampilkan isi; pengambilan data dan tujuan navigasi diatur induknya.
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
@@ -6,19 +10,25 @@ import 'dashboard_widgets.dart';
 
 /// HP memakai kartu, layar lebar memakai tabel untuk konseling.
 /// Tidak ada tabel yang harus digeser ke kanan pada layar HP.
+// Menampilkan jadwal konseling dalam kartu atau tabel sesuai ruang.
 class CounselingPanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const CounselingPanel({
     super.key,
     required this.items,
     required this.onApply,
   });
+  // Daftar jadwal konseling yang sudah disediakan halaman induk.
   final List<CounselingSession> items;
+  // Panggil fungsi dari induk saat tombol pengajuan ditekan.
   final VoidCallback onApply;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => DashboardPanel(
     title: 'JADWAL KONSELING',
     icon: Icons.handshake_outlined,
     action: DashboardAction('Ajukan konseling', onApply, icon: Icons.edit_note),
+    // Jika tidak ada data, tampilkan penjelasan kosong alih-alih membuat isi contoh.
     child: items.isEmpty
         ? const DashboardEmpty(
             title: 'Belum ada jadwal konseling',
@@ -27,6 +37,7 @@ class CounselingPanel extends StatelessWidget {
           )
         : LayoutBuilder(
             builder: (context, bounds) {
+              // Pilih kartu bertumpuk pada layar sempit atau teks besar agar tidak perlu gulir ke samping.
               if (bounds.maxWidth < 820 ||
                   MediaQuery.textScalerOf(context).scale(1) > 1.2) {
                 return Column(
@@ -62,6 +73,7 @@ class CounselingPanel extends StatelessWidget {
                                 InfoChip(item.kind),
                                 InfoChip(item.method),
                                 InfoChip(
+                                  // Label buka/tutup berasal dari data, bukan dihitung dari jam oleh panel ini.
                                   item.isOpen ? 'Buka' : 'Tutup',
                                   color: item.isOpen
                                       ? const Color(0xFF198754)
@@ -76,6 +88,7 @@ class CounselingPanel extends StatelessWidget {
                 );
               }
               // Table memakai lebar fleksibel; nama panjang boleh membungkus.
+              // Pembantu lokal untuk menyamakan jarak, warna, dan tulisan setiap sel tabel.
               Widget cell(String text, {bool header = false}) => Padding(
                 padding: const EdgeInsets.all(10),
                 child: Text(
@@ -88,6 +101,7 @@ class CounselingPanel extends StatelessWidget {
                 ),
               );
               return Table(
+                // Kolom nomor dibuat tetap; kolom lain berbagi sisa ruang menurut bobotnya.
                 columnWidths: const {
                   0: FixedColumnWidth(45),
                   1: FlexColumnWidth(1),
@@ -120,6 +134,7 @@ class CounselingPanel extends StatelessWidget {
                   for (var i = 0; i < items.length; i++)
                     TableRow(
                       decoration: BoxDecoration(
+                        // Selang-seling warna baris memudahkan mata mengikuti satu baris tabel.
                         color: i.isEven
                             ? const Color(0xFFF8FBFF)
                             : Colors.white,
@@ -141,7 +156,9 @@ class CounselingPanel extends StatelessWidget {
   );
 }
 
+// Ringkasan berita/pengumuman dengan akses ke isi dan daftar lengkap.
 class NoticePanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const NoticePanel({
     super.key,
     required this.title,
@@ -151,12 +168,17 @@ class NoticePanel extends StatelessWidget {
     required this.onAll,
     required this.emptyTitle,
   });
+  // Judul panel dan pesan kosong dapat berbeda antara berita dan pengumuman.
   final String title, emptyTitle;
+  // Daftar informasi; panel hanya menampilkan sebagian sebagai ringkasan.
   final List<CampusNotice> items;
   final IconData icon;
+  // Kirim item yang dipilih ke induk untuk membuka isi lengkapnya.
   final void Function(CampusNotice) onOpen;
+  // Aksi untuk membuka daftar lengkap di halaman lain.
   final VoidCallback onAll;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => DashboardPanel(
     title: title,
     icon: icon,
@@ -170,6 +192,7 @@ class NoticePanel extends StatelessWidget {
             icon: icon,
           )
         else ...[
+          // Batasi ringkasan menjadi lima item pertama; sisanya melalui tombol Lihat semua.
           for (final item in items.take(5)) ...[
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -200,14 +223,20 @@ class NoticePanel extends StatelessWidget {
   );
 }
 
+// Daftar panduan yang dapat dipilih untuk dibaca.
 class GuidesPanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const GuidesPanel({super.key, required this.items, required this.onOpen});
+  // Judul dan isi panduan yang siap dibaca.
   final List<CampusGuide> items;
+  // Teruskan panduan yang diklik ke fungsi pembuka detail.
   final void Function(CampusGuide) onOpen;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => DashboardPanel(
     title: 'PEDOMAN & PANDUAN',
     icon: Icons.menu_book_outlined,
+    // Jika tidak ada data, tampilkan penjelasan kosong alih-alih membuat isi contoh.
     child: items.isEmpty
         ? const DashboardEmpty(
             title: 'Belum ada pedoman atau panduan',
@@ -235,7 +264,9 @@ class GuidesPanel extends StatelessWidget {
   );
 }
 
+// Daftar kelas hari ini ditambah kegiatan berikutnya jika berada di hari lain.
 class SchedulePanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const SchedulePanel({
     super.key,
     required this.items,
@@ -244,12 +275,18 @@ class SchedulePanel extends StatelessWidget {
     required this.onOpen,
     this.next,
   });
+  // Jadwal hari ini; sudah disaring oleh halaman beranda sebelum dikirim ke panel.
   final List<ClassSchedule> items;
+  // Kelas terdekat bisa berada pada hari berikutnya atau tidak tersedia sama sekali.
   final ClassSchedule? next;
+  // Waktu acuan diberikan induk agar tanggal dan status kartu konsisten.
   final DateTime now;
+  // Aksi untuk membuka daftar lengkap di halaman lain.
   final VoidCallback onAll;
+  // Buka rincian jadwal yang dipilih pengguna.
   final void Function(ClassSchedule) onOpen;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => DashboardPanel(
     title: 'JADWAL KULIAH HARI INI',
     icon: Icons.calendar_month_outlined,
@@ -283,6 +320,7 @@ class SchedulePanel extends StatelessWidget {
         else
           for (final item in items)
             ClassScheduleCard(item: item, now: now, onTap: () => onOpen(item)),
+        // Tambahkan kelas terdekat dari hari lain tanpa menggandakannya dalam daftar hari ini.
         if (next != null && !sameDay(next!.startsAt.toLocal(), now)) ...[
           const Divider(),
           Text(
@@ -299,20 +337,29 @@ class SchedulePanel extends StatelessWidget {
 }
 
 /// Status bergantung pada waktu saat ini, bukan teks tetap dari screenshot.
+// Kartu satu kelas dengan status yang dihitung dari waktu acuan.
 class ClassScheduleCard extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const ClassScheduleCard({
     super.key,
     required this.item,
     required this.now,
     required this.onTap,
   });
+  // Satu jadwal yang memuat waktu, ruang, dosen, dan informasi pertemuan.
   final ClassSchedule item;
+  // Waktu acuan diberikan induk agar tanggal dan status kartu konsisten.
   final DateTime now;
+  // Tindakan dari induk ketika kartu kelas disentuh.
   final VoidCallback onTap;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) {
+    // Kelas aktif jika waktu mulai sudah tiba dan waktu selesai belum tiba.
     final ongoing = !item.startsAt.isAfter(now) && item.endsAt.isAfter(now);
+    // Kelas dianggap selesai tepat saat waktu akhirnya tiba atau sudah lewat.
     final finished = !item.endsAt.isAfter(now);
+    // Hijau menandai kelas aktif, abu-abu kelas selesai, dan biru kelas yang akan datang.
     final color = ongoing
         ? const Color(0xFF198754)
         : finished
@@ -355,6 +402,7 @@ class ClassScheduleCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
+                  // Tampilkan nomor pertemuan dan metode hanya bila informasinya tersedia.
                   if (item.meeting != null)
                     InfoChip('Pertemuan ${item.meeting}'),
                   if (item.method != null) InfoChip(item.method!),

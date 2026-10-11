@@ -1,3 +1,8 @@
+// Penggambar laboratorium pixel untuk komponen RetroAuthScaffold alternatif.
+// Login utama saat ini memakai gambar aset melalui CampusBackground.
+// Ilustrasi ini disusun dari kotak dan bidang miring pada kanvas; bukan foto.
+// Koordinat x bertambah ke kanan, y bertambah ke bawah, dan warna diatur lewat Paint.
+
 import 'package:flutter/material.dart';
 
 import '../theme/retro_theme.dart';
@@ -5,23 +10,32 @@ import '../theme/retro_theme.dart';
 /// Ilustrasi laboratorium orisinal, terinspirasi gaya isometrik referensi.
 /// CustomPainter adalah "kanvas": dekorasi digambar tanpa file gambar besar.
 /// Koordinat memakai bidang 360 × 800, lalu diperbesar sesuai layar.
+// Menggambar latar laboratorium dari bentuk geometris tanpa berkas gambar tambahan.
 class PixelLabPainter extends CustomPainter {
+  // Objek tanpa pengaturan tambahan ini dapat dibuat sebagai konstanta.
   const PixelLabPainter();
 
   @override
+  // Pintu masuk penggambaran; size memberi tahu ukuran area yang harus diisi.
   void paint(Canvas canvas, Size size) {
     // Mengisi layar seperti BoxFit.cover, tanpa meregangkan ilustrasi.
     final scale = (size.width / 360 > size.height / 800)
         ? size.width / 360
         : size.height / 800;
+    // Simpan posisi/skala kanvas supaya perubahan di bawah dapat dikembalikan setelah selesai.
     canvas.save();
+    // Pusatkan ilustrasi setelah diskalakan; bagian berlebih boleh terpotong di tepi.
     canvas.translate(
       (size.width - 360 * scale) / 2,
       (size.height - 800 * scale) / 2,
     );
+    // Perbesar kedua arah dengan faktor yang sama agar bentuk tidak gepeng.
     canvas.scale(scale);
+    // Matikan penghalusan tepi supaya bentuk tetap tajam seperti pixel.
     final paint = Paint()..isAntiAlias = false;
 
+    // Gambar persegi panjang berdasarkan posisi, lebar, tinggi, dan warna.
+    // Pilihan border menambahkan garis tepi gelap.
     void box(
       double x,
       double y,
@@ -42,6 +56,7 @@ class PixelLabPainter extends CustomPainter {
       }
     }
 
+    // Hubungkan daftar titik menjadi bidang tertutup, lalu beri warna dan bingkai opsional.
     void polygon(List<Offset> points, Color color, {bool border = true}) {
       final path = Path()..addPolygon(points, true);
       paint.color = color;
@@ -58,8 +73,10 @@ class PixelLabPainter extends CustomPainter {
 
     // Lantai ubin: ubah koordinat kisi menjadi bentuk isometrik/berlian.
     box(0, 0, 360, 800, const Color(0xFFAFCEDB));
+    // Ubah posisi kisi lantai menjadi posisi miring agar ubin terlihat memiliki kedalaman.
     Offset tile(double u, double v) =>
         Offset(180 + (u - v) * 36, 180 + (u + v) * 20);
+    // Ulangi baris dan kolom ubin sampai menutupi area gambar.
     for (var u = -12; u < 24; u++) {
       for (var v = -12; v < 24; v++) {
         polygon(
@@ -69,6 +86,7 @@ class PixelLabPainter extends CustomPainter {
             tile(u + 1.0, v + 1.0),
             tile(u.toDouble(), v + 1.0),
           ],
+          // Ganti warna selang-seling berdasarkan nomor ubin, seperti pola papan catur.
           (u + v).isEven ? const Color(0xFFB9D6E0) : const Color(0xFFD1E5EC),
           border: false,
         );
@@ -77,6 +95,7 @@ class PixelLabPainter extends CustomPainter {
     paint
       ..color = const Color(0xFF82AFBF)
       ..strokeWidth = 1;
+    // Tambahkan garis pemisah ubin setelah semua bidang lantai diberi warna.
     for (var i = -12; i < 24; i++) {
       canvas.drawLine(tile(i.toDouble(), -12), tile(i.toDouble(), 24), paint);
       canvas.drawLine(tile(-12, i.toDouble()), tile(24, i.toDouble()), paint);
@@ -103,6 +122,7 @@ class PixelLabPainter extends CustomPainter {
       const Offset(180, 223),
     ], const Color(0xFF923C3E));
     box(18, 26, 142, 61, const Color(0xFFF1E5CB), border: true);
+    // TextPainter mengatur ukuran dan menggambar tulisan langsung di atas kanvas.
     final banner = TextPainter(
       text: TextSpan(
         text: 'SELAMAT DATANG\nMAHASISWA!',
@@ -113,12 +133,14 @@ class PixelLabPainter extends CustomPainter {
     )..layout(maxWidth: 130);
     banner.paint(canvas, const Offset(24, 41));
     box(228, 17, 106, 55, const Color(0xFF153D65), border: true);
+    // Ulangi detail kecil dengan jarak tetap, seperti isi papan atau tombol keyboard.
     for (var i = 0; i < 4; i++) {
       box(235 + i * 24.0, 24, 17, 18, const Color(0xFF7FC0D0));
       box(235 + i * 24.0, 47, 17, 12, const Color(0xFFE8D6A4));
     }
 
     // Satu meja terdiri dari kaki, permukaan kayu, monitor, dan keyboard.
+    // Gambar satu meja relatif terhadap titik x,y agar desain yang sama bisa dipakai di banyak posisi.
     void desk(double x, double y) {
       box(x - 14, y + 24, 8, 49, const Color(0xFF754945), border: true);
       box(x + 59, y + 36, 8, 49, const Color(0xFF754945), border: true);
@@ -151,11 +173,13 @@ class PixelLabPainter extends CustomPainter {
         Offset(x + 27, y + 24),
         Offset(x - 2, y + 17),
       ], const Color(0xFFE3E0CE));
+      // Ulangi detail kecil dengan jarak tetap, seperti isi papan atau tombol keyboard.
       for (var i = 0; i < 4; i++) {
         box(x + 7 + i * 5.0, y + 14 + i, 3, 2, RetroTheme.muted);
       }
     }
 
+    // Panggil pola meja di beberapa posisi untuk membentuk susunan laboratorium.
     desk(82, 142);
     desk(214, 154);
     desk(315, 188);
@@ -166,6 +190,7 @@ class PixelLabPainter extends CustomPainter {
     desk(100, 704);
 
     // Karakter sengaja menggunakan potongan persegi untuk kesan pixel.
+    // Susun potongan badan, kaki, kepala, dan rambut; warna baju diberikan pemanggil.
     void student(double x, double y, Color shirt) {
       box(x + 4, y + 30, 7, 17, const Color(0xFF23334F), border: true);
       box(x + 17, y + 30, 7, 17, const Color(0xFF23334F), border: true);
@@ -180,6 +205,7 @@ class PixelLabPainter extends CustomPainter {
       box(x + 17, y + 3, 3, 3, RetroTheme.ink);
     }
 
+    // Sebarkan tokoh dekoratif dengan posisi dan warna baju yang berbeda.
     student(154, 128, const Color(0xFF318ABC));
     student(284, 94, const Color(0xFF296C9B));
     student(40, 211, const Color(0xFFDC9461));
@@ -187,8 +213,10 @@ class PixelLabPainter extends CustomPainter {
     student(207, 727, const Color(0xFF418CA6));
 
     // Rak server dan tanaman: detail terlihat di sisi kartu login.
+    // Gambar rak yang sama pada dua titik asal berbeda.
     for (final origin in [const Offset(4, 460), const Offset(302, 255)]) {
       box(origin.dx, origin.dy, 48, 72, const Color(0xFF596578), border: true);
+      // Isi tiap rak dengan lima unit server dan lampu indikator kecil.
       for (var i = 0; i < 5; i++) {
         box(
           origin.dx + 5,
@@ -201,10 +229,12 @@ class PixelLabPainter extends CustomPainter {
         box(origin.dx + 32, origin.dy + 9 + i * 12.0, 4, 3, RetroTheme.green);
       }
     }
+    // Detail terakhir membentuk pot, batang, dan daun tanaman.
     box(308, 743, 30, 24, const Color(0xFFB77954), border: true);
     box(319, 709, 7, 35, const Color(0xFF3B744F));
     box(304, 709, 20, 12, const Color(0xFF559B61), border: true);
     box(322, 696, 19, 14, const Color(0xFF72AE6B), border: true);
+    // Kembalikan posisi/skala kanvas agar tidak memengaruhi gambar lain setelah ini.
     canvas.restore();
   }
 

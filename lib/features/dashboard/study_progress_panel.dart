@@ -1,3 +1,7 @@
+// Ringkasan kemajuan belajar dalam empat kartu dan kumpulan grafik.
+// Setiap batang membandingkan capaian dengan target menggunakan safeRatio.
+// Angka yang belum tersedia tetap kosong; tampilan tidak menebak nilai mahasiswa.
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_motion.dart';
@@ -6,18 +10,25 @@ import '../../data/dashboard_models.dart';
 import 'academic_charts.dart';
 import 'dashboard_widgets.dart';
 
+// Panel yang menyatukan ukuran kemajuan, bantuan membaca, dan grafik.
 class StudyProgressPanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const StudyProgressPanel({super.key, required this.data});
+  // Paket data beranda menyediakan ringkasan dan riwayat semester untuk grafik.
   final DashboardData data;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) {
+    // Nama singkat untuk bagian kemajuan agar pengaturan kartu lebih mudah dibaca.
     final p = data.progress;
+    // Proporsi nilai A = jumlah mata kuliah bernilai A dibagi semua mata kuliah yang dinilai.
     final aRatio = safeRatio(p.aGrades, p.gradedCourses);
     return DashboardPanel(
       title: 'KEMAJUAN BELAJAR',
       icon: Icons.trending_up,
       action: DashboardAction(
         'Cara baca',
+        // Tampilkan kotak bantuan Cara baca tanpa berpindah halaman.
         () => showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
@@ -48,6 +59,7 @@ class StudyProgressPanel extends StatelessWidget {
             minWidth: 180,
             children: [
               _ProgressCard(
+                // Bandingkan semester saat ini dengan batas semester studi.
                 title: 'MASA STUDI',
                 icon: Icons.hourglass_bottom,
                 value: p.currentSemester?.toString(),
@@ -58,6 +70,7 @@ class StudyProgressPanel extends StatelessWidget {
                 color: AppTheme.blue,
               ),
               _ProgressCard(
+                // Bandingkan jumlah SKS lulus dengan SKS yang disyaratkan.
                 title: 'SKS LULUS',
                 icon: Icons.school_outlined,
                 value: p.passedCredits?.toString(),
@@ -68,6 +81,7 @@ class StudyProgressPanel extends StatelessWidget {
                 color: const Color(0xFF1AA95A),
               ),
               _ProgressCard(
+                // Tampilkan IPK dua angka desimal dan gunakan 4 sebagai acuan batang kemajuan.
                 title: 'INDEKS PRESTASI',
                 icon: Icons.star_outline,
                 value: p.gpa?.toStringAsFixed(2),
@@ -77,6 +91,7 @@ class StudyProgressPanel extends StatelessWidget {
                 caption: p.predicate,
               ),
               _ProgressCard(
+                // Ubah proporsi 0..1 menjadi persen 0..100 untuk tulisan pada kartu.
                 title: 'PEROLEHAN NILAI A',
                 icon: Icons.emoji_events_outlined,
                 value: aRatio == null
@@ -92,6 +107,7 @@ class StudyProgressPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
+          // Teruskan paket yang sama agar grafik dan kartu membaca sumber data yang sama.
           AcademicCharts(data: data),
         ],
       ),
@@ -100,7 +116,9 @@ class StudyProgressPanel extends StatelessWidget {
 }
 
 /// Bar abu-abu dengan tanda — berarti belum ada nilai. Tidak dianggap nilai 0%.
+// Satu kartu kemajuan dengan angka, satuan, warna, dan batang beranimasi.
 class _ProgressCard extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const _ProgressCard({
     required this.title,
     required this.icon,
@@ -112,10 +130,13 @@ class _ProgressCard extends StatelessWidget {
   });
   final String title;
   final IconData icon;
+  // Angka sebagai teks, satuan di belakangnya, dan penjelasan tambahan boleh belum tersedia.
   final String? value, suffix, caption;
+  // Panjang batang dari 0 sampai 1; null berarti belum dapat dihitung.
   final double? progress;
   final Color color;
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
@@ -155,11 +176,14 @@ class _ProgressCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 15),
+        // Jelaskan nilai kepada pembaca layar, termasuk perbedaan kosong dan nol persen.
         Semantics(
           label: progress == null
               ? '$title: belum tersedia'
               : '$title: ${(progress! * 100).round()} persen',
           child: TweenAnimationBuilder<double>(
+            // Isi batang bergerak dari nol ke capaian. Jika data kosong, batang tetap kosong
+            // sementara teks dan label aksesibilitas menyatakan bahwa data belum tersedia.
             tween: Tween(begin: 0, end: progress ?? 0),
             duration: AppMotion.duration(context, 600),
             builder: (context, value, child) => LinearProgressIndicator(
@@ -172,6 +196,7 @@ class _ProgressCard extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
+          // Utamakan keterangan dari data; jika tidak ada, gunakan penjelasan umum sesuai kondisi.
           caption ??
               (value == null ? 'Data belum tersedia.' : 'Ringkasan akademik'),
           style: const TextStyle(fontSize: 10, color: AppTheme.muted),

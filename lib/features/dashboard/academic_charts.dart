@@ -1,3 +1,8 @@
+// Mengubah data akademik menjadi enam tampilan grafik beserta detail angkanya.
+// Bagian atas menyiapkan data; _AcademicPainter di bagian bawah menggambarnya.
+// Canvas seperti kertas gambar, Paint seperti kuas, dan Offset seperti posisi titik.
+// Grafik yang belum memiliki data menampilkan pesan kosong, bukan angka contoh.
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -9,17 +14,25 @@ import 'dashboard_widgets.dart';
 
 /// Enam tempat grafik disiapkan. Tidak menggambar garis/donut ketika datanya kosong.
 /// Setelah repository mengirim data, grafik yang sesuai muncul secara otomatis.
+// Menyiapkan data dan kartu untuk semua grafik akademik.
 class AcademicCharts extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const AcademicCharts({super.key, required this.data});
+  // Paket beranda yang menyediakan statistik, kategori, dan riwayat semester.
   final DashboardData data;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) {
+    // Ambil ringkasan studi agar perhitungan perjalanan kuliah lebih ringkas.
     final p = data.progress;
+    // Grafik perjalanan membutuhkan semester selesai, saat ini, dan rencana total sekaligus.
     final hasJourney =
         p.completedSemesters != null &&
         p.currentSemester != null &&
         p.plannedSemesters != null;
+    // Kelompokkan semester menjadi selesai, sedang ditempuh, dan belum ditempuh.
+    // math.max(0, ...) mencegah jumlah sisa semester menjadi negatif.
     final journey = hasJourney
         ? <String, double>{
             'Selesai': p.completedSemesters!.toDouble(),
@@ -35,6 +48,8 @@ class AcademicCharts extends StatelessWidget {
           }
         : <String, double>{};
 
+    // Pilih satu ukuran seperti IPK, buang nilai kosong/tidak valid, urutkan semester,
+    // lalu ubah menjadi pasangan label dan angka yang siap digambar.
     List<_Point> points(double? Function(SemesterResult) select) =>
         (data.semesters
                 .where((s) => select(s) != null && select(s)!.isFinite)
@@ -49,18 +64,21 @@ class AcademicCharts extends StatelessWidget {
       children: [
         _chart(
           context,
+          // Grafik pembagian tahap studi menggunakan tiga kategori perjalanan.
           'Perjalanan Perkuliahan Anda',
           _ChartKind.journey,
           groups: journey,
         ),
         _chart(
           context,
+          // Grafik cincin menunjukkan perbandingan jumlah mata kuliah per status.
           'Status Mata Kuliah Kurikulum',
           _ChartKind.donut,
           groups: data.courseStatus.map((k, v) => MapEntry(k, v.toDouble())),
         ),
         _chart(
           context,
+          // Grafik garis menunjukkan perubahan IPK dengan skala acuan 4.
           'Tren IPK',
           _ChartKind.line,
           points: points((s) => s.gpa),
@@ -68,6 +86,7 @@ class AcademicCharts extends StatelessWidget {
         ),
         _chart(
           context,
+          // Grafik batang membandingkan IPS tiap semester pada skala yang sama.
           'IPS per Semester',
           _ChartKind.bar,
           points: points((s) => s.ips),
@@ -75,6 +94,7 @@ class AcademicCharts extends StatelessWidget {
         ),
         _chart(
           context,
+          // Batang menunjukkan SKS tiap semester; garis tambahan menunjukkan SKS kumulatif.
           'Beban SKS per Semester',
           _ChartKind.credits,
           points: points((s) => s.credits?.toDouble()),
@@ -82,6 +102,7 @@ class AcademicCharts extends StatelessWidget {
         ),
         _chart(
           context,
+          // Grafik cincin membandingkan banyaknya mata kuliah untuk setiap nilai huruf.
           'Komposisi Nilai Huruf',
           _ChartKind.donut,
           groups: data.gradeComposition.map(
@@ -92,6 +113,7 @@ class AcademicCharts extends StatelessWidget {
     );
   }
 
+  // Buat kartu grafik: judul, kondisi kosong, gambar, legenda, dan aksi melihat angka.
   Widget _chart(
     BuildContext context,
     String title,
@@ -105,8 +127,10 @@ class AcademicCharts extends StatelessWidget {
     final validGroups = Map<String, double>.fromEntries(
       groups.entries.where((e) => e.value.isFinite && e.value > 0),
     );
+    // Gambar hanya disiapkan jika ada titik, data tambahan, atau kategori yang sah.
     final hasData =
         points.isNotEmpty || secondary.isNotEmpty || validGroups.isNotEmpty;
+    // Nama kategori menjadi legenda dengan warna yang sesuai irisan grafik.
     final labels = validGroups.keys.toList();
     return Container(
       padding: const EdgeInsets.all(14),
@@ -134,12 +158,14 @@ class AcademicCharts extends StatelessWidget {
               icon: Icons.bar_chart_outlined,
             )
           else ...[
+            // Berikan keterangan bahwa gambar dapat diketuk untuk membaca angka dalam teks.
             Semantics(
               label: '$title. Ketuk untuk membaca nilai dalam bentuk teks.',
               button: true,
               child: InkWell(
                 onTap: () =>
                     _showValues(context, title, points, secondary, validGroups),
+                // Ubah kemajuan gambar dari 0 ke 1 agar grafik muncul bertahap.
                 child: TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: 1),
                   duration: AppMotion.duration(context, 600),
@@ -175,6 +201,7 @@ class AcademicCharts extends StatelessWidget {
                         Container(
                           width: 9,
                           height: 9,
+                          // Operator % mengulang pilihan warna saat kategori lebih banyak daripada palet.
                           color: _colors[i % _colors.length],
                         ),
                         const SizedBox(width: 5),
@@ -216,6 +243,7 @@ class AcademicCharts extends StatelessWidget {
     );
   }
 
+  // Buka kotak rincian angka supaya pengguna tidak harus menebak nilai dari bentuk grafik.
   Future<void> _showValues(
     BuildContext context,
     String title,
@@ -258,14 +286,20 @@ class AcademicCharts extends StatelessWidget {
   );
 }
 
+// Daftar pilihan bentuk grafik; setiap pilihan memiliki cara menggambar berbeda.
 enum _ChartKind { journey, donut, line, bar, credits }
 
+// Satu pasangan label dan nilai, yaitu bahan dasar deret grafik.
 class _Point {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const _Point(this.label, this.value);
+  // Nama titik, misalnya S1 untuk semester satu.
   final String label;
+  // Angka yang diwakili titik grafik.
   final double value;
 }
 
+// Palet yang dipakai bersama oleh gambar grafik dan penjelasan warnanya.
 const _colors = [
   AppTheme.blue,
   Color(0xFFED7D21),
@@ -276,7 +310,9 @@ const _colors = [
 ];
 
 /// Painter hanya menggambar data dari repository. Tidak mengandung angka contoh.
+// Penggambar grafik yang menerjemahkan angka menjadi posisi dan ukuran bentuk.
 class _AcademicPainter extends CustomPainter {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   _AcademicPainter({
     required this.kind,
     required this.points,
@@ -285,27 +321,38 @@ class _AcademicPainter extends CustomPainter {
     required this.progress,
     this.maxValue,
   });
+  // Menentukan apakah kanvas menggambar cincin, batang perjalanan, garis, atau batang nilai.
   final _ChartKind kind;
+  // Deret utama dan deret tambahan; tambahan digunakan untuk garis SKS kumulatif.
   final List<_Point> points, secondary;
+  // Nama kategori beserta besarnya, untuk grafik cincin atau perjalanan.
   final Map<String, double> groups;
+  // Kemajuan animasi: 0 belum tergambar, 1 sudah tampil penuh.
   final double progress;
+  // Batas skala pilihan, misalnya 4 untuk IPK; jika kosong dihitung dari data.
   final double? maxValue;
 
   @override
+  // Flutter memanggil fungsi ini untuk menggambar grafik sesuai ukuran ruang yang diberikan.
   void paint(Canvas canvas, Size size) {
+    // Cabang grafik cincin: besar bagian lingkaran sebanding dengan nilai kategorinya.
     if (kind == _ChartKind.donut) {
+      // Jumlahkan semua kategori sebagai pembagi untuk menghitung porsinya.
       final total = groups.values.fold<double>(0, (a, b) => a + b);
       if (total <= 0) {
         return;
       }
+      // Ambil sisi terpendek agar lingkaran muat di area gambar.
       final radius = math.min(size.width, size.height) * .35;
       final rect = Rect.fromCircle(
         center: size.center(Offset.zero),
         radius: radius,
       );
+      // Mulai dari arah atas lingkaran; sudut pada kanvas memakai radian.
       var start = -math.pi / 2;
       var index = 0;
       for (final value in groups.values) {
+        // Nilai dibagi total menentukan bagian dari satu putaran penuh, yaitu 2 × pi.
         final sweep = value / total * math.pi * 2 * progress;
         canvas.drawArc(
           rect,
@@ -321,7 +368,9 @@ class _AcademicPainter extends CustomPainter {
       }
       return;
     }
+    // Cabang perjalanan: setiap kategori menjadi potongan batang mendatar.
     if (kind == _ChartKind.journey) {
+      // Jumlahkan semua kategori sebagai pembagi untuk menghitung porsinya.
       final total = groups.values.fold<double>(0, (a, b) => a + b);
       if (total <= 0) {
         return;
@@ -329,6 +378,7 @@ class _AcademicPainter extends CustomPainter {
       var x = 12.0;
       var index = 0;
       for (final value in groups.values) {
+        // Lebar potongan mengikuti porsi kategori dan kemajuan animasi.
         final width = (size.width - 24) * value / total * progress;
         canvas.drawRect(
           Rect.fromLTWH(x, 65, width, 54),
@@ -338,17 +388,22 @@ class _AcademicPainter extends CustomPainter {
       }
       return;
     }
+    // Sisakan tepi untuk angka skala. LTWH berarti kiri, atas, lebar, dan tinggi.
     final rect = Rect.fromLTWH(
       30,
       10,
       math.max(1.0, size.width - 40),
       size.height - 34,
     );
+    // Cari nilai terbesar pada deret utama untuk menentukan batas skala otomatis.
     final largest = points.fold<double>(0, (a, b) => math.max(a, b.value));
+    // Beri ruang 15 persen di atas nilai terbesar jika skala tetap tidak ditentukan.
+    // Batas minimal 1 mencegah pembagian dengan nol.
     final ceiling = math.max(1.0, maxValue ?? largest * 1.15);
     final grid = Paint()
       ..color = const Color(0xFFDFE6EF)
       ..strokeWidth = 1;
+    // Gambar lima garis bantu dari nol sampai batas atas beserta angka skalanya.
     for (var i = 0; i <= 4; i++) {
       final y = rect.bottom - rect.height * i / 4;
       canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), grid);
@@ -365,6 +420,8 @@ class _AcademicPainter extends CustomPainter {
       )..layout();
       text.paint(canvas, Offset(0, y - 5));
     }
+    // Hubungkan titik-titik nilai dengan garis. Indeks menentukan posisi mendatar,
+    // rasio nilai menentukan ketinggian; titik lebih tinggi memiliki koordinat y lebih kecil.
     void line(List<_Point> series, double max, Color color) {
       final path = Path();
       for (var i = 0; i < series.length; i++) {
@@ -372,6 +429,7 @@ class _AcademicPainter extends CustomPainter {
         final y =
             rect.bottom -
             rect.height * (series[i].value / max).clamp(0.0, 1.0) * progress;
+        // Titik pertama memulai jalur; titik berikutnya disambungkan ke jalur tersebut.
         if (i == 0) {
           path.moveTo(x, y);
         } else {
@@ -392,7 +450,9 @@ class _AcademicPainter extends CustomPainter {
       line(points, ceiling, AppTheme.blue);
     } else {
       for (var i = 0; i < points.length; i++) {
+        // Bagi lebar bidang menjadi tempat yang sama besar untuk setiap batang.
         final slot = rect.width / points.length;
+        // Ubah nilai menjadi tinggi batang; clamp menjaga batang tetap dalam bidang grafik.
         final height =
             rect.height *
             (points[i].value / ceiling).clamp(0.0, 1.0) *
@@ -408,13 +468,16 @@ class _AcademicPainter extends CustomPainter {
         );
       }
       if (kind == _ChartKind.credits && secondary.isNotEmpty) {
+        // Garis SKS kumulatif memakai skala relatif sendiri berdasarkan nilai puncaknya.
         final peak = secondary.fold<double>(1, (a, b) => math.max(a, b.value));
         // Menyamakan semester pada posisi batang; jangan menggeser titik bila
         // server belum mengirim SKS kumulatif salah satu semester.
         final path = Path();
         var started = false;
         for (var i = 0; i < points.length; i++) {
+          // Cocokkan label semester agar titik kumulatif sejajar dengan batang semester yang sama.
           final matches = secondary.where((s) => s.label == points[i].label);
+          // Lewati semester yang belum punya nilai kumulatif tanpa menciptakan titik palsu.
           if (matches.isEmpty) {
             continue;
           }
@@ -441,6 +504,7 @@ class _AcademicPainter extends CustomPainter {
   }
 
   @override
+  // Minta gambar diperbarui saat kemajuan animasi, deret, kategori, atau jenis grafik berubah.
   bool shouldRepaint(covariant _AcademicPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.points != points ||

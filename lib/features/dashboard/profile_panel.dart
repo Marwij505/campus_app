@@ -1,3 +1,8 @@
+// Menampilkan identitas dan ringkasan prestasi mahasiswa di bagian atas beranda.
+// Nilai diambil dari StudentProfile yang diberikan halaman induk.
+// Tanda ?? memilih teks pengganti saat data null; tanda ?. menjalankan format
+// hanya jika nilai tersedia, sehingga data yang hilang tidak dianggap nol.
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
@@ -6,14 +11,19 @@ import 'dashboard_widgets.dart';
 
 /// Profil tidak memakai nama atau foto contoh dari referensi.
 /// Nilai null ditampilkan sebagai tanda — hingga backend mengirim data.
+// Kartu profil yang menyesuaikan susunan identitas dan statistik dengan lebar layar.
 class ProfilePanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const ProfilePanel({super.key, required this.student});
+  // Seluruh isi panel berasal dari satu profil ini.
   final StudentProfile student;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
+      // Campurkan dua warna biru sebagai latar, lalu beri bingkai dan bayangan pixel.
       gradient: const LinearGradient(
         colors: [Color(0xFF123C80), Color(0xFF166AB1)],
       ),
@@ -24,6 +34,7 @@ class ProfilePanel extends StatelessWidget {
     ),
     child: LayoutBuilder(
       builder: (context, bounds) {
+        // Bagian identitas memuat ikon orang, nama, NIM, fakultas, dan program studi.
         final identity = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -49,6 +60,7 @@ class ProfilePanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+                        // Gunakan judul umum ketika nama asli belum diterima.
                         student.name ?? 'Profil mahasiswa',
                         style: AppTheme.pixel(10, color: Colors.white),
                       ),
@@ -78,12 +90,14 @@ class ProfilePanel extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
+                // Label-label berikut menampilkan status, angkatan, semester, dan pembimbing akademik.
                 InfoChip('Status: ${student.status ?? '—'}', onDark: true),
                 InfoChip('Angkatan: ${student.entryYear ?? '—'}', onDark: true),
                 InfoChip('Semester: ${student.semester ?? '—'}', onDark: true),
                 InfoChip('DPA: ${student.advisor ?? '—'}', onDark: true),
               ],
             ),
+            // Berikan penjelasan tambahan ketika data profil belum lengkap.
             if (student.name == null) ...[
               const SizedBox(height: 12),
               const Text(
@@ -93,6 +107,7 @@ class ProfilePanel extends StatelessWidget {
             ],
           ],
         );
+        // Tiga kartu ringkas: IPK kumulatif, IPS terakhir, dan total SKS lulus.
         final stats = ResponsiveCards(
           minWidth: 92,
           maximum: 3,
@@ -106,6 +121,7 @@ class ProfilePanel extends StatelessWidget {
             _stat('SKS LULUS', student.passedCredits?.toString(), 'total SKS'),
           ],
         );
+        // Letakkan identitas dan statistik berdampingan hanya jika lebar dan ukuran teks memungkinkan.
         if (bounds.maxWidth >= 1000 &&
             MediaQuery.textScalerOf(context).scale(1) <= 1.3) {
           return Row(
@@ -116,6 +132,7 @@ class ProfilePanel extends StatelessWidget {
             ],
           );
         }
+        // Pada ruang lebih kecil, susun identitas di atas statistik agar isi tetap terbaca.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [identity, const SizedBox(height: 20), stats],
@@ -124,6 +141,7 @@ class ProfilePanel extends StatelessWidget {
     ),
   );
 
+  // Buat satu kotak angka dengan judul dan keterangan; data hilang ditampilkan sebagai —.
   Widget _stat(String label, String? value, String caption) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
     decoration: BoxDecoration(

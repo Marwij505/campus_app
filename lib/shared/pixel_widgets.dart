@@ -1,3 +1,9 @@
+// Kotak perkakas tampilan pixel yang dipakai login, pemulihan, dan beranda.
+// Setiap kelas membuat bagian kecil yang bisa dipakai ulang dengan isi berbeda.
+// Panduan susunan: Row berjajar ke samping, Column ke bawah, Stack bertumpuk,
+// Padding memberi ruang dalam, SizedBox memberi jarak, dan Expanded membagi sisa ruang.
+// Warna/bingkai mengatur penampilan; onTap/onPressed menentukan aksi ketika disentuh.
+
 import 'package:flutter/material.dart';
 
 import '../core/app_motion.dart';
@@ -6,15 +12,20 @@ import '../core/app_theme.dart';
 /// Memuat background asli Figma.
 ///
 /// Tidak menggambar ulang laboratorium menggunakan CustomPainter.
+// Latar gambar kampus dengan lapisan warna untuk menjaga keterbacaan isi.
 class CampusBackground extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const CampusBackground({super.key, this.dashboard = false});
 
+  // Pilih tampilan latar: terang untuk beranda, lebih gelap untuk form login.
   final bool dashboard;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
     children: [
+      // Baca gambar yang dibundel bersama aplikasi; cover memenuhi area dengan menjaga perbandingan gambar.
       Image.asset(
         AppTheme.backgroundAsset,
         fit: BoxFit.cover,
@@ -53,12 +64,16 @@ class CampusBackground extends StatelessWidget {
 }
 
 /// Logo tiga menara mengikuti FacultyMark pada App.tsx.
+// Logo dekoratif fakultas dari tiga menara berbentuk kotak.
 class FacultyMark extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const FacultyMark({super.key, this.compact = false});
 
+  // Versi ringkas dipakai pada header; versi besar dapat menyertakan tulisan fakultas.
   final bool compact;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Container(
     width: compact ? 38 : 72,
     height: compact ? 38 : 64,
@@ -72,6 +87,7 @@ class FacultyMark extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
+          // Buat tiga menara logo dengan pola sama; menara tengah dibuat lebih tinggi.
           children: List.generate(
             3,
             (index) => Container(
@@ -95,10 +111,13 @@ class FacultyMark extends StatelessWidget {
 }
 
 /// Avatar geometris mengikuti kepala dan badan pada CSS Figma.
+// Avatar dekoratif berbentuk geometris; profil utama saat ini memakai ikon orang.
 class StudentAvatar extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const StudentAvatar({super.key});
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Container(
     width: 56,
     height: 67,
@@ -107,9 +126,11 @@ class StudentAvatar extends StatelessWidget {
       border: Border.all(color: Colors.white, width: 3),
     ),
     child: Stack(
+      // Potong bagian avatar yang melewati bingkai agar tetap berada dalam kotak.
       clipBehavior: Clip.hardEdge,
       children: [
         Positioned(
+          // Bagian atas avatar membentuk kepala dan rambut dengan kotak serta garis tepi.
           top: 11,
           left: 18,
           width: 20,
@@ -128,6 +149,7 @@ class StudentAvatar extends StatelessWidget {
         ),
         Positioned(
           left: 9,
+          // Bagian badan sedikit melewati batas bawah sehingga tampak memenuhi bingkai.
           bottom: -5,
           width: 38,
           height: 34,
@@ -147,19 +169,26 @@ class StudentAvatar extends StatelessWidget {
 ///
 /// Header tetap terlihat.
 /// Area form dapat digulir ketika keyboard terbuka.
+// Kerangka halaman autentikasi: header, area form yang bisa digulir, dan footer.
 class AuthLayout extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const AuthLayout({super.key, required this.child});
 
+  // Isi diberikan pemanggil, sehingga pembungkus yang sama dapat memuat form atau panel lain.
   final Widget child;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Scaffold(
+    // Biarkan tinggi halaman mengecil saat keyboard tampil supaya form tidak tertutup.
     resizeToAvoidBottomInset: true,
     backgroundColor: AppTheme.ink,
     body: Stack(
       fit: StackFit.expand,
       children: [
+        // Pisahkan pengecatan gambar latar dari perubahan pada form di atasnya.
         const RepaintBoundary(child: CampusBackground()),
+        // Jauhkan isi penting dari poni kamera dan area sistem perangkat.
         SafeArea(
           child: Column(
             children: [
@@ -196,17 +225,20 @@ class AuthLayout extends StatelessWidget {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, bounds) => SingleChildScrollView(
+                    // Menggulir form dengan jari juga dapat menutup keyboard.
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(22, 32, 22, 28),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
+                        // Pusatkan form pada ruang yang tersisa; clamp mencegah tinggi minimum menjadi negatif.
                         minHeight: (bounds.maxHeight - 60)
                             .clamp(0.0, double.infinity)
                             .toDouble(),
                       ),
                       child: Center(
                         child: ConstrainedBox(
+                          // Batasi lebar form agar kolom input tetap nyaman dibaca pada layar besar.
                           constraints: const BoxConstraints(maxWidth: 390),
                           child: child,
                         ),
@@ -237,7 +269,9 @@ class AuthLayout extends StatelessWidget {
 }
 
 /// Kartu seperti jendela komputer pada desain login.
+// Bingkai form seperti jendela komputer dengan bilah judul dan identitas fakultas.
 class AuthWindow extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const AuthWindow({
     super.key,
     required this.fileName,
@@ -247,13 +281,19 @@ class AuthWindow extends StatelessWidget {
     this.onBack,
   });
 
+  // Teks dekoratif pada bilah jendela, misalnya SIAKAD.EXE; bukan program yang dijalankan.
   final String fileName;
+  // Judul utama kartu, misalnya nama sistem atau pemulihan akun.
   final String title;
+  // Keterangan pendek di atas judul utama.
   final String subtitle;
+  // Isi diberikan pemanggil, sehingga pembungkus yang sama dapat memuat form atau panel lain.
   final Widget child;
+  // Aksi kembali opsional; tanpa fungsi ini, bagian tutup hanya menjadi dekorasi.
   final VoidCallback? onBack;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => PixelPanel(
     color: AppTheme.paper,
     padding: EdgeInsets.zero,
@@ -277,6 +317,7 @@ class AuthWindow extends StatelessWidget {
                   style: AppTheme.pixel(8, color: Colors.white),
                 ),
               ),
+              // Tombol tutup hanya aktif bila halaman memiliki tujuan kembali.
               if (onBack != null)
                 Tooltip(
                   message: 'Kembali ke login',
@@ -360,7 +401,9 @@ class AuthWindow extends StatelessWidget {
 }
 
 /// Panel bersama. Material di DALAM dekorasi membuat efek sentuhan terlihat.
+// Bingkai kotak bersama dengan garis tebal, bayangan, dan ruang untuk isi.
 class PixelPanel extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const PixelPanel({
     super.key,
     required this.child,
@@ -370,13 +413,19 @@ class PixelPanel extends StatelessWidget {
     this.shadowOffset = 4,
   });
 
+  // Isi diberikan pemanggil, sehingga pembungkus yang sama dapat memuat form atau panel lain.
   final Widget child;
+  // Jarak antara bingkai dan isi, bisa ditentukan berbeda untuk tiap penggunaan.
   final EdgeInsetsGeometry padding;
+  // Warna latar komponen.
   final Color color;
+  // Ketebalan garis tepi untuk mempertahankan gaya kotak pixel.
   final double borderWidth;
+  // Jarak bayangan dari kotak agar terlihat memiliki ketebalan.
   final double shadowOffset;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     padding: padding,
@@ -390,13 +439,16 @@ class PixelPanel extends StatelessWidget {
         ),
       ],
     ),
+    // Lapisan Material transparan menyediakan permukaan efek sentuh di atas dekorasi.
     child: Material(type: MaterialType.transparency, child: child),
   );
 }
 
 /// Permukaan interaktif reusable untuk kartu, menu, dan ikon header.
 /// Animasi hanya mengubah posisi/bayangan kecil; isi tidak dibangun setiap frame.
+// Kartu interaktif yang dapat diberi aksi dan efek tekanan.
 class PixelTapSurface extends StatefulWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const PixelTapSurface({
     super.key,
     required this.child,
@@ -408,27 +460,38 @@ class PixelTapSurface extends StatefulWidget {
     this.borderWidth = 2,
     this.padding = EdgeInsets.zero,
   });
+  // Isi diberikan pemanggil, sehingga pembungkus yang sama dapat memuat form atau panel lain.
   final Widget child;
+  // Fungsi tindakan ketika kartu/tombol disentuh, diberikan oleh halaman pemakai.
   final VoidCallback onTap;
+  // Nama yang terlihat atau dibacakan untuk mengenali fungsi komponen.
   final String label;
+  // Pisahkan warna latar, bingkai, dan bayangan agar kartu mudah disesuaikan.
   final Color color, borderColor, shadowColor;
+  // Ketebalan garis tepi untuk mempertahankan gaya kotak pixel.
   final double borderWidth;
+  // Jarak antara bingkai dan isi, bisa ditentukan berbeda untuk tiap penggunaan.
   final EdgeInsetsGeometry padding;
 
   @override
+  // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<PixelTapSurface> createState() => _PixelTapSurfaceState();
 }
 
+// Pengatur perubahan posisi dan bayangan kartu selama ditekan.
 class _PixelTapSurfaceState extends State<PixelTapSurface> {
+  // Simpan apakah jari sedang menekan agar posisi dan bayangan bisa berubah sesaat.
   bool _pressed = false;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Semantics(
     button: true,
     label: widget.label,
     child: AnimatedContainer(
       duration: AppMotion.duration(context, 120),
       curve: Curves.easeOutCubic,
+      // Geser kotak beberapa satuan ketika ditekan untuk memberi kesan tombol mekanis.
       transform: Matrix4.translationValues(
         _pressed ? 2 : 0,
         _pressed ? 2 : 0,
@@ -451,6 +514,7 @@ class _PixelTapSurfaceState extends State<PixelTapSurface> {
         type: MaterialType.transparency,
         child: InkWell(
           onTap: widget.onTap,
+          // Saat tekanan dimulai/berakhir, perbarui _pressed agar efek visual mengikuti sentuhan.
           onHighlightChanged: (value) {
             if (_pressed != value) setState(() => _pressed = value);
           },
@@ -462,7 +526,9 @@ class _PixelTapSurfaceState extends State<PixelTapSurface> {
 }
 
 /// Input bersama untuk login dan lupa password.
+// Kolom input seragam yang meneruskan teks dan validasi ke halaman pemakai.
 class PixelField extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const PixelField({
     super.key,
     required this.label,
@@ -479,20 +545,33 @@ class PixelField extends StatelessWidget {
     this.autofillHints,
   });
 
+  // Nama yang terlihat atau dibacakan untuk mengenali fungsi komponen.
   final String label;
+  // Contoh tulisan samar saat kolom belum diisi.
   final String hint;
+  // Pengelola teks berasal dari halaman; komponen input hanya memakainya.
   final TextEditingController controller;
+  // Fungsi pemeriksa isian: teks hasil adalah pesan salah, null berarti valid.
   final String? Function(String?) validator;
+  // Ikon di depan kolom jika diperlukan.
   final IconData? icon;
+  // Bagian tambahan di ujung kolom, seperti tombol mata pada password.
   final Widget? suffix;
+  // Jika true, samarkan tulisan yang diketik untuk kolom rahasia.
   final bool obscure;
+  // Jika false, pengguna sementara tidak dapat mengubah kolom.
   final bool enabled;
+  // Pilih bentuk keyboard yang cocok, misalnya papan ketik email.
   final TextInputType keyboardType;
+  // Tulisan/tindakan tombol keyboard: lanjut ke kolom berikut atau selesai.
   final TextInputAction action;
+  // Aksi opsional saat tombol selesai pada keyboard ditekan.
   final ValueChanged<String>? onSubmitted;
+  // Petunjuk ke sistem untuk pengisian otomatis seperti username atau email.
   final Iterable<String>? autofillHints;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -512,6 +591,7 @@ class PixelField extends StatelessWidget {
           onFieldSubmitted: onSubmitted,
           autofillHints: autofillHints,
           autocorrect: false,
+          // Matikan saran kata untuk password agar kolom rahasia tidak diperlakukan sebagai teks biasa.
           enableSuggestions: !obscure && label != 'PASSWORD',
           style: const TextStyle(fontSize: 12),
           decoration: InputDecoration(
@@ -528,7 +608,9 @@ class PixelField extends StatelessWidget {
 }
 
 /// Tombol hijau dengan efek ditekan dan pergantian loading.
+// Tombol aksi dengan efek tekan dan keadaan sedang memproses.
 class PixelButton extends StatefulWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const PixelButton({
     super.key,
     required this.label,
@@ -536,22 +618,30 @@ class PixelButton extends StatefulWidget {
     this.loading = false,
   });
 
+  // Nama yang terlihat atau dibacakan untuk mengenali fungsi komponen.
   final String label;
+  // Fungsi yang dijalankan saat tombol aktif; null berarti tidak ada tindakan.
   final VoidCallback? onPressed;
+  // Pilih indikator tunggu dan cegah ketukan selama proses berjalan.
   final bool loading;
 
   @override
+  // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<PixelButton> createState() => _PixelButtonState();
 }
 
+// Menyimpan keadaan tekanan dan memilih tampilan label atau indikator tunggu.
 class _PixelButtonState extends State<PixelButton> {
+  // Simpan apakah jari sedang menekan agar posisi dan bayangan bisa berubah sesaat.
   bool _pressed = false;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => AnimatedContainer(
     duration: AppMotion.duration(context, 100),
 
     // Tombol bergerak sedikit ketika ditekan.
+    // Geser kotak beberapa satuan ketika ditekan untuk memberi kesan tombol mekanis.
     transform: Matrix4.translationValues(_pressed ? 2 : 0, _pressed ? 2 : 0, 0),
 
     decoration: BoxDecoration(
@@ -568,13 +658,16 @@ class _PixelButtonState extends State<PixelButton> {
     child: Material(
       type: MaterialType.transparency,
       child: InkWell(
+        // Tombol tidak mengirim aksi baru selama loading agar permintaan tidak berulang.
         onTap: widget.loading ? null : widget.onPressed,
+        // Saat tekanan dimulai/berakhir, perbarui _pressed agar efek visual mengikuti sentuhan.
         onHighlightChanged: (value) {
           setState(() {
             _pressed = value;
           });
         },
         child: ConstrainedBox(
+          // Pertahankan tinggi sentuh yang nyaman walau tulisan tombol pendek.
           constraints: const BoxConstraints(minHeight: 56),
           child: Container(
             padding: const EdgeInsets.all(12),
@@ -597,6 +690,7 @@ class _PixelButtonState extends State<PixelButton> {
               ),
             ),
             child: Center(
+              // Ganti tulisan tombol dengan lingkaran tunggu menggunakan perpindahan yang halus.
               child: AnimatedSwitcher(
                 duration: AppMotion.duration(context, 180),
                 child: widget.loading
@@ -636,14 +730,20 @@ class _PixelButtonState extends State<PixelButton> {
 }
 
 /// Pesan hasil dibacakan pembaca layar sebagai perubahan status.
+// Kotak pesan berhasil/gagal yang juga dikenali pembaca layar.
 class StatusMessage extends StatelessWidget {
+  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const StatusMessage({super.key, required this.message, this.success = false});
 
+  // Pesan hasil proses yang perlu dibaca pengguna.
   final String message;
+  // Pilih warna pesan berhasil atau kesalahan.
   final bool success;
 
   @override
+  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => Semantics(
+    // Minta pembaca layar mengumumkan perubahan pesan tanpa pengguna harus mencarinya.
     liveRegion: true,
     child: Container(
       padding: const EdgeInsets.all(10),
