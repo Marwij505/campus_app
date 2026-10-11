@@ -1,49 +1,89 @@
-// Uji otomatis untuk aturan login dan sesi, tanpa membuka tampilan aplikasi.
-// Tes adalah pemeriksa: siapkan kondisi, jalankan tindakan, lalu bandingkan hasil.
-// expect memeriksa hasil langsung; expectLater menunggu hasil proses asynchronous.
-// Jika kenyataan berbeda dari harapan, flutter test melaporkan tes gagal.
+// Pengujian aturan login dan sesi tanpa membuka tampilan.
+//
+// expect membandingkan hasil dengan harapan.
+// expectLater menunggu hasil asynchronous sebelum membandingkannya.
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:campus_app/data/auth_service.dart';
 
-// Daftarkan skenario yang akan dijalankan oleh perintah flutter test.
 void main() {
-  // Skenario mencakup penolakan akun salah, penerimaan akun demo, dan logout.
-  test('Akun salah ditolak dan sesi demo dapat dihapus', () async {
-    // Buat layanan baru agar sesi dari pengujian lain tidak memengaruhi hasil.
+  test('Akun salah ditolak dan tidak membuat sesi', () async {
+    // Gunakan layanan baru agar test tidak berbagi sesi.
     final service = AuthService();
 
-    // Login dengan akun salah harus menghasilkan kesalahan, bukan profil mahasiswa.
+    // Akun salah harus menghasilkan AuthException.
     await expectLater(
-      service.login(
-        identity: 'salah',
-        password: 'salah',
-        rememberSession: false,
-      ),
-      // Pastikan jenis kegagalannya adalah AuthException yang dikenali aplikasi.
+      service.login(identity: 'salah', password: 'salah'),
       throwsA(isA<AuthException>()),
     );
 
-    // Pada titik ini tidak boleh ada sesi aktif: setelah login salah maupun setelah logout.
+    // Kegagalan login tidak boleh membuat sesi aktif.
     expect(service.hasSession, isFalse);
+    expect(service.remainingSession, Duration.zero);
+  });
 
-    // Coba akun yang benar dan tunggu profilnya dikembalikan.
-    final student = await service.login(
-      identity: '20240801002',
-      password: '123456',
-      rememberSession: true,
-    );
+  test('Kedua akun demo dapat login', () async {
+    // Jalankan pemeriksaan untuk masing-masing NIM demo.
+    for (final nim in ['20240801001', '20240801002']) {
+      final service = AuthService();
 
-    // Pastikan layanan mengembalikan NIM yang digunakan saat masuk.
-    expect(student.nim, '20240801002');
-    // Login berhasil harus meninggalkan penanda sesi aktif.
+      final student = await service.login(identity: nim, password: '123456');
+
+      // Profil harus berisi NIM yang dipakai saat login.
+      expect(student.nim, nim);
+
+      // Login berhasil membuat sesi aktif.
+      expect(service.hasSession, isTrue);
+
+      // Bersihkan sesi setelah pemeriksaan akun ini.
+      service.logout();
+    }
+  });
+
+  test('Logout menghapus sesi', () async {
+    final service = AuthService();
+
+    await service.login(identity: '20240801002', password: '123456');
+
     expect(service.hasSession, isTrue);
 
-    // Jalankan aksi keluar seperti ketika pengguna menekan tombol Keluar.
+    // Meniru tindakan tombol Keluar.
     service.logout();
 
-    // Pada titik ini tidak boleh ada sesi aktif: setelah login salah maupun setelah logout.
+    // Setelah logout, tidak ada sesi atau waktu yang tersisa.
     expect(service.hasSession, isFalse);
+    expect(service.remainingSession, Duration.zero);
+  });
+
+  test('Sesi berakhir tepat setelah 30 menit', () async {
+    // Waktu buatan yang dapat dimajukan oleh test.
+    var currentTime = DateTime.utc(2026, 10, 11, 8);
+
+    // Layanan membaca currentTime setiap kali memeriksa waktu.
+    final service = AuthService(now: () => currentTime);
+
+    await service.login(identity: '20240801001', password: '123456');
+
+    // Pada awal sesi, waktunya tepat 30 menit.
+    expect(service.remainingSession, const Duration(minutes: 30));
+
+    // Majukan waktu hingga satu detik sebelum kedaluwarsa.
+    currentTime = currentTime.add(const Duration(minutes: 29, seconds: 59));
+
+    expect(service.hasSession, isTrue);
+    expect(service.remainingSession, const Duration(seconds: 1));
+
+    // Majukan satu detik lagi: tepat mencapai batas 30 menit.
+    currentTime = currentTime.add(const Duration(seconds: 1));
+
+    expect(service.hasSession, isFalse);
+    expect(service.remainingSession, Duration.zero);
+
+    // Setelah lewat batas, durasi tetap nol, bukan negatif.
+    currentTime = currentTime.add(const Duration(minutes: 5));
+
+    expect(service.hasSession, isFalse);
+    expect(service.remainingSession, Duration.zero);
   });
 }

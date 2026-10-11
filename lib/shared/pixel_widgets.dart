@@ -254,7 +254,7 @@ class AuthLayout extends StatelessWidget {
                   color: AppTheme.ink.withValues(alpha: .78),
                   padding: const EdgeInsets.all(8),
                   child: Text(
-                    'FASILKOM DIGITAL CAMPUS · V2.4',
+                    'FASILKOM ESA UNGGUL',
                     textAlign: TextAlign.center,
                     style: AppTheme.pixel(6, color: Colors.white),
                   ),
@@ -751,4 +751,120 @@ class StatusMessage extends StatelessWidget {
       child: Text(message, style: const TextStyle(fontSize: 11)),
     ),
   );
+}
+
+/// Tautan navigasi untuk halaman login dan pemulihan password.
+///
+/// Kedua halaman memakai komponen ini supaya gaya dan animasinya sama.
+class AuthNavigationLink extends StatefulWidget {
+  const AuthNavigationLink({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.arrowRight = false,
+  });
+
+  // Tulisan yang terlihat pada tombol.
+  final String label;
+
+  // Aksi ketika ditekan; null membuat tombol tidak aktif.
+  final VoidCallback? onPressed;
+
+  // true: panah kanan setelah tulisan.
+  // false: panah kiri sebelum tulisan.
+  final bool arrowRight;
+
+  @override
+  State<AuthNavigationLink> createState() => _AuthNavigationLinkState();
+}
+
+class _AuthNavigationLinkState extends State<AuthNavigationLink> {
+  // TextButton memperbarui controller ketika disentuh,
+  // disorot mouse, atau mendapat fokus keyboard.
+  final _states = WidgetStatesController();
+
+  @override
+  void dispose() {
+    // Lepaskan controller ketika komponen ditutup.
+    _states.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Ikuti pengaturan pengguna yang mengurangi animasi.
+    final duration = AppMotion.duration(context, 160);
+
+    return TextButton(
+      statesController: _states,
+      onPressed: widget.onPressed,
+
+      // Pertahankan gaya TextButton seperti tombol kembali sebelumnya.
+      style: TextButton.styleFrom(
+        foregroundColor: AppTheme.blue,
+        disabledForegroundColor: AppTheme.muted,
+
+        // Area sentuh tetap nyaman pada HP.
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+
+      // Perbarui isi tombol ketika kondisi interaksi berubah.
+      child: AnimatedBuilder(
+        animation: _states,
+        builder: (context, child) {
+          final enabled = widget.onPressed != null;
+
+          // Efek tekan juga berlaku saat tombol diaktifkan lewat keyboard.
+          final pressed =
+              enabled && _states.value.contains(WidgetState.pressed);
+
+          // Gerakkan panah saat hover, fokus, atau ditekan.
+          final active =
+              enabled &&
+              (pressed ||
+                  _states.value.contains(WidgetState.hovered) ||
+                  _states.value.contains(WidgetState.focused));
+
+          // Tentukan arah gerakan panah.
+          final direction = widget.arrowRight ? 1.0 : -1.0;
+
+          final arrow = AnimatedSlide(
+            // Offset adalah pecahan ukuran ikon:
+            // 0.22 × 18 sekitar 4 piksel.
+            offset: Offset(active ? direction * 0.22 : 0, 0),
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            child: Icon(
+              widget.arrowRight ? Icons.arrow_forward : Icons.arrow_back,
+              size: 18,
+            ),
+          );
+
+          return AnimatedScale(
+            // Isi mengecil sedikit saat ditekan lalu kembali normal.
+            scale: pressed ? 0.97 : 1,
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            child: Row(
+              // Tombol mengikuti lebar tulisan, bukan memenuhi panel.
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Tombol kembali: panah berada sebelum tulisan.
+                if (!widget.arrowRight) ...[arrow, const SizedBox(width: 8)],
+
+                // Flexible membantu teks menyesuaikan layar sempit.
+                Flexible(
+                  child: Text(widget.label, textAlign: TextAlign.center),
+                ),
+
+                // Tombol lupa password: panah berada setelah tulisan.
+                if (widget.arrowRight) ...[const SizedBox(width: 8), arrow],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }

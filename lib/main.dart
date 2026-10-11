@@ -1,13 +1,9 @@
-// Titik awal aplikasi: menyiapkan Flutter, mendaftarkan lisensi font,
-// lalu memilih layar login atau beranda sesuai hasil masuk pengguna.
-// Cara membaca: widget adalah bagian tampilan; State menyimpan kondisi yang
-// bisa berubah; setState meminta Flutter memperbarui tampilan setelah perubahan.
-// class adalah cetakan objek; constructor mengisi pengaturan awal objek itu.
-// required berarti parameter wajib diisi; const dipakai untuk nilai/objek konstan.
-// import membawa alat dari berkas lain; @override menandai fungsi pengganti
-// dari kelas induk, misalnya build untuk menentukan susunan tampilan sendiri.
-// context menunjukkan posisi widget dalam pohon tampilan untuk mencari tema,
-// navigasi, atau pengaturan layar yang disediakan oleh pembungkusnya.
+// Titik awal aplikasi dan pengatur perpindahan login/beranda.
+//
+// AuthService menentukan apakah sesi masih valid.
+// AuthGate mengatur timer dan memperbarui tampilan ketika sesi habis.
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -21,39 +17,37 @@ import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 
-// Fungsi pertama yang dijalankan saat aplikasi dibuka.
 void main() {
-  // Siapkan penghubung Flutter dengan perangkat sebelum membaca aset font.
+  // Siapkan Flutter sebelum menggunakan layanan dan aset.
   WidgetsFlutterBinding.ensureInitialized();
-  // Lisensi font ikut tersedia melalui halaman lisensi standar Flutter.
-  // async* menghasilkan entri lisensi satu per satu lewat yield.
-  // await menunggu teks lisensi selesai dibaca dari berkas aset.
+
+  // Daftarkan lisensi font untuk halaman lisensi standar Flutter.
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
       'Press Start 2P',
     ], await rootBundle.loadString('assets/fonts/PressStart2P-OFL.txt'));
+
     yield LicenseEntryWithLineBreaks([
       'Space Mono',
     ], await rootBundle.loadString('assets/fonts/SpaceMono-OFL.txt'));
   });
-  // Pasang CampusApp sebagai akar seluruh tampilan di layar.
+
+  // Mulai aplikasi dari widget utama.
   runApp(const CampusApp());
 }
 
-// Wadah utama yang menetapkan tema dan halaman pembuka aplikasi.
+/// Menetapkan tema, nama aplikasi, dan halaman pembuka.
 class CampusApp extends StatelessWidget {
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const CampusApp({
     super.key,
     this.dashboardRepository = const EmptyDashboardRepository(),
   });
 
-  // Ganti repository saat API backend siap; komponen UI tetap sama.
-  // Repository ibarat petugas pengambil data. Versi bawaan mengembalikan data kosong.
+  // Sumber data beranda masih mengembalikan data kosong.
+  // Nantinya dapat diganti dengan repository yang memanggil API.
   final DashboardRepository dashboardRepository;
 
   @override
-  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'campus_app',
@@ -62,52 +56,148 @@ class CampusApp extends StatelessWidget {
   );
 }
 
-/// Satu tempat menentukan pengguna sedang di login atau di beranda.
-///
-/// Setelah berhasil masuk, halaman utama diganti menjadi Dashboard.
-/// Dengan demikian, tombol Back tidak membuka halaman login sebelumnya.
-// Penjaga pintu: menampilkan login jika belum ada profil, atau beranda jika sudah masuk.
+/// Memilih halaman login atau beranda berdasarkan sesi pengguna.
 class AuthGate extends StatefulWidget {
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const AuthGate({
     super.key,
     this.repository = const EmptyDashboardRepository(),
   });
-  // Teruskan sumber data yang sama ke beranda setelah pengguna berhasil masuk.
+
+  // Teruskan sumber data ke dashboard setelah login.
   final DashboardRepository repository;
 
   @override
-  // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<AuthGate> createState() => _AuthGateState();
 }
 
-// Menyimpan hasil login dan mengatur perubahan layar tanpa menumpuk halaman login.
-class _AuthGateState extends State<AuthGate> {
-  // Satu layanan ini dipakai bersama untuk masuk dan keluar selama AuthGate hidup.
+/// Menyimpan profil dan mengatur logout otomatis.
+///
+/// WidgetsBindingObserver mendengarkan perubahan status aplikasi,
+/// termasuk ketika aplikasi kembali aktif dari background.
+class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
+  // Satu layanan digunakan bersama untuk login, reset, dan logout.
   final _service = AuthService();
 
-  // null berarti pengguna belum masuk.
-  // Tanda ? mengizinkan nilai null, yaitu belum ada profil pengguna yang masuk.
+  // null berarti pengguna belum login atau sudah keluar.
   StudentProfile? _student;
 
-  // Hapus sesi di layanan, lalu hapus profil agar build memilih layar login lagi.
+  // Timer untuk memeriksa sesi saat batas waktu tercapai.
+  Timer? _sessionTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Mulai mendengarkan perubahan status aplikasi.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// Menerima profil dari halaman login.
+  void _onLogin(StudentProfile student) {
+    // Jangan memperbarui widget yang sudah ditutup.
+    if (!mounted) return;
+
+    // Tolak pembukaan dashboard jika sesi sudah tidak valid.
+    if (!_service.hasSession) {
+      _service.logout();
+      return;
+    }
+
+    // Simpan profil agar build menampilkan dashboard.
+    setState(() {
+      _student = student;
+    });
+
+    // Mulai menghitung sisa waktu menuju kedaluwarsa.
+    _scheduleSessionCheck();
+  }
+
+  /// Memasang timer berdasarkan sisa waktu yang sebenarnya.
+  void _scheduleSessionCheck() {
+    // Hindari beberapa timer aktif bersamaan.
+    _sessionTimer?.cancel();
+
+    // Tidak perlu timer jika widget ditutup atau pengguna belum login.
+    if (!mounted || _student == null) return;
+
+    final remaining = _service.remainingSession;
+
+    // Jika waktunya sudah habis, keluar sekarang.
+    if (remaining <= Duration.zero) {
+      _logout();
+      return;
+    }
+
+    // Timer sekali jalan; durasinya tidak memperpanjang sesi.
+    _sessionTimer = Timer(remaining, _checkSession);
+  }
+
+  /// Memeriksa ulang sesi berdasarkan waktu kedaluwarsa.
+  void _checkSession() {
+    if (!mounted || _student == null) return;
+
+    if (!_service.hasSession) {
+      _logout();
+      return;
+    }
+
+    // Jadwalkan ulang hanya untuk waktu sesi yang masih tersisa.
+    _scheduleSessionCheck();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Timer dapat tertunda ketika aplikasi berada di background.
+      // Periksa kembali saat pengguna membuka aplikasi.
+      _checkSession();
+    }
+  }
+
+  /// Menangani tombol Keluar maupun kedaluwarsa otomatis.
   void _logout() {
+    // Hentikan timer dan hapus referensinya.
+    _sessionTimer?.cancel();
+    _sessionTimer = null;
+
+    // Hapus sesi pada layanan.
     _service.logout();
 
+    // Tidak perlu memperbarui halaman jika sudah ditutup/belum login.
+    if (!mounted || _student == null) return;
+
+    // Tutup halaman atau dialog tambahan di atas halaman utama.
+    // Pengguna tidak ditinggalkan pada halaman yang memerlukan login.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // Mengosongkan profil membuat build memilih halaman login.
     setState(() {
       _student = null;
     });
   }
 
   @override
-  // build menyusun tampilan ketika Flutter memintanya.
+  void dispose() {
+    // Bersihkan timer agar tidak berjalan setelah widget ditutup.
+    _sessionTimer?.cancel();
+
+    // Hentikan pemantauan perubahan status aplikasi.
+    WidgetsBinding.instance.removeObserver(this);
+
+    // Hapus sesi ketika AuthGate dibuang.
+    _service.logout();
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-    // Durasi mengatur lama perpindahan; kurva di bawah membuat gerak lebih halus.
+    // Pertahankan transisi halus dari desain sebelumnya.
     duration: AppMotion.duration(context, 420),
     switchInCurve: Curves.easeOutCubic,
     switchOutCurve: Curves.easeInCubic,
 
-    // Pergantian login dan dashboard menggunakan fade + sedikit scale.
+    // Gabungkan fade dengan perubahan skala kecil.
     transitionBuilder: (child, animation) => FadeTransition(
       opacity: animation,
       child: ScaleTransition(
@@ -116,21 +206,16 @@ class _AuthGateState extends State<AuthGate> {
       ),
     ),
 
-    // Key membantu Flutter mengenali bahwa kedua halaman berbeda.
+    // Tanpa profil: tampilkan login.
+    // Dengan profil: tampilkan dashboard.
     child: _student == null
         ? LoginPage(
             key: const ValueKey('login'),
             service: _service,
-            // Callback adalah fungsi balasan: halaman login mengirim profil ke induknya.
-            onLogin: (student) {
-              setState(() {
-                _student = student;
-              });
-            },
+            onLogin: _onLogin,
           )
         : DashboardPage(
             key: const ValueKey('dashboard'),
-            // Tanda ! dipakai karena cabang ini hanya dijalankan saat profil bukan null.
             student: _student!,
             repository: widget.repository,
             onLogout: _logout,

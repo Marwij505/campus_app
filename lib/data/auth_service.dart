@@ -1,70 +1,100 @@
-// Layanan login yang saat ini dipakai aplikasi utama.
-// Tugasnya memeriksa akun demo, membuat penanda sesi di memori, dan logout.
-// Future berarti hasil baru tersedia nanti; async/await membuat proses tunggu
-// tidak menghentikan tampilan aplikasi.
+// Mengurus pemeriksaan akun, batas sesi, dan logout.
+//
+// Saat ini akun masih demo dan sesi hanya berada di memori.
+// Belum terhubung ke backend atau database.
+// Ketika proses aplikasi ditutup, sesi ikut hilang.
 
 import 'student_profile.dart';
 
-// Bentuk khusus kesalahan login yang membawa pesan untuk pengguna.
+/// Kesalahan login yang pesannya boleh ditampilkan kepada pengguna.
 class AuthException implements Exception {
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
+  // Simpan pesan ketika objek kesalahan dibuat.
   const AuthException(this.message);
 
-  // Pesan kesalahan yang boleh ditampilkan pada form login.
+  // final berarti pesan tidak dapat diganti setelah objek dibuat.
   final String message;
 }
 
-/// Memisahkan proses autentikasi dari tampilan.
-///
-/// Ini masih layanan demo.
-/// Nantinya proses di sini diganti pemanggilan HTTPS API ke backend.
-// Memisahkan pemeriksaan akun dari kode yang menggambar layar login.
+/// Memisahkan pemeriksaan akun dari kode tampilan login.
 class AuthService {
-  // Batas waktu sesi; null berarti belum ada sesi atau pengguna sudah keluar.
+  // Secara normal menggunakan waktu perangkat.
+  // Saat test, fungsi waktu dapat diganti agar tidak menunggu 30 menit.
+  AuthService({DateTime Function()? now}) : _now = now ?? DateTime.now;
+
+  // Menyimpan fungsi pembaca waktu, bukan satu nilai waktu tetap.
+  final DateTime Function() _now;
+
+  // Semua login berhasil mendapatkan durasi yang sama.
+  // static const berarti pengaturan tetap milik class ini.
+  static const sessionDuration = Duration(minutes: 30);
+
+  // Waktu kedaluwarsa sesi.
+  // null berarti belum login atau sudah logout.
   DateTime? _expiresAt;
 
-  // Periksa apakah batas sesi masih di masa depan. ?? false dipakai saat sesi belum ada.
-  // Ini hanya pemeriksaan saat dibaca, bukan pengatur logout otomatis.
-  bool get hasSession => _expiresAt?.isAfter(DateTime.now()) ?? false;
+  /// Memeriksa apakah sesi belum mencapai waktu kedaluwarsa.
+  bool get hasSession {
+    // Salin nilai agar dapat diperiksa dengan aman.
+    final expiresAt = _expiresAt;
 
-  // Masukan: NIM/NIP, password, dan pilihan ingat sesi.
-  // Keluaran: profil berisi NIM jika benar; lempar AuthException jika salah.
+    // Sesi valid hanya jika ada dan waktunya belum habis.
+    // Tepat pada waktu kedaluwarsa, hasilnya sudah false.
+    return expiresAt != null && _now().isBefore(expiresAt);
+  }
+
+  /// Memberikan sisa durasi untuk timer logout di main.dart.
+  Duration get remainingSession {
+    final expiresAt = _expiresAt;
+
+    // Tanpa sesi, tidak ada waktu yang tersisa.
+    if (expiresAt == null) return Duration.zero;
+
+    // Hitung selisih waktu kedaluwarsa dengan waktu sekarang.
+    final remaining = expiresAt.difference(_now());
+
+    // Jangan mengembalikan durasi negatif setelah sesi habis.
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// Memeriksa akun dan mengembalikan profil jika berhasil.
+  ///
+  /// Tidak ada lagi parameter rememberSession.
   Future<StudentProfile> login({
+    // Identitas wajib diberikan oleh halaman login.
     required String identity,
+
+    // Password wajib diberikan oleh halaman login.
     required String password,
-    required bool rememberSession,
   }) async {
-    // Meniru waktu tunggu server supaya indikator loading dapat diuji.
+    // Simulasi waktu tunggu server agar loading bisa diuji.
+    // await menunggu tanpa menghentikan tampilan aplikasi.
     await Future<void>.delayed(const Duration(milliseconds: 800));
 
-    // Dua akun uji tetap tersedia untuk membuka UI.
-    // Tidak ada profil mahasiswa nyata pada autentikasi simulasi ini.
+    // Dua NIM demo yang diperbolehkan untuk mencoba aplikasi.
     final validIdentity = ['20240801001', '20240801002'].contains(identity);
 
-    // Salah satu syarat gagal sudah cukup untuk menolak login.
+    // Identitas atau password salah sudah cukup untuk menolak login.
     if (!validIdentity || password != '123456') {
       throw const AuthException('NIM / NIP atau password salah.');
     }
 
-    // Sesi hanya berada di RAM.
-    // Belum tersimpan permanen ketika proses aplikasi ditutup.
-    _expiresAt = DateTime.now().add(
-      rememberSession ? const Duration(days: 7) : const Duration(hours: 1),
-    );
+    // Mulai sesi 30 menit dari waktu login berhasil.
+    // Aktivitas pengguna tidak memperpanjang batas ini.
+    _expiresAt = _now().add(sessionDuration);
 
-    // Kembalikan identitas yang diketahui saja; data akademik belum tersedia di layanan ini.
+    // Hanya NIM yang diketahui; data akademik tetap kosong.
     return StudentProfile(nim: identity);
   }
 
-  // Menerima email untuk simulasi permintaan reset; void berarti tanpa nilai hasil.
+  /// Simulasi permintaan pemulihan password.
   Future<void> requestReset(String email) async {
-    // Simulasi saja:
-    // tidak mengirim email dan tidak mengubah password.
+    // Belum mengirim email atau mengganti password.
     await Future<void>.delayed(const Duration(milliseconds: 800));
   }
 
-  // Mengosongkan batas sesi agar hasSession kembali bernilai false.
+  /// Menghapus sesi ketika pengguna keluar.
   void logout() {
+    // Setelah dikosongkan, hasSession menghasilkan false.
     _expiresAt = null;
   }
 }

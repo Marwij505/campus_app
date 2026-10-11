@@ -1,7 +1,7 @@
-// Layar tempat pengguna memasukkan identitas dan password.
-// Urutan proses: periksa isian, panggil layanan login, lalu kirim profil ke AuthGate.
-// Halaman mengurus interaksi pengguna; pemeriksaan akun berada di AuthService.
-// Nama berawalan _ hanya bisa digunakan di dalam pustaka Dart berkas ini.
+// Halaman untuk memasukkan NIM/NIP dan password.
+//
+// Halaman ini mengurus form serta interaksi pengguna.
+// Pemeriksaan akun dan durasi sesi berada di AuthService.
 
 import 'package:flutter/material.dart';
 
@@ -12,84 +12,87 @@ import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import 'forgot_password_page.dart';
 
-// Form masuk yang menerima layanan login dan fungsi pemberitahuan keberhasilan.
+/// Form login yang menerima layanan dan callback dari halaman induk.
 class LoginPage extends StatefulWidget {
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const LoginPage({super.key, required this.service, required this.onLogin});
 
-  // Layanan yang diberikan induk halaman untuk memeriksa akun.
+  // Layanan yang memeriksa akun.
   final AuthService service;
-  // Fungsi balasan yang memberi tahu induk bahwa login berhasil beserta profilnya.
+
+  // Fungsi untuk memberi tahu AuthGate bahwa login berhasil.
   final ValueChanged<StudentProfile> onLogin;
 
   @override
-  // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<LoginPage> createState() => _LoginPageState();
 }
 
-// Menyimpan isian, pilihan sesi, status tunggu, dan kesalahan selama halaman dibuka.
+/// Menyimpan isian, status loading, dan pesan kesalahan.
 class _LoginPageState extends State<LoginPage> {
-  // Kunci untuk menemukan Form dan menjalankan seluruh pemeriksaan isian sekaligus.
+  // Kunci untuk menjalankan validator pada seluruh form.
   final _form = GlobalKey<FormState>();
-  // Controller menyimpan dan membaca teks yang sedang diketik pada kolom identitas.
+
+  // Menyimpan teks yang diketik pada kolom identitas.
   final _identity = TextEditingController();
-  // Controller terpisah untuk membaca password persis seperti yang diketik.
+
+  // Menyimpan teks yang diketik pada kolom password.
   final _password = TextEditingController();
 
-  // true menyamarkan tulisan password; false menampilkannya.
+  // true berarti password ditampilkan dalam bentuk tersamarkan.
   bool _hidden = true;
-  // Menyimpan pilihan lama sesi demo, bukan menyimpan password ke perangkat.
-  bool _remember = false;
-  // Penanda proses login sedang berlangsung; tombol dan input sementara dikunci.
+
+  // true berarti proses login sedang berlangsung.
   bool _loading = false;
-  // Pesan gagal yang ditampilkan; null berarti tidak ada pesan kesalahan.
+
+  // null berarti tidak ada pesan kesalahan.
   String? _error;
 
-  // Jalankan alur login setelah tombol MASUK atau tombol selesai di keyboard ditekan.
+  /// Dipanggil oleh tombol MASUK atau tombol selesai pada keyboard.
   Future<void> _login() async {
-    // Cegah submit ganda dari tombol maupun keyboard.
+    // Cegah dua permintaan login berjalan bersamaan.
     if (_loading) return;
 
-    // Tutup fokus input agar keyboard tidak menghalangi hasil proses.
+    // Lepaskan fokus input untuk menutup keyboard.
     FocusScope.of(context).unfocus();
 
-    // Jika validator menemukan kolom kosong, tampilkan pesannya dan hentikan proses.
+    // Hentikan proses jika ada kolom yang belum valid.
     if (!_form.currentState!.validate()) return;
 
+    // Perbarui tampilan agar loading muncul dan pesan lama hilang.
     setState(() {
-      // setState meminta layar menampilkan indikator tunggu dan menghapus pesan lama.
       _loading = true;
       _error = null;
     });
 
     try {
-      // Tunggu hasil layanan tanpa membekukan layar. trim membuang spasi tepi pada identitas.
+      // Kirim isian ke layanan login.
+      // trim hanya membuang spasi tepi pada NIM/NIP.
+      // Password dipertahankan persis seperti yang diketik.
       final student = await widget.service.login(
         identity: _identity.text.trim(),
         password: _password.text,
-        rememberSession: _remember,
       );
 
-      // Halaman mungkin sudah ditutup ketika proses async selesai.
+      // Jangan mengubah halaman yang sudah ditutup.
       if (!mounted) return;
 
+      // Kirim profil ke AuthGate untuk membuka beranda.
       widget.onLogin(student);
     } on AuthException catch (error) {
-      // Kesalahan akun yang dikenali boleh ditampilkan dengan pesan dari layanan.
+      // Tampilkan pesan kesalahan akun dari layanan.
       if (mounted) {
         setState(() {
           _error = error.message;
         });
       }
     } catch (_) {
-      // Kesalahan lain mendapat pesan umum agar pengguna tetap mendapat penjelasan.
+      // Kesalahan lain mendapat pesan umum.
       if (mounted) {
         setState(() {
           _error = 'Tidak dapat masuk. Coba lagi.';
         });
       }
     } finally {
-      // Bagian ini tetap dijalankan setelah berhasil atau gagal untuk mengakhiri loading.
+      // Matikan loading setelah proses berhasil maupun gagal.
       if (mounted) {
         setState(() {
           _loading = false;
@@ -100,27 +103,28 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    // Lepaskan controller agar tidak terus menggunakan memori.
+    // Lepaskan controller saat halaman dibuang agar memori dibersihkan.
     _identity.dispose();
     _password.dispose();
     super.dispose();
   }
 
   @override
-  // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => AuthLayout(
+    // Animasi kemunculan konten mengikuti pengaturan AppMotion.
     child: Entrance(
       child: AuthWindow(
         fileName: 'SIAKAD.EXE',
         subtitle: 'SISTEM AKADEMIK',
         title: 'SIAKAD FASILKOM',
 
-        // Kelompokkan identitas dan password agar pengisian otomatis mengenalinya sebagai satu akun.
+        // Kelompokkan input untuk autofill perangkat.
+        // Autofill mengisi kolom; tidak memperpanjang sesi aplikasi.
         child: AutofillGroup(
           child: Form(
             key: _form,
 
-            // Hapus pesan server lama ketika pengguna memperbaiki isian.
+            // Hapus pesan gagal ketika pengguna memperbaiki isian.
             onChanged: () {
               if (_error != null) {
                 setState(() {
@@ -133,47 +137,57 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 PixelField(
-                  // Kolom identitas: wajib terisi sebelum layanan login dipanggil.
                   label: 'NIM / NIP',
                   hint: 'Masukkan NIM / NIP',
                   controller: _identity,
                   icon: Icons.person_outline,
+
+                  // Input dikunci sementara ketika login berlangsung.
                   enabled: !_loading,
                   autofillHints: const [AutofillHints.username],
+
+                  // Validator memeriksa kelengkapan isian.
+                  // Pemeriksaan kebenaran akun tetap di AuthService.
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'NIM / NIP wajib diisi.';
                     }
-                    // Pada validator, null berarti isian lolos pemeriksaan.
+
+                    // null berarti isian lolos pemeriksaan.
                     return null;
                   },
                 ),
 
+                // Jarak antara kolom identitas dan password.
                 const SizedBox(height: 20),
 
                 PixelField(
-                  // Kolom password: tampilannya mengikuti _hidden, isinya tetap sama.
                   label: 'PASSWORD',
                   hint: 'Masukkan password',
                   controller: _password,
                   obscure: _hidden,
                   enabled: !_loading,
                   autofillHints: const [AutofillHints.password],
+
+                  // Tombol selesai pada keyboard menjalankan login.
                   action: TextInputAction.done,
                   onSubmitted: (_) => _login(),
+
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Password wajib diisi.';
                     }
-                    // Pada validator, null berarti isian lolos pemeriksaan.
+
                     return null;
                   },
 
-                  // Ikon mata hanya mengubah terlihat/tidaknya password, bukan nilainya.
+                  // Ikon mata hanya mengubah tampilan password.
                   suffix: IconButton(
                     tooltip: _hidden
                         ? 'Tampilkan password'
                         : 'Sembunyikan password',
+
+                    // null membuat tombol tidak aktif saat loading.
                     onPressed: _loading
                         ? null
                         : () {
@@ -181,6 +195,8 @@ class _LoginPageState extends State<LoginPage> {
                               _hidden = !_hidden;
                             });
                           },
+
+                    // Pergantian ikon dibuat halus.
                     icon: AnimatedSwitcher(
                       duration: AppMotion.duration(context, 160),
                       child: Icon(
@@ -195,46 +211,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 6),
+                // Area checkbox sudah dihapus.
+                // Sisakan jarak yang rapi menuju pesan dan tombol.
+                const SizedBox(height: 16),
 
-                // Area sentuh tetap cukup besar, meski checkbox tampil kecil.
-                InkWell(
-                  onTap: _loading
-                      ? null
-                      : () => setState(() => _remember = !_remember),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 32,
-                        height: 44,
-                        child: Checkbox(
-                          value: _remember,
-                          activeColor: const Color(0xFF19BD5C),
-                          shape: const RoundedRectangleBorder(),
-                          onChanged: _loading
-                              ? null
-                              : (value) =>
-                                    setState(() => _remember = value ?? false),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Expanded(
-                        child: Text(
-                          'Simpan sesi masuk',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Tinggi area pesan berubah secara halus.
+                // Perubahan tinggi pesan kesalahan dianimasikan.
                 AnimatedSize(
                   duration: AppMotion.duration(context, 220),
-                  // Pesan kesalahan hanya memakan ruang bila memang ada isi pesan.
                   child: _error == null
                       ? const SizedBox.shrink()
                       : Padding(
@@ -245,6 +228,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 8),
 
+                // Tombol utama untuk menjalankan login.
                 PixelButton(
                   label: 'MASUK',
                   loading: _loading,
@@ -254,26 +238,26 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 14),
 
                 Center(
-                  child: TextButton(
+                  child: AuthNavigationLink(
+                    label: 'Lupa password?',
+
+                    // Panah kanan berada setelah tulisan.
+                    arrowRight: true,
+
+                    // Tidak bisa membuka halaman lain selama login diproses.
                     onPressed: _loading
                         ? null
                         : () {
-                            // Tambahkan halaman pemulihan ke tumpukan navigasi agar pengguna bisa kembali.
+                            // Tutup keyboard sebelum berpindah halaman.
+                            FocusScope.of(context).unfocus();
+
+                            // Gunakan transisi fade dan geser yang sudah tersedia.
                             Navigator.of(context).push(
                               AppMotion.route(
                                 ForgotPasswordPage(service: widget.service),
                               ),
                             );
                           },
-                    child: const Text(
-                      'Lupa password?',
-                      style: TextStyle(
-                        color: AppTheme.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
                   ),
                 ),
               ],

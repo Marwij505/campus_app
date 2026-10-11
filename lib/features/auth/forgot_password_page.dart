@@ -186,10 +186,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             const SizedBox(height: 14),
 
             Center(
-              child: TextButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back, size: 18),
-                label: const Text('Kembali ke login'),
+              child: AuthNavigationLink(
+                label: 'Kembali ke login',
+
+                // Panah kiri berada sebelum tulisan.
+                arrowRight: false,
+
+                onPressed: () {
+                  // Tutup keyboard sebelum kembali.
+                  FocusScope.of(context).unfocus();
+
+                  // Tutup halaman ini.
+                  // Route yang sama menjalankan transisi kembali secara otomatis.
+                  Navigator.of(context).pop();
+                },
               ),
             ),
           ],
