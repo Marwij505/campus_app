@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'core/app_motion.dart';
 import 'core/app_theme.dart';
 import 'data/auth_service.dart';
-import 'data/demo_data.dart';
+import 'data/dashboard_repository.dart';
+import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 
@@ -24,14 +25,20 @@ void main() {
 }
 
 class CampusApp extends StatelessWidget {
-  const CampusApp({super.key});
+  const CampusApp({
+    super.key,
+    this.dashboardRepository = const EmptyDashboardRepository(),
+  });
+
+  // Ganti repository saat API backend siap; komponen UI tetap sama.
+  final DashboardRepository dashboardRepository;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'campus_app',
     theme: AppTheme.data,
-    home: const AuthGate(),
+    home: AuthGate(repository: dashboardRepository),
   );
 }
 
@@ -40,7 +47,11 @@ class CampusApp extends StatelessWidget {
 /// Setelah berhasil masuk, halaman utama diganti menjadi Dashboard.
 /// Dengan demikian, tombol Back tidak membuka halaman login sebelumnya.
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  const AuthGate({
+    super.key,
+    this.repository = const EmptyDashboardRepository(),
+  });
+  final DashboardRepository repository;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -89,6 +100,7 @@ class _AuthGateState extends State<AuthGate> {
         : DashboardPage(
             key: const ValueKey('dashboard'),
             student: _student!,
+            repository: widget.repository,
             onLogout: _logout,
           ),
   );

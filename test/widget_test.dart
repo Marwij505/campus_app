@@ -54,7 +54,8 @@ void main() {
 
     await submit('MASUK');
 
-    expect(find.text('Reifan Ardissa'), findsOneWidget);
+    expect(find.text('Profil mahasiswa'), findsOneWidget);
+    expect(find.text('NIM: 20240801002'), findsOneWidget);
     expect(find.text('AKSES CEPAT'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Keluar'));

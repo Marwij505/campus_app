@@ -1,4 +1,4 @@
-import 'demo_data.dart';
+import 'student_profile.dart';
 
 class AuthException implements Exception {
   const AuthException(this.message);
@@ -23,8 +23,8 @@ class AuthService {
     // Meniru waktu tunggu server supaya indikator loading dapat diuji.
     await Future<void>.delayed(const Duration(milliseconds: 800));
 
-    // Akun awal 001 tetap valid.
-    // Akun 002 mengikuti NIM pada profil contoh Figma.
+    // Dua akun uji tetap tersedia untuk membuka UI.
+    // Tidak ada profil mahasiswa nyata pada autentikasi simulasi ini.
     final validIdentity = ['20240801001', '20240801002'].contains(identity);
 
     if (!validIdentity || password != '123456') {

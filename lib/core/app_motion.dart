@@ -76,7 +76,9 @@ class _EntranceState extends State<Entrance>
         _controller.forward();
       } else {
         _timer = Timer(Duration(milliseconds: widget.delay), () {
-          if (mounted) _controller.forward();
+          if (mounted) {
+            _controller.forward();
+          }
         });
       }
     }

@@ -1,1017 +1,862 @@
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../../core/app_motion.dart';
 import '../../core/app_theme.dart';
-import '../../data/demo_data.dart';
+import '../../core/responsive_layout.dart';
+import '../../data/dashboard_models.dart';
+import '../../data/dashboard_repository.dart';
+import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
-import 'academic_charts.dart';
+import 'dashboard_widgets.dart';
+import 'information_panels.dart';
+import 'profile_panel.dart';
+import 'study_progress_panel.dart';
 
+/// Kerangka beranda. Repository boleh diganti tanpa mengubah tampilan.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
     required this.student,
     required this.onLogout,
+    this.repository = const EmptyDashboardRepository(),
+    this.clock,
   });
-
   final StudentProfile student;
   final VoidCallback onLogout;
-
+  final DashboardRepository repository;
+  // Clock dapat disuntikkan oleh test agar tanggal/status kelas dapat diuji.
+  final DateTime Function()? clock;
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  // Key menjadi penanda posisi bagian dalam halaman.
   final _profileKey = GlobalKey();
   final _scheduleKey = GlobalKey();
   final _academicKey = GlobalKey();
-
+  final _counselingKey = GlobalKey();
+  final _scroll = ScrollController();
+  DashboardData _data = const DashboardData();
+  bool _loading = true;
+  String? _error;
   int _navIndex = 0;
+  int _requestId = 0;
+  Timer? _clockTimer;
+  late DateTime _now;
 
-  /// Memberikan respons untuk fitur lanjutan yang belum dibuat.
-  void _planned(String title) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text('$title akan dibuat pada tahap berikutnya.')),
-    );
-
-  /// Navigasi sementara mengarahkan pengguna ke bagian beranda.
-  void _navigate(int index) {
-    setState(() {
-      _navIndex = index;
+  @override
+  void initState() {
+    super.initState();
+    _now = (widget.clock ?? DateTime.now)().toLocal();
+    _load();
+    // Timer hanya mengubah status/tanggal setiap menit, bukan setiap frame.
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() => _now = (widget.clock ?? DateTime.now)().toLocal());
+      }
     });
+  }
 
-    final target = [
-      _profileKey,
-      _scheduleKey,
-      _academicKey,
-      _profileKey,
-    ][index].currentContext;
+  @override
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.repository != widget.repository ||
+        oldWidget.student.nim != widget.student.nim) {
+      _load();
+    }
+  }
 
-    if (target != null) {
-      Scrollable.ensureVisible(
-        target,
-        duration: AppMotion.duration(context, 450),
-        curve: Curves.easeInOutCubic,
-        alignment: 0,
-      );
+  /// Respons permintaan lama diabaikan bila permintaan baru sudah dimulai.
+  /// Kesalahan ditampilkan terpisah, tidak diubah menjadi data kosong.
+  Future<void> _load() async {
+    final request = ++_requestId;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await widget.repository.load(widget.student.nim);
+      if (!mounted || request != _requestId) {
+        return;
+      }
+      setState(() {
+        _data = result;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted || request != _requestId) {
+        return;
+      }
+      setState(() {
+        _error = 'Data beranda gagal dimuat. Silakan coba lagi.';
+        _loading = false;
+      });
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      backgroundColor: AppTheme.red,
-      foregroundColor: Colors.white,
-      automaticallyImplyLeading: false,
-      toolbarHeight: 67,
-      surfaceTintColor: Colors.transparent,
-      scrolledUnderElevation: 0,
-      titleSpacing: 17,
-      elevation: 0,
+  void dispose() {
+    _clockTimer?.cancel();
+    _scroll.dispose();
+    super.dispose();
+  }
 
-      title: Row(
-        children: [
-          const FacultyMark(compact: true),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  /// Navigasi pada beranda menggulir ke bagian yang bersangkutan.
+  void _navigate(int index) {
+    setState(() => _navIndex = index);
+    if (index == 0) {
+      if (_scroll.hasClients) {
+        _scroll.animateTo(
+          0,
+          duration: AppMotion.duration(context, 420),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+      return;
+    }
+    final key = [_profileKey, _scheduleKey, _academicKey, _profileKey][index];
+    _showSection(key);
+  }
+
+  void _showSection(GlobalKey key) {
+    final target = key.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(
+        target,
+        duration: AppMotion.duration(context, 420),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
+
+  void _message(String text) => ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(text)));
+
+  /// Halaman ringkas untuk membaca daftar lengkap/detail.
+  /// Fitur transaksi seperti KRS/pembayaran belum dilaksanakan pada tahap beranda.
+  void _details(String title, Widget child) {
+    Navigator.of(context)
+        .push(AppMotion.route(_DashboardDetail(title: title, child: child)));
+  }
+
+  void _unavailable(String title) => _details(
+    title,
+    DashboardEmpty(
+      title: 'Belum ada data $title',
+      message:
+          'Halaman $title lengkap akan disambungkan pada tahap berikutnya.',
+    ),
+  );
+
+  void _openNotice(CampusNotice item) => _details(
+    item.title,
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          campusDate(item.publishedAt.toLocal()),
+          style: const TextStyle(color: AppTheme.muted),
+        ),
+        const SizedBox(height: 16),
+        SelectableText(item.body),
+      ],
+    ),
+  );
+
+  void _allNotices(String title, List<CampusNotice> items) => _details(
+    title,
+    items.isEmpty
+        ? DashboardEmpty(title: 'Belum ada ${title.toLowerCase()}')
+        : Column(
             children: [
-              Text('SIAKAD', style: AppTheme.pixel(13, color: Colors.white)),
-              const Text(
-                'FASILKOM',
-                style: TextStyle(fontSize: 9, color: Color(0xFFFFD6BD)),
-              ),
+              for (final item in items)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(item.title),
+                  subtitle: Text(campusDate(item.publishedAt.toLocal())),
+                  onTap: () => _openNotice(item),
+                ),
             ],
           ),
-        ],
-      ),
+  );
 
-      actions: [
-        // Builder menyediakan context yang berada di bawah Scaffold.
-        Builder(
-          builder: (context) => _headerButton(
-            'Buka menu',
-            Icons.menu,
-            () => Scaffold.of(context).openDrawer(),
+  void _allSchedules() {
+    final items = [..._data.classes]
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    _details(
+      'Jadwal Kuliah',
+      items.isEmpty
+          ? const DashboardEmpty(
+              title: 'Belum ada jadwal kuliah',
+              icon: Icons.calendar_month_outlined,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final item in items) ...[
+                  Text(campusDate(item.startsAt.toLocal())),
+                  const SizedBox(height: 8),
+                  ClassScheduleCard(
+                    item: item,
+                    now: _now,
+                    onTap: () => _classDetails(item),
+                  ),
+                ],
+              ],
+            ),
+    );
+  }
+
+  void _classDetails(ClassSchedule item) => _details(
+    'Detail Kuliah',
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(campusDate(item.startsAt.toLocal())),
+        const SizedBox(height: 12),
+        ClassScheduleCard(item: item, now: _now, onTap: () {}),
+      ],
+    ),
+  );
+
+  void _quickAction(String label) {
+    switch (label) {
+      case 'Biodata':
+        _navigate(3);
+      case 'Jadwal Kuliah':
+        _allSchedules();
+      case 'Nilai & Presensi':
+        _navigate(2);
+      case 'Konseling':
+        _showSection(_counselingKey);
+      default:
+        _unavailable(label);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, bounds) {
+      final desktop = bounds.maxWidth >= ResponsiveLayout.desktop;
+      final tablet = bounds.maxWidth >= ResponsiveLayout.tablet && !desktop;
+      final compact = !tablet && !desktop;
+      final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppTheme.red,
+          foregroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          elevation: 0,
+          toolbarHeight: 72,
+          automaticallyImplyLeading: false,
+          titleSpacing: 12,
+          title: Row(
+            children: [
+              if (!largeText) ...[
+                const FacultyMark(compact: true),
+                const SizedBox(width: 10),
+              ],
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SIAKAD',
+                    style: AppTheme.pixel(11, color: Colors.white),
+                  ),
+                  const Text(
+                    'FASILKOM',
+                    style: TextStyle(fontSize: 9, color: Color(0xFFFFD6BD)),
+                  ),
+                ],
+              ),
+              if (desktop) ...[
+                const SizedBox(width: 22),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _topMenu(
+                          'Beranda',
+                          Icons.home_outlined,
+                          () => _navigate(0),
+                        ),
+                        _topMenu(
+                          'Biodata',
+                          Icons.person_outline,
+                          () => _navigate(3),
+                        ),
+                        _topMenu(
+                          'Pembayaran',
+                          Icons.account_balance_outlined,
+                          () => _unavailable('Pembayaran'),
+                        ),
+                        PopupMenuButton<String>(
+                          tooltip: 'Menu Akademik',
+                          onSelected: (label) => _quickAction(label),
+                          itemBuilder: (context) => [
+                            for (final label in [
+                              'KRS',
+                              'Jadwal Kuliah',
+                              'Nilai & Presensi',
+                            ])
+                              PopupMenuItem(value: label, child: Text(label)),
+                          ],
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Akademik',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                Icon(Icons.arrow_drop_down, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _topMenu(
+                          'Tugas Akhir',
+                          Icons.school_outlined,
+                          () => _unavailable('Tugas Akhir'),
+                        ),
+                        _topMenu(
+                          'Layanan',
+                          Icons.support_agent,
+                          () => _showSection(_counselingKey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Muat ulang beranda',
+              onPressed: _loading ? null : _load,
+              icon: const Icon(Icons.refresh, size: 21),
+            ),
+            if (!desktop)
+              Builder(
+                builder: (context) => IconButton(
+                  tooltip: 'Buka menu',
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  icon: const Icon(Icons.menu),
+                ),
+              ),
+            IconButton(
+              tooltip: 'Keluar',
+              onPressed: widget.onLogout,
+              icon: const Icon(Icons.logout, size: 21),
+            ),
+            const SizedBox(width: 4),
+          ],
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(4),
+            child: ColoredBox(
+              color: AppTheme.ink,
+              child: SizedBox(height: 4, width: double.infinity),
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        _headerButton('Keluar', Icons.logout, widget.onLogout),
-        const SizedBox(width: 17),
-      ],
-
-      bottom: const PreferredSize(
-        preferredSize: Size.fromHeight(5),
-        child: ColoredBox(
-          color: AppTheme.ink,
-          child: SizedBox(height: 5, width: double.infinity),
-        ),
-      ),
-    ),
-
-    drawer: Drawer(
-      child: SafeArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('SIAKAD FASILKOM', style: AppTheme.pixel(13)),
-            ),
-            for (final label in [
-              'Beranda',
-              'Biodata',
-              'KRS',
-              'Jadwal',
-              'Nilai',
-              'Tagihan',
-            ])
-              ListTile(
-                title: Text(label),
-                onTap: () {
-                  Navigator.of(context).pop();
-
-                  if (label == 'Beranda') {
+        drawer: Drawer(
+          child: SafeArea(
+            child: ListView(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Text('MENU SIAKAD', style: AppTheme.pixel(11)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.home_outlined),
+                  title: const Text('Beranda'),
+                  onTap: () {
+                    Navigator.pop(context);
                     _navigate(0);
-                  } else if (label == 'Jadwal') {
-                    _navigate(1);
-                  } else {
-                    _planned(label);
-                  }
-                },
+                  },
+                ),
+                for (final entry in _quickEntries)
+                  ListTile(
+                    leading: Icon(entry.icon),
+                    title: Text(entry.label),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _quickAction(entry.label);
+                    },
+                  ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Keluar'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onLogout();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: Row(
+          children: [
+            if (tablet)
+              Container(
+                key: const ValueKey('tablet-navigation'),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    right: BorderSide(color: AppTheme.ink, width: 2),
+                  ),
+                ),
+                // Navigasi tetap bisa digulir ketika tinggi jendela kecil.
+                width: 88,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < _destinations.length; i++)
+                        _navButton(i, rail: true),
+                    ],
+                  ),
+                ),
               ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Keluar'),
-              onTap: () {
-                Navigator.of(context).pop();
-                widget.onLogout();
-              },
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const RepaintBoundary(
+                    child: CampusBackground(dashboard: true),
+                  ),
+                  SafeArea(
+                    top: false,
+                    child: RefreshIndicator(
+                      onRefresh: _load,
+                      child: Scrollbar(
+                        controller: _scroll,
+                        thumbVisibility: !compact,
+                        child: SingleChildScrollView(
+                          controller: _scroll,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.all(compact ? 16 : 24),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: ResponsiveLayout.maxContentWidth,
+                              ),
+                              child: _content(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-    ),
+        bottomNavigationBar: compact
+            ? Material(
+                color: Colors.white,
+                child: SafeArea(
+                  top: false,
+                  child: Container(
+                    key: const ValueKey('phone-navigation'),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: AppTheme.ink, width: 3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _destinations.length; i++)
+                          Expanded(child: _navButton(i)),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            : null,
+      );
+    },
+  );
 
+  Widget _topMenu(String label, IconData icon, VoidCallback onTap) =>
+      TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          minimumSize: const Size(48, 48),
+          shape: const RoundedRectangleBorder(),
+        ),
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 11)),
+      );
+
+  Widget _navButton(int index, {bool rail = false}) {
+    final entry = _destinations[index];
+    final selected = _navIndex == index;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: InkWell(
+        onTap: () => _navigate(index),
+        child: AnimatedContainer(
+          duration: AppMotion.duration(context, 180),
+          padding: EdgeInsets.symmetric(
+            vertical: rail ? 20 : 12,
+            horizontal: 4,
+          ),
+          color: selected ? const Color(0xFFEAF2FC) : Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                entry.icon,
+                size: 23,
+                color: selected ? AppTheme.blue : AppTheme.muted,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                entry.label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                  color: selected ? AppTheme.blue : AppTheme.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _content() {
+    final profile = _data.student ?? widget.student;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('SELAMAT DATANG', style: AppTheme.pixel(9, color: AppTheme.blue)),
+        const SizedBox(height: 8),
+        const Text(
+          'Ruang akademikmu, dalam satu beranda.',
+          style: TextStyle(fontSize: 11, color: AppTheme.muted),
+        ),
+        const SizedBox(height: 20),
+        if (_loading) ...[
+          const LinearProgressIndicator(minHeight: 3),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('Memuat beranda…'),
+          ),
+        ],
+        if (_error != null) ...[
+          PixelPanel(
+            color: const Color(0xFFFFF0F0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_error!),
+                const SizedBox(height: 10),
+                DashboardAction('Coba lagi', _load),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+        // Peringatan tagihan hanya tampil jika backend benar-benar memberi jumlahnya.
+        if (!_loading &&
+            _error == null &&
+            (_data.outstandingBillCount ?? 0) > 0) ...[
+          PixelPanel(
+            color: const Color(0xFFFFF0F0),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Icon(Icons.receipt_long, color: AppTheme.red),
+                Text(
+                  'Ada ${_data.outstandingBillCount} tagihan belum dibayar.',
+                ),
+                DashboardAction('Lihat tagihan', () => _unavailable('Tagihan')),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+        if (!_loading && _error == null) ...[
+          _agendaBanner(),
+          const SizedBox(height: 20),
+        ],
+        Entrance(
+          child: ProfilePanel(key: _profileKey, student: profile),
+        ),
+        const SizedBox(height: 24),
+        Text('AKSES CEPAT', style: AppTheme.pixel(9, color: AppTheme.blue)),
+        const SizedBox(height: 14),
+        Entrance(delay: 60, child: _quickGrid()),
+        const SizedBox(height: 24),
+        // Sembunyikan panel data saat gagal memuat, agar tidak menyesatkan pengguna.
+        if (!_loading && _error == null) _responsivePanels(),
+        const SizedBox(height: 28),
+        const Text(
+          'CAMPUS APP · SIAKAD FASILKOM',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10, color: AppTheme.muted),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _agendaBanner() {
+    final next = activeOrNextClass(_data.classes, _now);
+    final ongoing = next != null && !next.startsAt.isAfter(_now);
+    return PixelPanel(
+      color: const Color(0xFFF2F8FF),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            next == null ? Icons.event_note_outlined : Icons.school_outlined,
+            color: AppTheme.blue,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  next == null
+                      ? 'Belum ada informasi kuliah terdekat'
+                      : ongoing
+                      ? 'Kuliah sedang berlangsung'
+                      : 'Kuliah berikutnya',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  next == null
+                      ? 'Informasi akan muncul setelah jadwal tersedia.'
+                      : '${next.code} · ${next.title}\n${campusDate(next.startsAt.toLocal())} · ${campusTime(next.startsAt)} – ${campusTime(next.endsAt)}',
+                  style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                ),
+                if (next != null) ...[
+                  const SizedBox(height: 12),
+                  DashboardAction('Lihat detail', () => _classDetails(next)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickGrid() => LayoutBuilder(
+    builder: (context, bounds) {
+      final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+      final columns = scale >= 1.8 && bounds.maxWidth < 430
+          ? 1
+          : ResponsiveLayout.quickColumns(bounds.maxWidth / scale);
+      final width = (bounds.maxWidth - (columns - 1) * 12) / columns;
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          for (final entry in _quickEntries)
+            SizedBox(
+              width: width,
+              child: PixelTapSurface(
+                label: entry.label,
+                onTap: () => _quickAction(entry.label),
+                borderColor: AppTheme.ink,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 16,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      color: entry.color.withValues(alpha: .1),
+                      child: Icon(entry.icon, color: entry.color, size: 26),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      entry.label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    },
+  );
+
+  Widget _responsivePanels() => LayoutBuilder(
+    builder: (context, bounds) {
+      final schedule = SchedulePanel(
+        key: _scheduleKey,
+        items: todayClasses(_data.classes, _now),
+        now: _now,
+        next: activeOrNextClass(_data.classes, _now),
+        onAll: _allSchedules,
+        onOpen: _classDetails,
+      );
+      final study = StudyProgressPanel(key: _academicKey, data: _data);
+      final counseling = CounselingPanel(
+        key: _counselingKey,
+        items: _data.counseling,
+        onApply: () => _message(
+          _data.counseling.isEmpty ? 'Jadwal konseling belum tersedia.' : 'Pengajuan konseling akan disambungkan ke backend pada tahap berikutnya.',
+        ),
+      );
+      final announcements = NoticePanel(
+        title: 'PENGUMUMAN',
+        emptyTitle: 'Belum ada pengumuman',
+        items: _data.announcements,
+        icon: Icons.campaign_outlined,
+        onOpen: _openNotice,
+        onAll: () => _allNotices('Pengumuman', _data.announcements),
+      );
+      final news = NoticePanel(
+        title: 'BERITA',
+        emptyTitle: 'Belum ada berita',
+        items: _data.news,
+        icon: Icons.newspaper_outlined,
+        onOpen: _openNotice,
+        onAll: () => _allNotices('Berita', _data.news),
+      );
+      final guides = GuidesPanel(
+        items: _data.guides,
+        onOpen: (guide) => _details(guide.title, SelectableText(guide.content)),
+      );
+      final scale = MediaQuery.textScalerOf(context).scale(1);
+      // Dua kolom utama mengikuti referensi desktop. Panel kanan tetap cukup lebar.
+      if (bounds.maxWidth >= 1000 && scale <= 1.3) {
+        return Row(
+          key: const ValueKey('desktop-panels'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 7, child: _stack([study, counseling])),
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 3,
+              child: _stack([schedule, announcements, news, guides]),
+            ),
+          ],
+        );
+      }
+      // Tablet memakai grid informasi; grafik memakai lebar utama agar terbaca.
+      if (bounds.maxWidth >= 680 && scale <= 1.3) {
+        return Column(
+          key: const ValueKey('tablet-panels'),
+          children: [
+            ResponsiveCards(
+              minWidth: 300,
+              maximum: 2,
+              children: [schedule, announcements, news, guides],
+            ),
+            const SizedBox(height: 24),
+            study,
+            const SizedBox(height: 24),
+            counseling,
+          ],
+        );
+      }
+      return _stack([
+        schedule,
+        announcements,
+        news,
+        guides,
+        study,
+        counseling,
+      ], key: const ValueKey('phone-panels'));
+    },
+  );
+
+  Widget _stack(List<Widget> items, {Key? key}) => Column(
+    key: key,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (var i = 0; i < items.length; i++) ...[
+        if (i > 0) const SizedBox(height: 24),
+        items[i],
+      ],
+    ],
+  );
+}
+
+/// Halaman detail memakai kerangka yang sama, batas lebar, dan tombol Back standar.
+class _DashboardDetail extends StatelessWidget {
+  const _DashboardDetail({required this.title, required this.child});
+  final String title;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text(title, style: const TextStyle(fontSize: 14)),
+      backgroundColor: AppTheme.red,
+      foregroundColor: Colors.white,
+    ),
     body: Stack(
       fit: StackFit.expand,
       children: [
-        const RepaintBoundary(child: CampusBackground(dashboard: true)),
-
-        SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(15, 22, 19, 24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'SELAMAT DATANG KEMBALI',
-                    style: AppTheme.pixel(7, color: AppTheme.red),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Entrance(child: _profile()),
-                  Entrance(delay: 70, child: _quickActions()),
-
-                  _section('KEMAJUAN BELAJAR', _stats(), badge: 'SMT 5'),
-
-                  _section(
-                    'JADWAL HARI INI',
-                    Column(
-                      children: [
-                        _classCard(
-                          '07:00',
-                          '09:30',
-                          'CIE512 · Kriptografi',
-                          'Ruang KBA701',
-                          true,
-                        ),
-                        const SizedBox(height: 10),
-                        _classCard(
-                          '09:30',
-                          '12:00',
-                          'CIE510 · Kecerdasan Artifisial',
-                          'Ruang CR 305',
-                          false,
-                        ),
-                      ],
-                    ),
-                    key: _scheduleKey,
-                    badge: '09 OKT 2026',
-                  ),
-
-                  _section(
-                    'RINGKASAN AKADEMIK',
-                    const Column(
-                      children: [
-                        Text(
-                          'Pantau perjalanan dan performa perkuliahanmu.',
-                          style: TextStyle(fontSize: 10, color: AppTheme.muted),
-                        ),
-                        SizedBox(height: 14),
-                        AcademicCharts(),
-                      ],
-                    ),
-                    key: _academicKey,
-                    badge: '4 SEMESTER',
-                  ),
-
-                  _section(
-                    'PENGUMUMAN',
-                    _notices(DemoData.announcements, false),
-                    action: 'SEMUA',
-                  ),
-
-                  _section('JADWAL KONSELING', _counseling(), action: 'AJUKAN'),
-
-                  _section(
-                    'BERITA KAMPUS',
-                    _notices(DemoData.news, true),
-                    action: 'SEMUA',
-                  ),
-
-                  _section(
-                    'PEDOMAN & PANDUAN',
-                    Column(
-                      children: [
-                        for (final title in [
-                          'Pedoman Akademik Mahasiswa',
-                          'Buku Panduan Konseling',
-                          'Panduan Aktivasi / Cuti',
-                        ])
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
-                              Icons.menu_book_outlined,
-                              size: 19,
-                              color: AppTheme.blue,
-                            ),
-                            title: Text(
-                              title,
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            trailing: const Icon(Icons.chevron_right, size: 18),
-                            onTap: () => _planned(title),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  const Center(
-                    child: Text(
-                      'SIAKAD FASILKOM · RELEASE 2026.08.19',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 9, color: AppTheme.muted),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-
-    bottomNavigationBar: Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF9FBF6),
-        border: Border(top: BorderSide(color: AppTheme.ink, width: 4)),
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: SafeArea(
+        const CampusBackground(dashboard: true),
+        SafeArea(
           top: false,
-          child: Center(
-            heightFactor: 1,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Row(
-                children: List.generate(
-                  4,
-                  (i) => Expanded(
-                    child: Semantics(
-                      selected: i == _navIndex,
-                      button: true,
-                      child: InkWell(
-                        onTap: () => _navigate(i),
-                        child: AnimatedContainer(
-                          duration: AppMotion.duration(context, 180),
-                          color: i == _navIndex
-                              ? const Color(0xFFE5F0F7)
-                              : Colors.transparent,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              AnimatedContainer(
-                                duration: AppMotion.duration(context, 180),
-                                height: 4,
-                                width: 46,
-                                color: i == _navIndex
-                                    ? AppTheme.red
-                                    : Colors.transparent,
-                              ),
-                              const SizedBox(height: 10),
-                              Icon(
-                                [
-                                  Icons.home_outlined,
-                                  Icons.calendar_month_outlined,
-                                  Icons.menu_book_outlined,
-                                  Icons.person_outline,
-                                ][i],
-                                size: 20,
-                                color: i == _navIndex
-                                    ? AppTheme.blue
-                                    : AppTheme.muted,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                ['Beranda', 'Jadwal', 'Akademik', 'Profil'][i],
-                                style: AppTheme.pixel(
-                                  5,
-                                  color: i == _navIndex
-                                      ? AppTheme.blue
-                                      : AppTheme.muted,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Entrance(child: PixelPanel(child: child)),
               ),
             ),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Widget _headerButton(String label, IconData icon, VoidCallback onTap) =>
-      Tooltip(
-        message: label,
-        child: PixelTapSurface(
-          label: label,
-          onTap: onTap,
-          color: const Color(0xFF9F1729),
-          borderColor: const Color(0xFFF05462),
-          shadowColor: const Color(0xFF64101C),
-          child: SizedBox(
-            width: 35,
-            height: 35,
-            child: Icon(icon, size: 20, color: Colors.white),
-          ),
-        ),
-      );
-
-  /// Kartu profil: gradient, kilau di kanan, badge, dan panel IPK.
-  Widget _profile() => Container(
-    key: _profileKey,
-    decoration: BoxDecoration(
-      border: Border.all(color: AppTheme.ink, width: 4),
-      boxShadow: const [
-        BoxShadow(color: Color(0xFFB9C3C4), offset: Offset(5, 5)),
-      ],
-    ),
-    child: ClipRect(
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF123C80), Color(0xFF166AB1)],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(.9, -1),
-                  radius: .8,
-                  colors: [
-                    const Color(0xFFF04B4C).withValues(alpha: .45),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: -16,
-            top: -15,
-            child: Transform.rotate(
-              angle: math.pi / 4,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: .13),
-                    width: 3,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 17, 14, 13),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const StudentAvatar(),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.student.name,
-                            style: AppTheme.pixel(11, color: Colors.white),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${widget.student.nim} · ${widget.student.major}',
-                            style: const TextStyle(
-                              fontSize: 9,
-                              color: Color(0xFFD3EAFB),
-                            ),
-                          ),
-                          const SizedBox(height: 9),
-                          Wrap(
-                            spacing: 5,
-                            runSpacing: 5,
-                            children: [
-                              _profileTag('Aktif', active: true),
-                              _profileTag(
-                                'Semester ${widget.student.semester}',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      tooltip: 'Lihat profil',
-                      onPressed: () => _planned('Biodata'),
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 40,
-                      ),
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.chevron_right,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  constraints: const BoxConstraints(minHeight: 55),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF081B3A).withValues(alpha: .65),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: .3),
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'IPK KUMULATIF',
-                          style: AppTheme.pixel(7, color: Colors.white),
-                        ),
-                      ),
-                      Text(
-                        widget.student.gpa.toStringAsFixed(2),
-                        style: AppTheme.pixel(
-                          20,
-                          color: const Color(0xFFFFDC72),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _profileTag(String text, {bool active = false}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .15),
-      border: Border.all(color: Colors.white.withValues(alpha: .25)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (active) ...[
-          const SizedBox(
-            width: 6,
-            height: 6,
-            child: ColoredBox(color: Color(0xFF35E276)),
-          ),
-          const SizedBox(width: 4),
-        ],
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 8,
-            color: Color(0xFFEAF5FF),
-            fontWeight: FontWeight.bold,
           ),
         ),
       ],
     ),
-  );
-
-  /// Menu enam akses cepat mengikuti susunan Figma.
-  Widget _quickActions() {
-    const labels = ['Biodata', 'KRS', 'Jadwal', 'Nilai', 'Tagihan', 'Akademik'];
-
-    const icons = [
-      Icons.person_outline,
-      Icons.description_outlined,
-      Icons.calendar_month_outlined,
-      Icons.bar_chart,
-      Icons.credit_card,
-      Icons.menu_book_outlined,
-    ];
-
-    const colors = [
-      Color(0xFF7244A1),
-      AppTheme.red,
-      Color(0xFF276FB5),
-      Color(0xFF168F54),
-      Color(0xFFA5720E),
-      Color(0xFF177D93),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 26),
-      child: Column(
-        children: [
-          _heading('AKSES CEPAT', action: 'LIHAT SEMUA'),
-
-          LayoutBuilder(
-            builder: (context, bounds) => Wrap(
-              spacing: 9,
-              runSpacing: 9,
-              children: List.generate(
-                6,
-                (i) => SizedBox(
-                  width: (bounds.maxWidth - 18) / 3,
-                  child: PixelTapSurface(
-                    label: labels[i],
-                    onTap: () {
-                      if (i == 2) {
-                        _navigate(1);
-                      } else if (i == 5) {
-                        _navigate(2);
-                      } else {
-                        _planned(labels[i]);
-                      }
-                    },
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 94),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 10,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: colors[i].withValues(alpha: .1),
-                                border: Border.all(color: colors[i], width: 2),
-                              ),
-                              child: Icon(icons[i], color: colors[i], size: 21),
-                            ),
-                            const SizedBox(height: 9),
-                            Text(
-                              labels[i],
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Judul dan badge menggunakan ukuran yang konsisten di setiap panel.
-  Widget _heading(String title, {String? badge, String? action}) {
-    final icon = switch (title) {
-      'PENGUMUMAN' => Icons.description_outlined,
-      'JADWAL KONSELING' => Icons.person_outline,
-      'BERITA KAMPUS' => Icons.menu_book_outlined,
-      'PEDOMAN & PANDUAN' => Icons.menu_book_outlined,
-      _ => null,
-    };
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE5F1FC),
-                border: Border.all(color: const Color(0xFFBCD3E6)),
-              ),
-              child: Icon(icon, size: 16, color: AppTheme.blue),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(title, style: AppTheme.pixel(8, color: AppTheme.blue)),
-          ),
-          if (badge != null) ...[
-            const SizedBox(width: 8),
-            if (title == 'JADWAL HARI INI')
-              Text(
-                badge,
-                style: const TextStyle(fontSize: 8, color: AppTheme.red),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                color: AppTheme.blue,
-                child: Text(
-                  badge,
-                  style: AppTheme.pixel(5, color: Colors.white),
-                ),
-              ),
-          ],
-          if (action != null)
-            TextButton(
-              style: TextButton.styleFrom(
-                minimumSize: const Size(44, 36),
-                padding: const EdgeInsets.only(left: 8),
-              ),
-              onPressed: () => _planned(title),
-              child: Text(
-                action,
-                style: const TextStyle(fontSize: 8, color: AppTheme.red),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Pembungkus setiap bagian dashboard.
-  Widget _section(
-    String title,
-    Widget child, {
-    Key? key,
-    String? badge,
-    String? action,
-  }) => Padding(
-    key: key,
-    padding: const EdgeInsets.only(top: 25),
-    child: PixelPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _heading(title, badge: badge, action: action),
-          child,
-        ],
-      ),
-    ),
-  );
-
-  /// Progress kemajuan belajar dianimasikan dari kosong ke nilai target.
-  Widget _stats() => LayoutBuilder(
-    builder: (context, bounds) => Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: DemoData.stats
-          .map(
-            (stat) => Container(
-              width: (bounds.maxWidth - 8) / 2,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7FAFB),
-                border: Border.all(color: const Color(0xFFD7E1E3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    stat.label,
-                    style: AppTheme.pixel(6, color: AppTheme.muted),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 4,
-                    children: [
-                      Text(
-                        stat.value,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(stat.suffix, style: const TextStyle(fontSize: 10)),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: stat.progress),
-                    duration: AppMotion.duration(context, 700),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) => LinearProgressIndicator(
-                      value: value,
-                      minHeight: 7,
-                      color: stat.color,
-                      backgroundColor: const Color(0xFFDFE7EC),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-    ),
-  );
-
-  /// Tanggal, status, dan jadwal ini contoh desain, bukan jadwal live.
-  Widget _classCard(
-    String start,
-    String end,
-    String name,
-    String room,
-    bool live,
-  ) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: live ? const Color(0xFFEFF9F3) : const Color(0xFFFFF9EC),
-      border: Border.all(
-        color: live ? const Color(0xFF64BD83) : const Color(0xFFD69B37),
-        width: 2,
-      ),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Text(
-              start,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              end,
-              style: const TextStyle(fontSize: 9, color: AppTheme.muted),
-            ),
-          ],
-        ),
-
-        const SizedBox(width: 9),
-        SizedBox(
-          width: 8,
-          height: 68,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 3,
-                top: 3,
-                bottom: 0,
-                child: Container(width: 2, color: const Color(0xFFACD8B9)),
-              ),
-              Positioned(
-                left: 0,
-                top: 2,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: live
-                        ? const Color(0xFF22BC61)
-                        : const Color(0xFFE49327),
-                    border: Border.all(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 9),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                live ? 'SEDANG BERLANGSUNG' : 'SELANJUTNYA',
-                style: AppTheme.pixel(
-                  5,
-                  color: live
-                      ? const Color(0xFF0C8643)
-                      : const Color(0xFFB46413),
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text('$room · Pertemuan 4', style: const TextStyle(fontSize: 8)),
-              if (live)
-                const Padding(
-                  padding: EdgeInsets.only(top: 7),
-                  child: Text(
-                    'Adi Widiantono, S.Kom., M.Kom.',
-                    style: TextStyle(fontSize: 7),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-
-  /// Material berasal dari PixelPanel, sehingga ripple daftar tidak tertutup.
-  Widget _notices(List<NoticeData> items, bool news) => Column(
-    children: List.generate(
-      items.length,
-      (i) => Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: const Color(0xFFD6E0E5),
-              width: i == 0 ? .5 : 1,
-            ),
-          ),
-        ),
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          minLeadingWidth: 7,
-          horizontalTitleGap: 10,
-          minTileHeight: 66,
-          leading: Icon(
-            Icons.square,
-            size: 7,
-            color: news ? AppTheme.blue : const Color(0xFFEF781D),
-          ),
-          title: Text(
-            items[i].title,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              items[i].date,
-              style: const TextStyle(fontSize: 8, color: AppTheme.muted),
-            ),
-          ),
-          trailing: const Icon(Icons.chevron_right, size: 17),
-          onTap: () => _planned(items[i].title),
-        ),
-      ),
-    ),
-  );
-
-  Widget _counseling() => Column(
-    children: DemoData.counseling
-        .map(
-          (item) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F8FA),
-              border: Border.all(color: const Color(0xFFD6E0E5)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  decoration: BoxDecoration(
-                    color: AppTheme.blue,
-                    border: Border.all(color: const Color(0xFF09224B)),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        color: AppTheme.red,
-                        child: Text(
-                          item.day,
-                          textAlign: TextAlign.center,
-                          style: AppTheme.pixel(5, color: Colors.white),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 7),
-                        child: Text(
-                          item.date,
-                          style: AppTheme.pixel(13, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 10),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        '13:00 – 14:00',
-                        style: TextStyle(fontSize: 9),
-                      ),
-                      Text(
-                        item.mode,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: AppTheme.blue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE4F7EB),
-                    border: Border.all(color: const Color(0xFF9CD4AE)),
-                  ),
-                  child: const Text(
-                    'BUKA',
-                    style: TextStyle(
-                      fontSize: 7,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF168F54),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )
-        .toList(),
   );
 }
+
+class _MenuEntry {
+  const _MenuEntry(this.label, this.icon, [this.color = AppTheme.blue]);
+  final String label;
+  final IconData icon;
+  final Color color;
+}
+
+const _quickEntries = [
+  _MenuEntry('Biodata', Icons.person_outline, Color(0xFF873DD1)),
+  _MenuEntry('KRS', Icons.edit_note, Color(0xFFED7D21)),
+  _MenuEntry('Jadwal Kuliah', Icons.calendar_month_outlined),
+  _MenuEntry('Nilai & Presensi', Icons.bar_chart_outlined),
+  _MenuEntry('Tagihan', Icons.receipt_long_outlined, Color(0xFFBB851E)),
+  _MenuEntry('Pembayaran', Icons.account_balance_outlined, Color(0xFFBB851E)),
+  _MenuEntry('Konseling', Icons.handshake_outlined, Color(0xFF198754)),
+];
+const _destinations = [
+  _MenuEntry('Beranda', Icons.home_outlined),
+  _MenuEntry('Jadwal', Icons.calendar_month_outlined),
+  _MenuEntry('Akademik', Icons.school_outlined),
+  _MenuEntry('Profil', Icons.person_outline),
+];

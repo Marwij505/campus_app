@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_motion.dart';
 import '../../core/app_theme.dart';
 import '../../data/auth_service.dart';
-import '../../data/demo_data.dart';
+import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import 'forgot_password_page.dart';
 
