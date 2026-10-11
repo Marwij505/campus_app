@@ -184,7 +184,7 @@ class AuthLayout extends StatelessWidget {
                       child: Text(
                         'FAKULTAS ILMU KOMPUTER',
                         style: AppTheme.pixel(
-                          11,
+                          MediaQuery.sizeOf(context).width < 360 ? 9 : 11,
                           color: const Color(0xFFFFF5DC),
                         ),
                       ),
@@ -198,10 +198,10 @@ class AuthLayout extends StatelessWidget {
                   builder: (context, bounds) => SingleChildScrollView(
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+                    padding: const EdgeInsets.fromLTRB(22, 32, 22, 28),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        minHeight: (bounds.maxHeight - 56)
+                        minHeight: (bounds.maxHeight - 60)
                             .clamp(0.0, double.infinity)
                             .toDouble(),
                       ),
@@ -257,10 +257,13 @@ class AuthWindow extends StatelessWidget {
   Widget build(BuildContext context) => PixelPanel(
     color: AppTheme.paper,
     padding: EdgeInsets.zero,
+    borderWidth: 5,
+    shadowOffset: 7,
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
+          height: 34,
           padding: const EdgeInsets.only(left: 10, right: 4),
           decoration: const BoxDecoration(
             color: Color(0xFF1677AD),
@@ -275,16 +278,22 @@ class AuthWindow extends StatelessWidget {
                 ),
               ),
               if (onBack != null)
-                IconButton(
-                  onPressed: onBack,
-                  tooltip: 'Kembali ke login',
-                  icon: const Icon(Icons.close, size: 20, color: Colors.white),
+                Tooltip(
+                  message: 'Kembali ke login',
+                  child: InkWell(
+                    onTap: onBack,
+                    child: const SizedBox(
+                      width: 32,
+                      height: 30,
+                      child: Icon(Icons.close, size: 18, color: Colors.white),
+                    ),
+                  ),
                 )
               else
                 // Pada login, X adalah dekorasi seperti referensi Figma.
                 ExcludeSemantics(
                   child: Container(
-                    margin: const EdgeInsets.all(4),
+                    margin: const EdgeInsets.only(right: 4),
                     width: 27,
                     height: 25,
                     decoration: BoxDecoration(
@@ -303,7 +312,7 @@ class AuthWindow extends StatelessWidget {
         ),
 
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF143C83), Color(0xFF1959A2)],
@@ -327,7 +336,13 @@ class AuthWindow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(title, style: AppTheme.pixel(16, color: Colors.white)),
+                    Text(
+                      title,
+                      style: AppTheme.pixel(
+                        MediaQuery.sizeOf(context).width < 360 ? 13 : 16,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -336,7 +351,7 @@ class AuthWindow extends StatelessWidget {
         ),
 
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 25, 22, 22),
+          padding: const EdgeInsets.fromLTRB(22, 25, 22, 27),
           child: child,
         ),
       ],
@@ -344,52 +359,106 @@ class AuthWindow extends StatelessWidget {
   );
 }
 
-/// Kotak reusable dengan border dan bayangan tegas.
-/// Panel bergaya pixel dengan warna latar, border, dan bayangan.
-/// Material di dalam panel menyediakan permukaan untuk menggambar
-/// efek sentuhan ListTile, CheckboxListTile, dan InkWell.
+/// Panel bersama. Material di DALAM dekorasi membuat efek sentuhan terlihat.
 class PixelPanel extends StatelessWidget {
   const PixelPanel({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(12),
     this.color = Colors.white,
+    this.borderWidth = 3,
+    this.shadowOffset = 4,
   });
 
-  // Isi panel, misalnya form login atau daftar pengumuman.
   final Widget child;
-
-  // Jarak antara isi panel dan tepinya.
   final EdgeInsetsGeometry padding;
-
-  // Warna latar panel.
   final Color color;
+  final double borderWidth;
+  final double shadowOffset;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      // Panel menggunakan seluruh lebar yang tersedia.
-      width: double.infinity,
-      padding: padding,
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: color,
+      border: Border.all(color: AppTheme.ink, width: borderWidth),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFFB9C3C4),
+          offset: Offset(shadowOffset, shadowOffset),
+        ),
+      ],
+    ),
+    child: Material(type: MaterialType.transparency, child: child),
+  );
+}
 
-      // Container tetap menggambar tampilan panel.
+/// Permukaan interaktif reusable untuk kartu, menu, dan ikon header.
+/// Animasi hanya mengubah posisi/bayangan kecil; isi tidak dibangun setiap frame.
+class PixelTapSurface extends StatefulWidget {
+  const PixelTapSurface({
+    super.key,
+    required this.child,
+    required this.onTap,
+    required this.label,
+    this.color = Colors.white,
+    this.borderColor = const Color(0xFFDBE4E6),
+    this.shadowColor = const Color(0xFFC8D0D1),
+    this.borderWidth = 2,
+    this.padding = EdgeInsets.zero,
+  });
+  final Widget child;
+  final VoidCallback onTap;
+  final String label;
+  final Color color, borderColor, shadowColor;
+  final double borderWidth;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  State<PixelTapSurface> createState() => _PixelTapSurfaceState();
+}
+
+class _PixelTapSurfaceState extends State<PixelTapSurface> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: widget.label,
+    child: AnimatedContainer(
+      duration: AppMotion.duration(context, 120),
+      curve: Curves.easeOutCubic,
+      transform: Matrix4.translationValues(
+        _pressed ? 2 : 0,
+        _pressed ? 2 : 0,
+        0,
+      ),
       decoration: BoxDecoration(
-        color: color,
-        border: Border.all(color: AppTheme.ink, width: 3),
-        boxShadow: const [
-          BoxShadow(color: Color(0xFFB9C3C4), offset: Offset(4, 4)),
+        color: widget.color,
+        border: Border.all(
+          color: widget.borderColor,
+          width: widget.borderWidth,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: widget.shadowColor,
+            offset: Offset(_pressed ? 1 : 3, _pressed ? 1 : 3),
+          ),
         ],
       ),
-
-      // Material harus berada DI DALAM Container berwarna.
-      // Dengan begitu, efek sentuhan digambar di atas latar panel.
       child: Material(
-        // Transparan agar warna latar panel tetap terlihat.
         type: MaterialType.transparency,
-        child: child,
+        child: InkWell(
+          onTap: widget.onTap,
+          onHighlightChanged: (value) {
+            if (_pressed != value) setState(() => _pressed = value);
+          },
+          child: Padding(padding: widget.padding, child: widget.child),
+        ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// Input bersama untuk login dan lupa password.
@@ -427,7 +496,7 @@ class PixelField extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: AppTheme.pixel(9)),
+      Text(label, style: AppTheme.pixel(8)),
       const SizedBox(height: 8),
 
       // Label juga diberikan kepada pembaca layar.
@@ -444,7 +513,7 @@ class PixelField extends StatelessWidget {
           autofillHints: autofillHints,
           autocorrect: false,
           enableSuggestions: !obscure && label != 'PASSWORD',
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(fontSize: 12),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon == null
@@ -497,7 +566,7 @@ class _PixelButtonState extends State<PixelButton> {
     ),
 
     child: Material(
-      color: Colors.transparent,
+      type: MaterialType.transparency,
       child: InkWell(
         onTap: widget.loading ? null : widget.onPressed,
         onHighlightChanged: (value) {
@@ -507,8 +576,26 @@ class _PixelButtonState extends State<PixelButton> {
         },
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
+          child: Container(
             padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: _pressed
+                      ? const Color(0xFF159743)
+                      : const Color(0xFF76F59F),
+                  width: 3,
+                ),
+                left: BorderSide(
+                  color: _pressed
+                      ? const Color(0xFF159743)
+                      : const Color(0xFF76F59F),
+                  width: 3,
+                ),
+                bottom: const BorderSide(color: Color(0xFF159743), width: 3),
+                right: const BorderSide(color: Color(0xFF159743), width: 3),
+              ),
+            ),
             child: Center(
               child: AnimatedSwitcher(
                 duration: AppMotion.duration(context, 180),
@@ -530,7 +617,9 @@ class _PixelButtonState extends State<PixelButton> {
                             child: Text(
                               widget.label,
                               textAlign: TextAlign.center,
-                              style: AppTheme.pixel(13),
+                              style: AppTheme.pixel(
+                                widget.label.length > 12 ? 10 : 14,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),

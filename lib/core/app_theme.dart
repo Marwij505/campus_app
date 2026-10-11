@@ -17,7 +17,8 @@ abstract final class AppTheme {
   static TextStyle pixel(double size, {Color color = ink}) => TextStyle(
     fontFamily: 'PressStart2P',
     fontSize: size,
-    height: 1.5,
+    height: 1.45,
+    fontWeight: FontWeight.w400,
     color: color,
   );
 
@@ -40,10 +41,11 @@ abstract final class AppTheme {
 
     // Gaya input diterapkan otomatis pada seluruh TextFormField.
     inputDecorationTheme: InputDecorationTheme(
+      isDense: true,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-      hintStyle: const TextStyle(fontSize: 13, color: muted),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      hintStyle: const TextStyle(fontSize: 12, color: muted),
       border: _border(ink),
       enabledBorder: _border(ink),
       focusedBorder: _border(green),
@@ -55,6 +57,6 @@ abstract final class AppTheme {
 
   static OutlineInputBorder _border(Color color) => OutlineInputBorder(
     borderRadius: BorderRadius.zero,
-    borderSide: BorderSide(color: color, width: 3),
+    borderSide: BorderSide(color: color, width: 4),
   );
 }

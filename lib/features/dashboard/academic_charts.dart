@@ -16,13 +16,16 @@ class AcademicCharts extends StatelessWidget {
     children: [
       Container(
         padding: const EdgeInsets.all(12),
-        color: const Color(0xFFF5F8FA),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F8FA),
+          border: Border.all(color: const Color(0xFFD6E0E5)),
+        ),
         child: Column(
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text('PERJALANAN KULIAH', style: AppTheme.pixel(7)),
+                  child: Text('PERJALANAN KULIAH', style: AppTheme.pixel(6)),
                 ),
                 Text('5 / 8', style: AppTheme.pixel(9, color: AppTheme.blue)),
               ],
@@ -99,7 +102,7 @@ class _ChartCard extends StatelessWidget {
     const values = ['3.73', '3.68', '86', ''];
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 164),
+      constraints: const BoxConstraints(minHeight: 155),
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: const Color(0xFFF9FBFC),
@@ -108,10 +111,28 @@ class _ChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titles[index], style: AppTheme.pixel(6)),
-          const SizedBox(height: 6),
-          Text(values[index], style: AppTheme.pixel(9, color: AppTheme.blue)),
-          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(titles[index], style: AppTheme.pixel(5.5))),
+              if (values[index].isNotEmpty) ...[
+                const SizedBox(width: 5),
+                Text(
+                  values[index],
+                  style: AppTheme.pixel(
+                    9,
+                    color: [
+                      AppTheme.blue,
+                      const Color(0xFFEF781D),
+                      const Color(0xFF168F54),
+                      AppTheme.blue,
+                    ][index],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
 
           if (index < 3) ...[
             SizedBox(
@@ -125,10 +146,20 @@ class _ChartCard extends StatelessWidget {
                 4,
                 (i) => Text(
                   index == 2 ? ['20', '18', '24', '24'][i] : '${i + 1}',
-                  style: const TextStyle(fontSize: 9, color: AppTheme.muted),
+                  style: const TextStyle(fontSize: 7, color: AppTheme.muted),
                 ),
               ),
             ),
+            if (index == 2)
+              const Padding(
+                padding: EdgeInsets.only(top: 7),
+                child: Center(
+                  child: Text(
+                    'SKS per semester',
+                    style: TextStyle(fontSize: 6, color: AppTheme.muted),
+                  ),
+                ),
+              ),
           ] else
             Wrap(
               spacing: 8,
@@ -159,15 +190,15 @@ class _ChartCard extends StatelessWidget {
                   children: [
                     Text(
                       'A   50%',
-                      style: TextStyle(fontSize: 9, color: Color(0xFF2867B2)),
+                      style: TextStyle(fontSize: 7, color: Color(0xFF2867B2)),
                     ),
                     Text(
                       'A-  30%',
-                      style: TextStyle(fontSize: 9, color: Color(0xFFEF781D)),
+                      style: TextStyle(fontSize: 7, color: Color(0xFFEF781D)),
                     ),
                     Text(
                       'B+  20%',
-                      style: TextStyle(fontSize: 9, color: Color(0xFF6E42D4)),
+                      style: TextStyle(fontSize: 7, color: Color(0xFF6E42D4)),
                     ),
                   ],
                 ),

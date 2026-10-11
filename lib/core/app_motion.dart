@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 abstract final class AppMotion {
@@ -36,34 +38,68 @@ abstract final class AppMotion {
   );
 }
 
-/// Animasi kemunculan konten.
-///
-/// child tetap sama pada setiap frame agar animasinya lebih ringan.
-class Entrance extends StatelessWidget {
-  const Entrance({super.key, required this.child});
-
+/// Konten muncul bertahap dengan fade + pergeseran 10 px.
+/// Controller dan timer selalu dilepas saat halaman ditutup.
+class Entrance extends StatefulWidget {
+  const Entrance({super.key, required this.child, this.delay = 0});
   final Widget child;
+  final int delay;
+  @override
+  State<Entrance> createState() => _EntranceState();
+}
+
+class _EntranceState extends State<Entrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _curve;
+  Timer? _timer;
+  bool _started = false;
 
   @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.disableAnimationsOf(context)) {
-      return child;
-    }
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: AppMotion.duration(context, 500),
-      curve: Curves.easeOutCubic,
-
-      builder: (context, value, child) => Opacity(
-        opacity: value,
-        child: Transform.translate(
-          offset: Offset(0, 14 * (1 - value)),
-          child: child,
-        ),
-      ),
-
-      child: child,
-    );
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _controller.duration = AppMotion.duration(context, 420);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _timer?.cancel();
+      _controller.value = 1;
+      _started = true;
+    } else if (!_started) {
+      _started = true;
+      if (widget.delay == 0) {
+        _controller.forward();
+      } else {
+        _timer = Timer(Duration(milliseconds: widget.delay), () {
+          if (mounted) _controller.forward();
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _curve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _curve,
+    child: widget.child,
+    builder: (context, child) => Opacity(
+      opacity: _curve.value,
+      child: Transform.translate(
+        offset: Offset(0, 10 * (1 - _curve.value)),
+        child: child,
+      ),
+    ),
+  );
 }

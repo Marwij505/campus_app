@@ -164,22 +164,37 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 6),
 
-                CheckboxListTile(
-                  value: _remember,
-                  onChanged: _loading
+                // Area sentuh tetap cukup besar, meski checkbox tampil kecil.
+                InkWell(
+                  onTap: _loading
                       ? null
-                      : (value) {
-                          setState(() {
-                            _remember = value ?? false;
-                          });
-                        },
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: const Color(0xFF19BD5C),
-                  shape: const RoundedRectangleBorder(),
-                  title: const Text(
-                    'Simpan sesi masuk',
-                    style: TextStyle(fontSize: 12),
+                      : () => setState(() => _remember = !_remember),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        height: 44,
+                        child: Checkbox(
+                          value: _remember,
+                          activeColor: const Color(0xFF19BD5C),
+                          shape: const RoundedRectangleBorder(),
+                          onChanged: _loading
+                              ? null
+                              : (value) =>
+                                    setState(() => _remember = value ?? false),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'Simpan sesi masuk',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 

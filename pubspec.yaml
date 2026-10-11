@@ -60,6 +60,8 @@ flutter:
   # Background asli yang dipakai pada desain Figma.
   assets:
     - assets/images/ 
+    - assets/fonts/PressStart2P-OFL.txt
+    - assets/fonts/SpaceMono-OFL.txt
 
   # To add assets to your application, add an assets section, like this:
   # assets:

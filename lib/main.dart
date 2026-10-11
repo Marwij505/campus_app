@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'core/app_motion.dart';
 import 'core/app_theme.dart';
@@ -7,7 +9,19 @@ import 'data/demo_data.dart';
 import 'features/auth/login_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 
-void main() => runApp(const CampusApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Lisensi font ikut tersedia melalui halaman lisensi standar Flutter.
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks([
+      'Press Start 2P',
+    ], await rootBundle.loadString('assets/fonts/PressStart2P-OFL.txt'));
+    yield LicenseEntryWithLineBreaks([
+      'Space Mono',
+    ], await rootBundle.loadString('assets/fonts/SpaceMono-OFL.txt'));
+  });
+  runApp(const CampusApp());
+}
 
 class CampusApp extends StatelessWidget {
   const CampusApp({super.key});
@@ -15,7 +29,7 @@ class CampusApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    title: 'SIAKAD Fasilkom',
+    title: 'campus_app',
     theme: AppTheme.data,
     home: const AuthGate(),
   );
