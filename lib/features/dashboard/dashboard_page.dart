@@ -14,6 +14,7 @@ import '../../data/dashboard_models.dart';
 import '../../data/dashboard_repository.dart';
 import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
+import 'dashboard_detail_page.dart';
 import 'dashboard_widgets.dart';
 import 'executive_menu.dart';
 import 'information_panels.dart';
@@ -51,7 +52,6 @@ class _DashboardPageState extends State<DashboardPage> {
   final _profileKey = GlobalKey();
   final _scheduleKey = GlobalKey();
   final _academicKey = GlobalKey();
-  final _counselingKey = GlobalKey();
   // Pengendali posisi gulir untuk scrollbar dan perintah kembali ke bagian atas.
   final _scroll = ScrollController();
   // Paket data yang sedang ditampilkan; awalnya kosong sambil menunggu pemuatan.
@@ -174,18 +174,13 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Fitur transaksi seperti KRS/pembayaran belum dilaksanakan pada tahap beranda.
   void _details(String title, Widget child) {
     Navigator.of(context)
-        .push(AppMotion.route(_DashboardDetail(title: title, child: child)));
+        .push(AppMotion.route(DashboardDetailPage(title: title, child: child)));
   }
 
   // Buka penjelasan bahwa modul ini belum terhubung, tanpa menjalankan transaksi.
-  void _unavailable(String title) => _details(
-    title,
-    DashboardEmpty(
-      title: 'Belum ada data $title',
-      message:
-          'Halaman $title lengkap akan disambungkan pada tahap berikutnya.',
-    ),
-  );
+  void _unavailable(String title) =>
+      Navigator.of(context)
+          .push(AppMotion.route(DashboardDetailPage.empty(title)));
 
   // Buka tanggal dan isi lengkap satu berita/pengumuman; teks isi bisa disalin.
   void _openNotice(CampusNotice item) => _details(
@@ -263,17 +258,13 @@ class _DashboardPageState extends State<DashboardPage> {
     ),
   );
 
-  // Terjemahkan nama menu menjadi tindakan: gulir ke panel atau buka halaman detail.
+  // Akses Cepat dan Executive Menu memakai tujuan yang sama.
+  // Modul yang belum siap, termasuk Biodata, Nilai & Presensi, dan Konseling,
+  // membuka halaman kosong tersendiri, bukan menggulir ke panel beranda.
   void _quickAction(String label) {
     switch (label) {
-      case 'Biodata':
-        _navigate(3);
       case 'Jadwal Kuliah':
         _allSchedules();
-      case 'Nilai & Presensi':
-        _navigate(2);
-      case 'Konseling':
-        _showSection(_counselingKey);
       default:
         _unavailable(label);
     }
@@ -283,10 +274,10 @@ class _DashboardPageState extends State<DashboardPage> {
   // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
-      // Kelompokkan lebar jendela; nama desktop/tablet di sini mengacu pada lebar, bukan perangkat.
+      // Tablet memakai menu header dan seluruh lebar halaman untuk konten.
       final desktop = bounds.maxWidth >= ResponsiveLayout.desktop;
-      final tablet = bounds.maxWidth >= ResponsiveLayout.tablet && !desktop;
-      final compact = !tablet && !desktop;
+      final compact = bounds.maxWidth < ResponsiveLayout.tablet;
+      final pagePadding = (bounds.maxWidth * .025).clamp(16.0, 24.0);
       // Deteksi teks yang diperbesar agar header dapat memberi ruang lebih banyak.
       final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
       return Scaffold(
@@ -336,7 +327,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _topMenu(
                           'Biodata',
                           Icons.person_outline,
-                          () => _navigate(3),
+                          () => _quickAction('Biodata'),
                         ),
                         _topMenu(
                           'Pembayaran',
@@ -401,7 +392,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 // Akses utama tetap langsung; pilihan akademik dikelompokkan di bawah.
                 for (final entry in _quickEntries.where(
-                  (entry) => ['Biodata', 'Pembayaran', 'Tagihan'].contains(entry.label),
+                  (entry) => [
+                    'Biodata',
+                    'Pembayaran',
+                    'Tagihan',
+                  ].contains(entry.label),
                 ))
                   ListTile(
                     leading: Icon(entry.icon),
@@ -431,63 +426,34 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
         ),
-        body: Row(
+        body: Stack(
+          fit: StackFit.expand,
           children: [
-            // Pada lebar menengah, tampilkan jalur navigasi vertikal di sebelah kiri.
-            if (tablet)
-              Container(
-                key: const ValueKey('tablet-navigation'),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                    right: BorderSide(color: AppTheme.ink, width: 2),
-                  ),
-                ),
-                // Navigasi tetap bisa digulir ketika tinggi jendela kecil.
-                width: 88,
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < _destinations.length; i++)
-                        _navButton(i, rail: true),
-                    ],
-                  ),
-                ),
-              ),
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Pisahkan gambar latar agar perubahan isi tidak selalu memerlukan pengecatan ulang latar.
-                  const RepaintBoundary(
-                    child: CampusBackground(dashboard: true),
-                  ),
-                  SafeArea(
-                    top: false,
-                    // Gerakan tarik ke bawah memanggil _load untuk memperbarui data.
-                    child: RefreshIndicator(
-                      onRefresh: _load,
-                      child: Scrollbar(
-                        controller: _scroll,
-                        thumbVisibility: !compact,
-                        child: SingleChildScrollView(
-                          controller: _scroll,
-                          // Tetap izinkan gerakan tarik meskipun isi lebih pendek daripada tinggi layar.
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: EdgeInsets.all(compact ? 16 : 24),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                maxWidth: ResponsiveLayout.maxContentWidth,
-                              ),
-                              child: _content(),
-                            ),
-                          ),
+            // Latar memenuhi halaman tanpa menyisakan jalur kosong di kiri.
+            const RepaintBoundary(child: CampusBackground(dashboard: true)),
+            SafeArea(
+              top: false,
+              // Gerakan tarik ke bawah tetap memuat ulang data beranda.
+              child: RefreshIndicator(
+                onRefresh: _load,
+                child: Scrollbar(
+                  controller: _scroll,
+                  thumbVisibility: !compact,
+                  child: SingleChildScrollView(
+                    controller: _scroll,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    // Jarak tepi bertambah perlahan mengikuti lebar, bukan meloncat.
+                    padding: EdgeInsets.all(pagePadding),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: ResponsiveLayout.maxContentWidth,
                         ),
+                        child: _content(),
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -532,8 +498,8 @@ class _DashboardPageState extends State<DashboardPage> {
         label: Text(label, style: const TextStyle(fontSize: 11)),
       );
 
-  // Buat tombol navigasi bawah/samping dan tandai menu yang sedang dipilih.
-  Widget _navButton(int index, {bool rail = false}) {
+  // Navigasi bawah hanya dipakai HP; tablet mengakses menu melalui header.
+  Widget _navButton(int index) {
     final entry = _destinations[index];
     final selected = _navIndex == index;
     // Berikan informasi tombol dan pilihan aktif kepada pembaca layar.
@@ -544,10 +510,7 @@ class _DashboardPageState extends State<DashboardPage> {
         onTap: () => _navigate(index),
         child: AnimatedContainer(
           duration: AppMotion.duration(context, 180),
-          padding: EdgeInsets.symmetric(
-            vertical: rail ? 20 : 12,
-            horizontal: 4,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           color: selected ? const Color(0xFFEAF2FC) : Colors.transparent,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -770,7 +733,6 @@ class _DashboardPageState extends State<DashboardPage> {
       final study = StudyProgressPanel(key: _academicKey, data: _data);
       // Aksi pengajuan masih memberi pesan; belum mengirim permintaan konseling ke server.
       final counseling = CounselingPanel(
-        key: _counselingKey,
         items: _data.counseling,
         onApply: () => _message(
           _data.counseling.isEmpty ? 'Jadwal konseling belum tersedia.' : 'Pengajuan konseling akan disambungkan ke backend pada tahap berikutnya.',
@@ -799,8 +761,9 @@ class _DashboardPageState extends State<DashboardPage> {
         onOpen: (guide) => _details(guide.title, SelectableText(guide.content)),
       );
       final scale = MediaQuery.textScalerOf(context).scale(1);
-      // Dua kolom utama mengikuti referensi desktop. Panel kanan tetap cukup lebar.
-      if (bounds.maxWidth >= 1000 && scale <= 1.3) {
+      // Susunan 7:3 memerlukan ruang cukup agar panel kanan tidak terlalu sempit.
+      // Tablet lebar tetap memakai dua kolom seimbang pada bagian informasi.
+      if (bounds.maxWidth >= 1100 && scale <= 1.3) {
         return Row(
           key: const ValueKey('desktop-panels'),
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,43 +815,6 @@ class _DashboardPageState extends State<DashboardPage> {
         items[i],
       ],
     ],
-  );
-}
-
-/// Halaman detail memakai kerangka yang sama, batas lebar, dan tombol Back standar.
-// Kerangka halaman tambahan untuk membaca informasi dengan tombol kembali standar.
-class _DashboardDetail extends StatelessWidget {
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
-  const _DashboardDetail({required this.title, required this.child});
-  final String title;
-  final Widget child;
-  @override
-  // build menyusun tampilan ketika Flutter memintanya.
-  Widget build(BuildContext context) => Scaffold(
-    // Bagian paling atas berisi identitas aplikasi dan tombol navigasi.
-    appBar: AppBar(
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      backgroundColor: AppTheme.red,
-      foregroundColor: Colors.white,
-    ),
-    body: Stack(
-      fit: StackFit.expand,
-      children: [
-        const CampusBackground(dashboard: true),
-        SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
-                child: Entrance(child: PixelPanel(child: child)),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
   );
 }
 

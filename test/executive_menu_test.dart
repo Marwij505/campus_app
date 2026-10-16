@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_app/core/app_theme.dart';
 import 'package:campus_app/data/student_profile.dart';
 import 'package:campus_app/features/dashboard/dashboard_page.dart';
+import 'package:campus_app/features/dashboard/dashboard_detail_page.dart';
+import 'package:campus_app/shared/pixel_widgets.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -71,6 +73,74 @@ void main() {
     // Hapus halaman agar timer pembaruan waktu dashboard ikut dibatalkan.
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
+  }
+
+  // Pastikan pintasan dan menu utama benar-benar membuka halaman baru yang sama.
+  // HP juga diuji dengan tulisan dua kali lebih besar agar pesan tetap terbaca.
+  for (final config in [
+    (size: const Size(390, 844), scale: 2.0),
+    (size: const Size(820, 1180), scale: 1.0),
+    (size: const Size(1280, 800), scale: 1.0),
+  ]) {
+    testWidgets('Tiga halaman kosong dari pintasan dan menu: $config', (
+      tester,
+    ) async {
+      await openDashboard(tester, size: config.size, scale: config.scale);
+      final desktop = config.size.width >= 1100;
+      final surface = desktop ? 'desktop' : 'mobile';
+      for (final label in ['Biodata', 'Nilai & Presensi', 'Konseling']) {
+        final shortcut = find.ancestor(
+          of: find.text(label),
+          matching: find.byType(PixelTapSurface),
+        );
+        await tester.ensureVisible(shortcut);
+        await tester.pumpAndSettle();
+        await tester.tap(shortcut);
+        await tester.pumpAndSettle();
+        expect(find.byType(DashboardDetailPage), findsOneWidget);
+        expect(find.text('Belum ada data $label'), findsOneWidget);
+        expect(find.text('AKSES CEPAT'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(find.text('AKSES CEPAT'), findsOneWidget);
+
+        if (!desktop) {
+          await tester.tap(find.byTooltip('Buka menu'));
+          await tester.pumpAndSettle();
+        }
+        if (label == 'Biodata') {
+          // Biodata berada langsung di header desktop atau di dalam drawer.
+          final target = find.descendant(
+            of: find.byType(desktop ? AppBar : Drawer),
+            matching: find.text(label),
+          );
+          await tester.ensureVisible(target);
+          await tester.pumpAndSettle();
+          await tester.tap(target);
+          await tester.pumpAndSettle();
+        } else {
+          await choose(
+            tester,
+            surface,
+            label == 'Konseling' ? 'layanan' : 'akademik',
+          );
+          await choose(
+            tester,
+            surface,
+            label == 'Konseling' ? 'konseling' : 'nilai',
+          );
+        }
+        expect(find.byType(DashboardDetailPage), findsOneWidget);
+        expect(find.text('Belum ada data $label'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(find.text('AKSES CEPAT'), findsOneWidget);
+        expect(find.byType(Drawer).hitTestable(), findsNothing);
+      }
+      await finish(tester);
+    });
   }
 
   testWidgets(

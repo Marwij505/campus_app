@@ -12,6 +12,7 @@ import 'package:campus_app/data/dashboard_models.dart';
 import 'package:campus_app/data/dashboard_repository.dart';
 import 'package:campus_app/data/student_profile.dart';
 import 'package:campus_app/features/dashboard/dashboard_page.dart';
+import 'package:campus_app/features/dashboard/profile_panel.dart';
 
 // Daftarkan persiapan bersama, pembantu, dan seluruh skenario pengujian beranda.
 void main() {
@@ -65,7 +66,11 @@ void main() {
     const Size(320, 568),
     const Size(390, 844),
     const Size(600, 900),
+    const Size(768, 1024),
+    const Size(820, 1180),
     const Size(900, 600),
+    const Size(1024, 768),
+    const Size(1099, 800),
     const Size(1280, 800),
     const Size(1920, 1080),
   ]) {
@@ -87,10 +92,21 @@ void main() {
         size.width < 600 ? findsOneWidget : findsNothing,
       );
       expect(
-        // Navigasi tablet hanya boleh ada pada rentang lebar menengah.
+        // Jalur kiri sudah dihapus, termasuk pada tablet portrait dan landscape.
         find.byKey(const ValueKey('tablet-navigation')),
-        size.width >= 600 && size.width < 1100 ? findsOneWidget : findsNothing,
+        findsNothing,
       );
+      if (size.width >= 600 && size.width < 1100) {
+        // Ukur kartu sebenarnya: tidak boleh tersisa ruang bekas menu kiri.
+        final profile = tester.getRect(find.byType(ProfilePanel));
+        expect(profile.left, lessThanOrEqualTo(24));
+        expect(size.width - profile.right, closeTo(profile.left, .1));
+        expect(profile.width, greaterThanOrEqualTo(size.width - 48));
+        expect(find.byTooltip('Buka menu'), findsOneWidget);
+        if (size.width >= 768) {
+          expect(find.byKey(const ValueKey('tablet-panels')), findsOneWidget);
+        }
+      }
       if (size.width >= 1280) {
         expect(find.byKey(const ValueKey('desktop-panels')), findsOneWidget);
       }
@@ -131,6 +147,53 @@ void main() {
     // Ganti halaman dengan kotak kosong agar dispose membatalkan timer dan melepas controller.
     await tester.pumpWidget(const SizedBox());
   });
+
+  // Rotasi dan pembesaran teks harus tetap menjaga identitas dan akses navigasi.
+  testWidgets(
+    'Tablet tanpa sidebar: rotasi, teks besar, dan menu tetap bekerja',
+    (tester) async {
+      viewport(tester, const Size(768, 1024));
+      await tester.pumpWidget(app(repository: _ProfileRepository()));
+      await tester.pumpAndSettle();
+      for (final size in [const Size(1024, 768), const Size(820, 1180)]) {
+        tester.view.physicalSize = size;
+        await tester.pumpAndSettle();
+        expect(find.text('Mahasiswa Uji Tampilan Tablet'), findsOneWidget);
+        expect(
+          tester.getRect(find.byType(ProfilePanel)).left,
+          lessThanOrEqualTo(24),
+        );
+        expect(find.byKey(const ValueKey('tablet-navigation')), findsNothing);
+        expect(find.byKey(const ValueKey('phone-navigation')), findsNothing);
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(app(repository: _ProfileRepository(), scale: 2));
+      await tester.pumpAndSettle();
+      expect(find.text('Mahasiswa Uji Tampilan Tablet'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byTooltip('Buka menu'));
+      await tester.pumpAndSettle();
+      final academic = find.descendant(
+        of: find.byType(Drawer),
+        matching: find.text('Akademik'),
+      );
+      await tester.ensureVisible(academic);
+      await tester.pumpAndSettle();
+      await tester.tap(academic);
+      await tester.pumpAndSettle();
+      final schedule = find.text('Jadwal Perkuliahan');
+      await tester.ensureVisible(schedule);
+      await tester.pumpAndSettle();
+      await tester.tap(schedule);
+      await tester.pumpAndSettle();
+      expect(find.text('Belum ada jadwal kuliah'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Mahasiswa Uji Tampilan Tablet'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets(
     // Bedakan tampilan kegagalan dengan data kosong, lalu coba memuat ulang sampai berhasil.
@@ -224,4 +287,24 @@ class _RetryRepository implements DashboardRepository {
     }
     return const DashboardData();
   }
+}
+
+// Profil uji berisi tulisan panjang agar layout tidak hanya diuji dengan tanda kosong.
+class _ProfileRepository implements DashboardRepository {
+  @override
+  Future<DashboardData> load(String nim) async => DashboardData(
+    student: StudentProfile(
+      nim: nim,
+      name: 'Mahasiswa Uji Tampilan Tablet',
+      faculty: 'Fakultas Ilmu Komputer',
+      major: 'Teknik Informatika',
+      advisor: 'Dosen Pembimbing Akademik Pengujian',
+      status: 'Aktif',
+      entryYear: 2024,
+      semester: 5,
+      gpa: 3.75,
+      latestGpa: 3.8,
+      passedCredits: 86,
+    ),
+  );
 }

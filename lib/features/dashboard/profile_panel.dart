@@ -121,8 +121,9 @@ class ProfilePanel extends StatelessWidget {
             _stat('SKS LULUS', student.passedCredits?.toString(), 'total SKS'),
           ],
         );
-        // Letakkan identitas dan statistik berdampingan hanya jika lebar dan ukuran teks memungkinkan.
-        if (bounds.maxWidth >= 1000 &&
+        // Tablet landscape dapat menaruh statistik di samping identitas.
+        // Saat ruang menyempit atau teks diperbesar, keduanya kembali bertumpuk.
+        if (bounds.maxWidth >= 880 &&
             MediaQuery.textScalerOf(context).scale(1) <= 1.3) {
           return Row(
             children: [

@@ -6,7 +6,7 @@
 /// Tablet dalam split screen bisa memakai susunan HP secara otomatis.
 // Rumus bersama agar berbagai panel memakai aturan lebar yang konsisten.
 abstract final class ResponsiveLayout {
-  // Mulai lebar 600, beranda bisa memakai navigasi samping seperti tablet.
+  // Mulai lebar 600, navigasi cukup melalui header agar konten tablet lebih lapang.
   static const tablet = 600.0;
   // Mulai lebar 1100, beranda bisa memakai menu atas seperti desktop.
   static const desktop = 1100.0;
