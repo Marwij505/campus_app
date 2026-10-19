@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../core/app_motion.dart';
 import '../../core/app_theme.dart';
 import '../../shared/pixel_widgets.dart';
+import '../chatbot/chat_controller.dart';
+import '../chatbot/chat_launcher.dart';
 import 'dashboard_widgets.dart';
 
 class DashboardDetailPage extends StatelessWidget {
@@ -13,24 +15,30 @@ class DashboardDetailPage extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
+    this.chat,
   });
 
   // Halaman kosong tetap punya judul, pesan penjelas, dan tombol kembali.
   // Tidak ada data contoh atau formulir yang seolah-olah sudah dapat dipakai.
-  factory DashboardDetailPage.empty(String title) => DashboardDetailPage(
-    title: title,
-    child: DashboardEmpty(
-      title: 'Belum ada data $title',
-      message:
-          'Halaman $title lengkap akan disambungkan pada tahap berikutnya.',
-    ),
-  );
+  factory DashboardDetailPage.empty(String title, {ChatController? chat}) =>
+      DashboardDetailPage(
+        title: title,
+        chat: chat,
+        child: DashboardEmpty(
+          title: 'Belum ada data $title',
+          message:
+              'Halaman $title lengkap akan disambungkan pada tahap berikutnya.',
+        ),
+      );
 
   final String title;
   final Widget child;
+  // Semua halaman detail menerima sesi chat yang sama dari dashboard.
+  final ChatController? chat;
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    floatingActionButton: chat == null ? null : ChatLauncher(controller: chat!),
     // Tombol kembali otomatis muncul karena halaman dibuka melalui Navigator.
     appBar: AppBar(
       title: Text(title, style: const TextStyle(fontSize: 14)),
@@ -45,7 +53,7 @@ class DashboardDetailPage extends StatelessWidget {
           top: false,
           // Isi dapat digulir pada HP atau saat ukuran tulisan diperbesar.
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, chat == null ? 20 : 96),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 900),

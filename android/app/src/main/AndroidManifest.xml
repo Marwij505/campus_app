@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- AI lokal perlu jaringan juga pada APK release. URL HTTP dibatasi service ke LAN. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
+        android:usesCleartextTraffic="true"
         android:label="EsaFIK"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

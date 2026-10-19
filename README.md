@@ -145,3 +145,12 @@ Gambar latar berada di `assets/images/pixel-campus.png`. Font dimuat dari aset l
 - [Space Mono](assets/fonts/SpaceMono-OFL.txt)
 
 Kedua lisensi juga didaftarkan melalui `LicenseRegistry` saat aplikasi dimulai.
+
+
+## Smart Chatbot lokal
+
+Smart Chatbot tersedia melalui Akses Cepat dan menu Layanan. Bantuan terpandu, draf surat izin dengan bukti wajib, dan draf kendala berjalan tanpa data kampus. AI lokal menggunakan Ollama khusus proyek tanpa API key.
+
+Chat mencoba menyambung otomatis saat dibuka. Jalankan `tool/local_ai/start.ps1` sebelum `flutter run` agar alamat komputer AI ikut masuk ke aplikasi Chrome, emulator, maupun HP. HP fisik harus berada di jaringan komputer AI; komputer dan Ollama tetap menyala. Alamat dapat diperbarui melalui ikon pengaturan chatbot jika Wi-Fi/IP berubah.
+
+Lihat [panduan Smart Chatbot dan pemasangan Ollama](docs/smart_chatbot.md) untuk menjalankan server, batas kemampuan, struktur kode, dan pengujian.

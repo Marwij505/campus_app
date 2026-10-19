@@ -14,6 +14,8 @@ import '../../data/dashboard_models.dart';
 import '../../data/dashboard_repository.dart';
 import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
+import '../chatbot/chat_controller.dart';
+import '../chatbot/chat_launcher.dart';
 import 'dashboard_detail_page.dart';
 import 'dashboard_widgets.dart';
 import 'executive_menu.dart';
@@ -48,6 +50,8 @@ class DashboardPage extends StatefulWidget {
 
 // Pusat penyimpanan kondisi pemuatan, data, waktu, dan menu yang sedang aktif.
 class _DashboardPageState extends State<DashboardPage> {
+  // Chat dan draf bertahan saat kembali ke beranda, lalu dibersihkan ketika logout.
+  final _chat = ChatController();
   // Kunci-kunci berikut menjadi penanda lokasi panel untuk tujuan gulir otomatis.
   final _profileKey = GlobalKey();
   final _scheduleKey = GlobalKey();
@@ -130,6 +134,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   // Hentikan jam berkala dan lepaskan pengendali gulir saat beranda ditutup.
   void dispose() {
+    _chat.dispose();
     _clockTimer?.cancel();
     _scroll.dispose();
     super.dispose();
@@ -173,14 +178,17 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Halaman ringkas untuk membaca daftar lengkap/detail.
   /// Fitur transaksi seperti KRS/pembayaran belum dilaksanakan pada tahap beranda.
   void _details(String title, Widget child) {
-    Navigator.of(context)
-        .push(AppMotion.route(DashboardDetailPage(title: title, child: child)));
+    Navigator.of(context).push(
+      AppMotion.route(
+        DashboardDetailPage(title: title, chat: _chat, child: child),
+      ),
+    );
   }
 
   // Buka penjelasan bahwa modul ini belum terhubung, tanpa menjalankan transaksi.
   void _unavailable(String title) =>
       Navigator.of(context)
-          .push(AppMotion.route(DashboardDetailPage.empty(title)));
+          .push(AppMotion.route(DashboardDetailPage.empty(title, chat: _chat)));
 
   // Buka tanggal dan isi lengkap satu berita/pengumuman; teks isi bisa disalin.
   void _openNotice(CampusNotice item) => _details(
@@ -263,6 +271,8 @@ class _DashboardPageState extends State<DashboardPage> {
   // membuka halaman kosong tersendiri, bukan menggulir ke panel beranda.
   void _quickAction(String label) {
     switch (label) {
+      case 'Smart Chatbot':
+        openSmartChat(context, _chat);
       case 'Jadwal Kuliah':
         _allSchedules();
       default:
@@ -281,6 +291,7 @@ class _DashboardPageState extends State<DashboardPage> {
       // Deteksi teks yang diperbesar agar header dapat memberi ruang lebih banyak.
       final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
       return Scaffold(
+        floatingActionButton: ChatLauncher(controller: _chat),
         // Bagian paling atas berisi identitas aplikasi dan tombol navigasi.
         appBar: AppBar(
           backgroundColor: AppTheme.red,
@@ -615,7 +626,8 @@ class _DashboardPageState extends State<DashboardPage> {
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 10, color: AppTheme.muted),
         ),
-        const SizedBox(height: 8),
+        // Ruang ekstra di akhir beranda agar tombol chat tidak menutupi footer.
+        const SizedBox(height: 88),
       ],
     );
   }
@@ -829,6 +841,7 @@ class _MenuEntry {
 
 // Daftar nama, ikon, dan warna akses cepat juga dipakai untuk membentuk menu geser.
 const _quickEntries = [
+  _MenuEntry('Smart Chatbot', Icons.smart_toy_outlined, Color(0xFF873DD1)),
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   _MenuEntry('Biodata', Icons.person_outline, Color(0xFF873DD1)),
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.

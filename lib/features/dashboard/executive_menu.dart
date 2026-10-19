@@ -77,6 +77,7 @@ const executiveMenuGroups = [
     label: 'Layanan',
     icon: Icons.support_agent,
     children: [
+      ExecutiveMenuEntry(id: 'smart-chatbot', label: 'Smart Chatbot'),
       ExecutiveMenuEntry(id: 'konseling', label: 'Konseling'),
       ExecutiveMenuEntry(id: 'kuesioner', label: 'Kuesioner'),
       ExecutiveMenuEntry(

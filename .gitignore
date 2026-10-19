@@ -46,3 +46,9 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Runtime dan model AI lokal hanya milik mesin ini, tidak dimasukkan ke Git.
+.local-ai/
+
+# Alamat LAN komputer dibuat ulang oleh start.ps1, bukan dibagikan melalui Git.
+assets/local_ai/connection.json
