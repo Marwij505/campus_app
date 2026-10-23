@@ -7,7 +7,8 @@ import 'package:campus_app/core/app_theme.dart';
 import 'package:campus_app/data/student_profile.dart';
 import 'package:campus_app/features/dashboard/dashboard_page.dart';
 import 'package:campus_app/features/chatbot/chat_page.dart';
-import 'package:campus_app/features/chatbot/draft_page.dart';
+import 'package:campus_app/features/leave/leave_page.dart';
+import 'package:campus_app/features/leave/leave_form.dart';
 import 'package:campus_app/shared/pixel_widgets.dart';
 
 void main() {
@@ -119,14 +120,16 @@ void main() {
       await tap(tester, launcher);
       await tap(tester, find.text('Pilihan bantuan & draf'));
       await tap(tester, find.text('Buat Surat Izin'));
-      expect(find.byType(DraftPage), findsOneWidget);
+      expect(find.byType(LeavePage), findsOneWidget);
+      await tap(tester, find.text('Buat pengajuan izin'));
+      expect(find.byType(LeaveForm), findsOneWidget);
       await tester.enterText(
-        find.byKey(const ValueKey('draft-Nama')),
+        find.byKey(const ValueKey('leave-Nama-0')),
         'Nama draf tersimpan',
       );
       // Tombol di draf kembali ke chat yang sudah ada, bukan membuka duplikat.
       await tap(tester, launcher);
-      expect(find.byType(DraftPage), findsNothing);
+      expect(find.byType(LeaveForm), findsNothing);
       expect(find.byType(ChatPage), findsOneWidget);
       // Pesan terbaru menggulir ke bawah; naik lagi untuk membuka bantuan.
       await tester.drag(
@@ -146,6 +149,7 @@ void main() {
         await tap(tester, find.text('Pilihan bantuan & draf'));
       }
       await tap(tester, find.widgetWithText(OutlinedButton, 'Buat Surat Izin'));
+      await tap(tester, find.text('Buat pengajuan izin'));
       expect(find.text('Nama draf tersimpan'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

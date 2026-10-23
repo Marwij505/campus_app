@@ -16,6 +16,8 @@ import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import '../chatbot/chat_controller.dart';
 import '../chatbot/chat_launcher.dart';
+import '../leave/leave_page.dart';
+import '../leave/leave_repository.dart';
 import 'dashboard_detail_page.dart';
 import 'dashboard_widgets.dart';
 import 'executive_menu.dart';
@@ -33,6 +35,7 @@ class DashboardPage extends StatefulWidget {
     required this.onLogout,
     this.repository = const EmptyDashboardRepository(),
     this.clock,
+    this.leaveRepository,
   });
   // Profil awal dari login; bisa dilengkapi oleh profil dari hasil repository.
   final StudentProfile student;
@@ -43,6 +46,7 @@ class DashboardPage extends StatefulWidget {
   // Clock dapat disuntikkan oleh test agar tanggal/status kelas dapat diuji.
   // Jam opsional; jika tidak diberikan, halaman membaca waktu perangkat.
   final DateTime Function()? clock;
+  final LeaveRepository? leaveRepository;
   @override
   // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<DashboardPage> createState() => _DashboardPageState();
@@ -52,6 +56,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   // Chat dan draf bertahan saat kembali ke beranda, lalu dibersihkan ketika logout.
   final _chat = ChatController();
+  late final LeaveRepository _leaves;
   // Kunci-kunci berikut menjadi penanda lokasi panel untuk tujuan gulir otomatis.
   final _profileKey = GlobalKey();
   final _scheduleKey = GlobalKey();
@@ -77,6 +82,10 @@ class _DashboardPageState extends State<DashboardPage> {
   // Saat halaman muncul pertama kali, baca jam, muat data, dan mulai pembaruan per menit.
   void initState() {
     super.initState();
+    _leaves =
+        widget.leaveRepository ??
+        LeaveRepository(session: () => widget.student);
+    _chat.openLeave = _openLeave;
     _now = (widget.clock ?? DateTime.now)().toLocal();
     _load();
     // Timer hanya mengubah status/tanggal setiap menit, bukan setiap frame.
@@ -135,6 +144,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // Hentikan jam berkala dan lepaskan pengendali gulir saat beranda ditutup.
   void dispose() {
     _chat.dispose();
+    if (widget.leaveRepository == null) _leaves.dispose();
     _clockTimer?.cancel();
     _scroll.dispose();
     super.dispose();
@@ -271,6 +281,8 @@ class _DashboardPageState extends State<DashboardPage> {
   // membuka halaman kosong tersendiri, bukan menggulir ke panel beranda.
   void _quickAction(String label) {
     switch (label) {
+      case 'Izin Online':
+        _openLeave();
       case 'Smart Chatbot':
         openSmartChat(context, _chat);
       case 'Jadwal Kuliah':
@@ -279,6 +291,10 @@ class _DashboardPageState extends State<DashboardPage> {
         _unavailable(label);
     }
   }
+
+  void _openLeave() =>
+      Navigator.of(context)
+          .push(AppMotion.route(LeavePage(repository: _leaves, chat: _chat)));
 
   @override
   // build menyusun tampilan ketika Flutter memintanya.
@@ -856,6 +872,7 @@ const _quickEntries = [
   _MenuEntry('Pembayaran', Icons.account_balance_outlined, Color(0xFFBB851E)),
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   _MenuEntry('Konseling', Icons.handshake_outlined, Color(0xFF198754)),
+  _MenuEntry('Izin Online', Icons.description_outlined, Color(0xFF198754)),
 ];
 // Urutan ini harus sejalan dengan nomor menu yang ditangani _navigate.
 const _destinations = [

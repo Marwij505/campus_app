@@ -116,7 +116,8 @@ void main() {
     expect(chat.mode, ChatMode.guided);
     expect(chat.error, contains('belum terhubung'));
     await chat.send('Buat surat izin');
-    expect(chat.messages.last.text, contains('draf lokal'));
+    expect(chat.messages.last.text, contains('simulasi lokal'));
+    expect(chat.messages.last.actions, contains(HelpTopic.letter));
     chat.dispose();
   });
 
@@ -136,7 +137,22 @@ void main() {
           expect(body['messages'][0]['content'], contains('BELUM terhubung'));
           expect(body['messages'][1]['content'], 'Halo');
           return http.Response.bytes(
-            utf8.encode('{"message":{"content":"Halo, mari belajar!"}}'),
+            utf8.encode(
+              jsonEncode({
+                'done': true,
+                'done_reason': 'stop',
+                'message': {
+                  'content': jsonEncode({
+                    'category': 'study',
+                    'status': 'general',
+                    'answer': 'Halo, mari belajar!',
+                    'missing_information': [],
+                    'references': [],
+                    'action': 'none',
+                  }),
+                },
+              }),
+            ),
             200,
           );
         }),

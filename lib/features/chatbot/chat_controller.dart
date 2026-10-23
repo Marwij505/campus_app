@@ -4,14 +4,19 @@ import 'package:flutter/foundation.dart';
 import 'chat_models.dart';
 import 'chat_connection.dart';
 import 'ollama_service.dart';
+import 'chat_policy.dart';
 
 class ChatController extends ChangeNotifier {
   ChatController({ChatService? service})
     : _service = service ?? OllamaService(addresses: ChatConnection.candidates);
   final ChatService _service;
+  final capabilities = const ChatCapabilities();
+  RequestPlan? _plan;
+  // Halaman induk menghubungkan formulir izin dengan akun dan antrean yang sama.
+  VoidCallback? openLeave;
   final messages = <ChatMessage>[
     const ChatMessage(
-      'Halo! Saya dapat membantu menyiapkan draf surat izin dan kendala. AI lokal akan dicoba otomatis untuk pertanyaan umum. Data kampus belum terhubung.',
+      'Halo! Ketik jadwal, ipk, atau krs untuk cek cepat; tambahkan ? untuk pilihan bantuan. Saya membantu kebutuhan mahasiswa semester 1–14, belajar, dan draf. Data kampus belum terhubung.',
     ),
   ];
   final _aiHistory = <ChatMessage>[];
@@ -76,6 +81,14 @@ class ChatController extends ChangeNotifier {
 
   void choose(HelpTopic topic) {
     if (busy) return;
+    _aiHistory.clear();
+    _plan = RequestPlan(switch (topic) {
+      HelpTopic.study => RequestKind.study,
+      HelpTopic.letter || HelpTopic.issue => RequestKind.draft,
+      HelpTopic.files => RequestKind.files,
+      HelpTopic.academic => RequestKind.policy,
+      _ => RequestKind.personal,
+    }, text: topic.reply);
     messages.add(ChatMessage(topic.label, isUser: true));
     messages.add(ChatMessage(topic.reply));
     error = null;
@@ -95,8 +108,37 @@ class ChatController extends ChangeNotifier {
     error = null;
     canRetry = false;
     messages.add(ChatMessage(text, isUser: true));
-    if (mode == ChatMode.guided || needsCampusData(text)) {
-      messages.add(ChatMessage(guidedReply(text)));
+    var plan = ChatPolicy.route(text, previous: _plan);
+    if (plan.followUp && _aiHistory.isEmpty) {
+      plan = const RequestPlan(
+        RequestKind.clarify,
+        text: 'Konteks AI sebelumnya belum tersedia. Topik atau teks mana yang ingin Anda lanjutkan?',
+      );
+    }
+    if (!plan.followUp) _aiHistory.clear();
+    _plan = plan;
+    final definition = plan.kind == RequestKind.study
+        ? plan.text ?? ChatPolicy.definition(text)
+        : null;
+    if (definition != null) {
+      final answer = ChatMessage(
+        definition,
+        label: 'Penjelasan umum · glosarium aplikasi',
+      );
+      messages.add(answer);
+      _aiHistory.addAll([ChatMessage(text, isUser: true), answer]);
+      notifyListeners();
+      return;
+    }
+    if (!plan.usesAi || mode == ChatMode.guided) {
+      messages.add(
+        ChatMessage(
+          plan.text ?? ChatPolicy.offlineStudy(text),
+          label: plan.label,
+          actions: plan.actions,
+          choices: plan.choices,
+        ),
+      );
       notifyListeners();
       return;
     }
@@ -104,7 +146,15 @@ class ChatController extends ChangeNotifier {
     if (_aiHistory.isNotEmpty && _aiHistory.last.isUser) {
       _aiHistory.removeLast();
     }
-    _aiHistory.add(ChatMessage(text, isUser: true));
+    _aiHistory.add(
+      ChatMessage(
+        text,
+        isUser: true,
+        task: plan.kind == RequestKind.writing
+            ? ChatTask.writing
+            : ChatTask.study,
+      ),
+    );
     await _answer();
   }
 
@@ -122,7 +172,14 @@ class ChatController extends ChangeNotifier {
     try {
       final text = await _service.reply(List.of(_aiHistory));
       if (_disposed || request != _request) return;
-      final answer = ChatMessage(text, isAi: true);
+      final answer = ChatMessage(
+        text,
+        isAi: true,
+        task: _aiHistory.last.task,
+        label: _aiHistory.last.task == ChatTask.writing
+            ? 'AI lokal · usulan bahasa, perlu diperiksa'
+            : 'AI lokal · penjelasan umum',
+      );
       messages.add(answer);
       _aiHistory.add(answer);
     } on ChatServiceException catch (e) {
@@ -138,6 +195,27 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  // Percakapan baru membuang konteks lama; formulir draf tetap milik sesi login.
+  void newConversation() {
+    _request++;
+    _service.cancel();
+    busy = false;
+    connecting = false;
+    canRetry = false;
+    error = null;
+    input = '';
+    _plan = null;
+    _aiHistory.clear();
+    messages
+      ..clear()
+      ..add(
+        const ChatMessage(
+          'Percakapan baru. Sebutkan topik yang ingin dibahas. Data kampus belum terhubung.',
+        ),
+      );
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -145,7 +223,9 @@ class ChatController extends ChangeNotifier {
     _service.cancel();
     messages.clear();
     _aiHistory.clear();
+    _plan = null;
     letter.attachments.clear();
+    openLeave = null;
     issue.attachments.clear();
     letter.fields.clear();
     issue.fields.clear();

@@ -9,6 +9,7 @@ import 'package:campus_app/core/app_theme.dart';
 import 'package:campus_app/data/student_profile.dart';
 import 'package:campus_app/features/dashboard/dashboard_page.dart';
 import 'package:campus_app/features/dashboard/dashboard_detail_page.dart';
+import 'package:campus_app/features/leave/leave_page.dart';
 import 'package:campus_app/shared/pixel_widgets.dart';
 
 void main() {
@@ -82,13 +83,18 @@ void main() {
     (size: const Size(820, 1180), scale: 1.0),
     (size: const Size(1280, 800), scale: 1.0),
   ]) {
-    testWidgets('Tiga halaman kosong dari pintasan dan menu: $config', (
+    testWidgets('Halaman layanan dari pintasan dan menu: $config', (
       tester,
     ) async {
       await openDashboard(tester, size: config.size, scale: config.scale);
       final desktop = config.size.width >= 1100;
       final surface = desktop ? 'desktop' : 'mobile';
-      for (final label in ['Biodata', 'Nilai & Presensi', 'Konseling']) {
+      for (final label in [
+        'Biodata',
+        'Nilai & Presensi',
+        'Konseling',
+        'Izin Online',
+      ]) {
         final shortcut = find.ancestor(
           of: find.text(label),
           matching: find.byType(PixelTapSurface),
@@ -97,8 +103,13 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(shortcut);
         await tester.pumpAndSettle();
-        expect(find.byType(DashboardDetailPage), findsOneWidget);
-        expect(find.text('Belum ada data $label'), findsOneWidget);
+        expect(
+          find.byType(label == 'Izin Online' ? LeavePage : DashboardDetailPage),
+          findsOneWidget,
+        );
+        if (label != 'Izin Online') {
+          expect(find.text('Belum ada data $label'), findsOneWidget);
+        }
         expect(find.text('AKSES CEPAT'), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pageBack();
@@ -120,19 +131,29 @@ void main() {
           await tester.tap(target);
           await tester.pumpAndSettle();
         } else {
-          await choose(
-            tester,
-            surface,
-            label == 'Konseling' ? 'layanan' : 'akademik',
-          );
-          await choose(
-            tester,
-            surface,
-            label == 'Konseling' ? 'konseling' : 'nilai',
-          );
+          final destination = label == 'Izin Online'
+              ? 'izin-online'
+              : label == 'Konseling'
+              ? 'konseling'
+              : 'nilai';
+          // Drawer mengingat kelompok yang terbuka; jangan menutupnya saat
+          // berpindah dari Konseling ke Izin Online dalam kelompok yang sama.
+          if (desktop || entry(surface, destination).evaluate().isEmpty) {
+            await choose(
+              tester,
+              surface,
+              label == 'Nilai & Presensi' ? 'akademik' : 'layanan',
+            );
+          }
+          await choose(tester, surface, destination);
         }
-        expect(find.byType(DashboardDetailPage), findsOneWidget);
-        expect(find.text('Belum ada data $label'), findsOneWidget);
+        expect(
+          find.byType(label == 'Izin Online' ? LeavePage : DashboardDetailPage),
+          findsOneWidget,
+        );
+        if (label != 'Izin Online') {
+          expect(find.text('Belum ada data $label'), findsOneWidget);
+        }
         expect(tester.takeException(), isNull);
         await tester.pageBack();
         await tester.pumpAndSettle();

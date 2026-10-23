@@ -1,5 +1,6 @@
 // Uji perpindahan jaringan tanpa bergantung pada Wi-Fi atau Ollama sungguhan.
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:campus_app/features/chatbot/chat_connection.dart';
 import 'package:campus_app/features/chatbot/chat_controller.dart';
@@ -108,7 +109,23 @@ void main() {
       clientFactory: () => MockClient((request) async {
         if (request.method == 'GET') return http.Response(_ready, 200);
         postedHost = request.url.host;
-        return http.Response('{"message":{"content":"Jawaban lokal"}}', 200);
+        return http.Response(
+          jsonEncode({
+            'done': true,
+            'done_reason': 'stop',
+            'message': {
+              'content': jsonEncode({
+                'category': 'study',
+                'status': 'general',
+                'answer': 'Jawaban lokal',
+                'missing_information': [],
+                'references': [],
+                'action': 'none',
+              }),
+            },
+          }),
+          200,
+        );
       }),
     );
     await service.check();

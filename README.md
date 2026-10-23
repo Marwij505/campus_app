@@ -58,19 +58,23 @@ flutter run -d chrome
 
 ### Akun Demo
 
-| NIM/NIP | Password |
-| --- | --- |
-| `20240801001` | `123456` |
-| `20240801002` | `123456` |
+| NIM/kode akun | Password | Peran |
+| --- | --- | --- |
+| `20240801001` | `123456` | Mahasiswa |
+| `20240801002` | `123456` | Mahasiswa |
+| `BAP001` | `123456` | Pemeriksa izin BAP |
+| `DOS001` | `123456` | Dosen penerima hasil |
+| `DOS002` | `123456` | Dosen penerima hasil |
 
-Kedua akun menampilkan profil contoh yang sama dengan NIM sesuai akun yang digunakan. Kredensial ini khusus untuk simulasi di aplikasi.
+Akun mahasiswa menampilkan keadaan tanpa data akademik. Akun BAP/dosen membuka kotak masuk Izin Online. Semua kredensial khusus simulasi. Kedua dosen uji sengaja bernama sama; penerima ditentukan oleh kode unik. Lihat [panduan mencoba alur izin](docs/izin_online.md).
 
 ### Batasan Demo
 
-- Sesi hanya berada di memori dan hilang saat proses aplikasi ditutup. Opsi ingat sesi menetapkan masa sesi demo tujuh hari, sedangkan tanpa opsi tersebut satu jam. Dashboard belum menerapkan logout otomatis saat masa sesi berakhir.
+- Sesi berada di memori, berlaku 30 menit, dan aplikasi keluar otomatis ketika sesi berakhir. Refresh/restart menghapus sesi dan data simulasi.
 - Form lupa password tidak mengirim email dan tidak mengubah password.
-- Profil, statistik, grafik, jadwal, berita, dan pengumuman masih berupa data statis, termasuk tanggal yang ditampilkan.
-- Fitur lanjutan seperti biodata, KRS, nilai, tagihan, pengajuan konseling, dan detail panduan belum diimplementasikan. Sejumlah tombol hanya menampilkan pemberitahuan pengembangan berikutnya.
+- Sumber akademik belum terhubung. Profil, statistik, jadwal, dan pengumuman menampilkan keadaan belum tersedia.
+- Halaman biodata, KRS, nilai/presensi, tagihan, serta konseling belum berisi data layanan kampus.
+- Izin Online menjalankan pengajuan → pemeriksaan BAP → PDF → kotak masuk dosen dalam satu proses aplikasi. Pengajuan bertahan saat berganti akun, tetapi belum tersimpan di server atau terkirim antarperangkat.
 - Navigasi bawah mengarahkan pengguna ke bagian-bagian dashboard; belum semuanya memiliki halaman tersendiri.
 
 ## Struktur Proyek
@@ -149,8 +153,10 @@ Kedua lisensi juga didaftarkan melalui `LicenseRegistry` saat aplikasi dimulai.
 
 ## Smart Chatbot lokal
 
-Smart Chatbot tersedia melalui Akses Cepat dan menu Layanan. Bantuan terpandu, draf surat izin dengan bukti wajib, dan draf kendala berjalan tanpa data kampus. AI lokal menggunakan Ollama khusus proyek tanpa API key.
+Smart Chatbot tersedia melalui Akses Cepat dan menu Layanan. Pesan singkat seperti `izin`, `ijin`, dan `surat izin` menawarkan akses Izin Online; `izin?` menyediakan pilihan pengajuan, status, atau pengertian/alur. [Izin Online](docs/izin_online.md) tersedia tepat setelah Konseling pada Akses Cepat serta submenu Layanan. Bantuan terpandu dan alur izin simulasi berjalan meskipun Ollama mati. AI lokal menggunakan Ollama khusus proyek tanpa API key.
 
-Chat mencoba menyambung otomatis saat dibuka. Jalankan `tool/local_ai/start.ps1` sebelum `flutter run` agar alamat komputer AI ikut masuk ke aplikasi Chrome, emulator, maupun HP. HP fisik harus berada di jaringan komputer AI; komputer dan Ollama tetap menyala. Alamat dapat diperbarui melalui ikon pengaturan chatbot jika Wi-Fi/IP berubah.
+Chatbot membedakan pertanyaan umum, data pribadi, aturan kampus, dan permintaan tindakan. Ada glosarium akademik umum, konteks percakapan, validasi respons, serta penyuntingan alasan/kronologi dengan tinjauan pengguna. Lihat [upgrade dan pengujian kualitas](docs/chatbot_quality.md).
+
+Chat mencoba menyambung otomatis saat dibuka. Setelah pengait dipasang, cukup `flutter run -d chrome`, `flutter run`, atau `flutter run -d <id-perangkat>` dari terminal PowerShell baru di proyek ini: Ollama disiapkan sebelum Flutter, termasuk setelah cold boot. Model/runtime cukup dipasang sekali. Lihat [pengaturan autostart proyek](docs/local_ai_autostart.md). HP fisik harus berada di jaringan komputer AI; komputer dan Ollama tetap menyala. Alamat dapat diperbarui melalui ikon pengaturan chatbot jika Wi-Fi/IP berubah.
 
 Lihat [panduan Smart Chatbot dan pemasangan Ollama](docs/smart_chatbot.md) untuk menjalankan server, batas kemampuan, struktur kode, dan pengujian.

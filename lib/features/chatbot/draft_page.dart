@@ -8,15 +8,24 @@ import '../../shared/pixel_widgets.dart';
 import 'chat_models.dart';
 import 'chat_controller.dart';
 import 'chat_launcher.dart';
+import 'draft_editor.dart';
+import 'draft_language.dart';
 
 typedef AttachmentPicker = Future<List<XFile>> Function();
 
 class DraftPage extends StatefulWidget {
-  const DraftPage({super.key, required this.draft, this.picker, this.chat});
+  const DraftPage({
+    super.key,
+    required this.draft,
+    this.picker,
+    this.chat,
+    this.editor,
+  });
   final StudentDraft draft;
   final ChatController? chat;
   // Pengujian dapat mengganti pemilih berkas tanpa membuka dialog sistem operasi.
   final AttachmentPicker? picker;
+  final DraftEditorService? editor;
   @override
   State<DraftPage> createState() => _DraftPageState();
 }
@@ -28,6 +37,7 @@ class _DraftPageState extends State<DraftPage> {
   final _previewKey = GlobalKey();
   String? _error;
   bool _picking = false;
+  int _editRevision = 0;
 
   @override
   void initState() {
@@ -201,6 +211,7 @@ class _DraftPageState extends State<DraftPage> {
                         const SizedBox(height: 20),
                         for (final field in fields)
                           Padding(
+                            key: ValueKey('$field-$_editRevision'),
                             padding: const EdgeInsets.only(bottom: 16),
                             child: TextFormField(
                               key: ValueKey('draft-$field'),
@@ -230,6 +241,22 @@ class _DraftPageState extends State<DraftPage> {
                               }),
                             ),
                           ),
+                        DraftEditor(
+                          service: widget.editor,
+                          readText: () => draft.value(
+                            draft.kind == DraftKind.letter
+                                ? 'Alasan'
+                                : 'Kronologi',
+                          ),
+                          onApply: (text) => setState(() {
+                            draft.fields[draft.kind == DraftKind.letter
+                                    ? 'Alasan'
+                                    : 'Kronologi'] =
+                                text;
+                            _editRevision++;
+                            _invalidate();
+                          }),
+                        ),
                         Text(
                           draft.kind == DraftKind.letter
                               ? 'Bukti wajib sebelum pratinjau surat'

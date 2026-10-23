@@ -4,11 +4,32 @@ import 'dart:typed_data';
 
 enum ChatMode { guided, localAi }
 
+enum ChatTask { study, writing }
+
+// Pilihan membawa pertanyaan lengkap agar tetap benar saat tombol lama diketuk.
+class ChatChoice {
+  const ChatChoice(this.label, this.prompt);
+  final String label;
+  final String prompt;
+}
+
 class ChatMessage {
-  const ChatMessage(this.text, {this.isUser = false, this.isAi = false});
+  const ChatMessage(
+    this.text, {
+    this.isUser = false,
+    this.isAi = false,
+    this.task = ChatTask.study,
+    this.label,
+    this.actions = const [],
+    this.choices = const [],
+  });
   final String text;
   final bool isUser;
   final bool isAi;
+  final ChatTask task;
+  final String? label;
+  final List<HelpTopic> actions;
+  final List<ChatChoice> choices;
 }
 
 enum HelpTopic {
@@ -22,7 +43,7 @@ enum HelpTopic {
   ),
   letter(
     'Buat Surat Izin',
-    'Isi data manual, tanggal izin, alasan, dan lampiran bukti untuk membuat draf lokal. Draf belum dikirim ke kampus.',
+    'Buka Izin Online untuk mengisi tanggal, alasan, bukti, perkuliahan, dan kode dosen. Mahasiswa mengajukan ke BAP untuk diperiksa. Versi saat ini simulasi lokal; belum mengirim ke kampus.',
   ),
   issue(
     'Laporkan Kendala',
@@ -44,38 +65,6 @@ enum HelpTopic {
   const HelpTopic(this.label, this.reply);
   final String label;
   final String reply;
-}
-
-// Jawaban terpandu selalu jujur mengenai sumber yang belum tersedia.
-// Permintaan layanan kampus ditangani secara pasti sebelum mencapai model AI.
-bool needsCampusData(String text) => RegExp(
-  r'\b(krs|ipk|ips|presensi|tagihan|dosen|nim|biodata|profil|kampus|siakad|izin|surat|lampiran|whatsapp)\b|nilai saya|jadwal saya|esa unggul|kirim pengajuan',
-  caseSensitive: false,
-).hasMatch(text);
-
-String guidedReply(String text) {
-  final value = text.toLowerCase();
-  if (RegExp(r'izin|sakit|surat').hasMatch(value)) {
-    return HelpTopic.letter.reply;
-  }
-  if (RegExp(r'dosen|kontak|whatsapp|pembimbing').hasMatch(value)) {
-    return HelpTopic.contact.reply;
-  }
-  if (RegExp(
-    r'krs|nilai|ipk|ips|presensi|tagihan|bayar|jadwal|nim|biodata|profil',
-  ).hasMatch(value)) {
-    return HelpTopic.records.reply;
-  }
-  if (RegExp(r'berkas|lampiran|gambar|screenshot|pdf').hasMatch(value)) {
-    return HelpTopic.files.reply;
-  }
-  if (RegExp(r'kendala|lapor|error').hasMatch(value)) {
-    return HelpTopic.issue.reply;
-  }
-  if (RegExp(r'syarat|aturan|cuti|skripsi|magang').hasMatch(value)) {
-    return HelpTopic.academic.reply;
-  }
-  return 'Saya dalam mode bantuan terpandu. Pilih bantuan di atas untuk membuat draf atau melihat ketersediaan layanan. Untuk pertanyaan bebas, aktifkan AI lokal. Data kampus belum terhubung.';
 }
 
 // Berkas ditampung di RAM, tidak diunggah ke Ollama maupun server kampus.

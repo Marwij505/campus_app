@@ -79,6 +79,7 @@ const executiveMenuGroups = [
     children: [
       ExecutiveMenuEntry(id: 'smart-chatbot', label: 'Smart Chatbot'),
       ExecutiveMenuEntry(id: 'konseling', label: 'Konseling'),
+      ExecutiveMenuEntry(id: 'izin-online', label: 'Izin Online'),
       ExecutiveMenuEntry(id: 'kuesioner', label: 'Kuesioner'),
       ExecutiveMenuEntry(
         id: 'dokumen',

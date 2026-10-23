@@ -31,6 +31,8 @@ class AuthService {
   // Waktu kedaluwarsa sesi.
   // null berarti belum login atau sudah logout.
   DateTime? _expiresAt;
+  StudentProfile? _user;
+  StudentProfile? get currentUser => hasSession ? _user : null;
 
   /// Memeriksa apakah sesi belum mencapai waktu kedaluwarsa.
   bool get hasSession {
@@ -70,8 +72,14 @@ class AuthService {
     // await menunggu tanpa menghentikan tampilan aplikasi.
     await Future<void>.delayed(const Duration(milliseconds: 800));
 
-    // Dua NIM demo yang diperbolehkan untuk mencoba aplikasi.
-    final validIdentity = ['20240801001', '20240801002'].contains(identity);
+    // Akun mahasiswa, pemeriksa BAP, dan dosen khusus simulasi lokal.
+    final validIdentity = [
+      '20240801001',
+      '20240801002',
+      'BAP001',
+      'DOS001',
+      'DOS002',
+    ].contains(identity);
 
     // Identitas atau password salah sudah cukup untuk menolak login.
     if (!validIdentity || password != '123456') {
@@ -83,7 +91,15 @@ class AuthService {
     _expiresAt = _now().add(sessionDuration);
 
     // Hanya NIM yang diketahui; data akademik tetap kosong.
-    return StudentProfile(nim: identity);
+    _user = StudentProfile(
+      nim: identity,
+      role: switch (identity) {
+        'BAP001' => UserRole.bap,
+        'DOS001' || 'DOS002' => UserRole.lecturer,
+        _ => UserRole.student,
+      },
+    );
+    return _user!;
   }
 
   /// Simulasi permintaan pemulihan password.
@@ -96,5 +112,6 @@ class AuthService {
   void logout() {
     // Setelah dikosongkan, hasSession menghasilkan false.
     _expiresAt = null;
+    _user = null;
   }
 }

@@ -28,8 +28,15 @@ class ChatHelpOptions extends StatelessWidget {
 }
 
 class ChatBubble extends StatelessWidget {
-  const ChatBubble({super.key, required this.message});
+  const ChatBubble({
+    super.key,
+    required this.message,
+    this.onChoose,
+    this.onPrompt,
+  });
   final ChatMessage message;
+  final ValueChanged<HelpTopic>? onChoose;
+  final ValueChanged<String>? onPrompt;
 
   @override
   Widget build(BuildContext context) => Align(
@@ -49,9 +56,10 @@ class ChatBubble extends StatelessWidget {
           Text(
             message.isUser
                 ? 'Kamu'
-                : message.isAi
-                ? 'AI lokal · informasi umum'
-                : 'Bantuan terpandu',
+                : message.label ??
+                      (message.isAi
+                          ? 'AI lokal · informasi umum'
+                          : 'Bantuan terpandu'),
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -63,6 +71,45 @@ class ChatBubble extends StatelessWidget {
             message.text,
             style: const TextStyle(fontSize: 12, height: 1.6),
           ),
+          // Pilihan bisa diketuk atau dijawab dengan nomor: hemat mengetik di HP.
+          if (message.choices.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var i = 0; i < message.choices.length; i++)
+                  OutlinedButton(
+                    onPressed: onPrompt == null
+                        ? null
+                        : () => onPrompt!(message.choices[i].prompt),
+                    child: Text(
+                      '${i + 1}. ${message.choices[i].label}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          if (message.actions.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final action in message.actions)
+                  OutlinedButton(
+                    onPressed: onChoose == null
+                        ? null
+                        : () => onChoose!(action),
+                    child: Text(
+                      action.label,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     ),

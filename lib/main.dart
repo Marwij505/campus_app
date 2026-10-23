@@ -16,6 +16,8 @@ import 'data/dashboard_repository.dart';
 import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
 import 'features/dashboard/dashboard_page.dart';
+import 'features/leave/leave_repository.dart';
+import 'features/leave/leave_page.dart';
 
 void main() {
   // Siapkan Flutter sebelum menggunakan layanan dan aset.
@@ -77,6 +79,8 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   // Satu layanan digunakan bersama untuk login, reset, dan logout.
   final _service = AuthService();
+  // Antrean simulasi bertahan saat berganti akun untuk mencoba alur lintas peran.
+  late final _leaves = LeaveRepository(session: () => _service.currentUser);
 
   // null berarti pengguna belum login atau sudah keluar.
   StudentProfile? _student;
@@ -156,6 +160,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
   /// Menangani tombol Keluar maupun kedaluwarsa otomatis.
   void _logout() {
+    if (_student != null) _leaves.clearDraft(_student!.nim);
     // Hentikan timer dan hapus referensinya.
     _sessionTimer?.cancel();
     _sessionTimer = null;
@@ -186,6 +191,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
     // Hapus sesi ketika AuthGate dibuang.
     _service.logout();
+    _leaves.dispose();
 
     super.dispose();
   }
@@ -214,10 +220,17 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
             service: _service,
             onLogin: _onLogin,
           )
+        : _student!.role != UserRole.student
+        ? LeavePage(
+            key: ValueKey('staff-${_student!.nim}'),
+            repository: _leaves,
+            onLogout: _logout,
+          )
         : DashboardPage(
             key: const ValueKey('dashboard'),
             student: _student!,
             repository: widget.repository,
+            leaveRepository: _leaves,
             onLogout: _logout,
           ),
   );

@@ -6,10 +6,13 @@
 /// Data identitas mahasiswa. null berarti server belum menyediakan nilainya.
 /// Jangan isi angka 0 untuk menggantikan IPK yang belum diketahui.
 // Satu objek mewakili identitas dan ringkasan nilai seorang mahasiswa.
+enum UserRole { student, bap, lecturer }
+
 class StudentProfile {
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const StudentProfile({
     required this.nim,
+    this.role = UserRole.student,
     this.name,
     this.faculty,
     this.major,
@@ -25,6 +28,8 @@ class StudentProfile {
   // Saat demo, hanya NIM yang berasal dari form login.
   // NIM wajib ada karena menjadi identitas akun untuk permintaan data beranda.
   final String nim;
+  // Identitas login tetap stabil; untuk staf nilainya berupa kode akun demo.
+  final UserRole role;
   // Nama, fakultas, program studi, status mahasiswa, dan dosen pembimbing akademik.
   final String? name, faculty, major, status, advisor;
   // Tahun masuk, semester saat ini, dan jumlah SKS yang sudah lulus.

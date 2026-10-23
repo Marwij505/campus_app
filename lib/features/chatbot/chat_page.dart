@@ -66,6 +66,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _choose(HelpTopic topic) {
     chat.choose(topic);
+    if (topic == HelpTopic.letter && chat.openLeave != null) {
+      chat.openLeave!();
+      return;
+    }
     if (topic == HelpTopic.letter || topic == HelpTopic.issue) {
       Navigator.of(context).push(
         AppMotion.route(
@@ -103,6 +107,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         backgroundColor: AppTheme.red,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            tooltip: 'Percakapan baru',
+            onPressed: chat.newConversation,
+            icon: const Icon(Icons.add_comment_outlined),
+          ),
           IconButton(
             tooltip: 'Pengaturan koneksi',
             onPressed: chat.busy
@@ -183,7 +192,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                     ],
                                     const SizedBox(height: 16),
                                     for (final message in chat.messages)
-                                      ChatBubble(message: message),
+                                      ChatBubble(
+                                        message: message,
+                                        onChoose: chat.busy ? null : _choose,
+                                        onPrompt: chat.busy ? null : chat.send,
+                                      ),
                                     if (chat.busy)
                                       const Padding(
                                         padding: EdgeInsets.all(8),
@@ -256,6 +269,19 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           style: TextStyle(fontSize: 11, height: 1.5),
         ),
         const SizedBox(height: 8),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text(
+            'Ketersediaan layanan',
+            style: TextStyle(fontSize: 11),
+          ),
+          children: [
+            Text(
+              chat.capabilities.summary,
+              style: const TextStyle(fontSize: 11, height: 1.5),
+            ),
+          ],
+        ),
         Wrap(
           spacing: 8,
           children: [

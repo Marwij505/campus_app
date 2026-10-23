@@ -24,10 +24,16 @@ if ($LASTEXITCODE -ne 0) { throw 'Server lokal gagal dimulai.' }
 $endpoint = (Get-Content -LiteralPath (Join-Path $aiRoot 'endpoint.txt') -Raw).Trim()
 $installed = Invoke-RestMethod ($endpoint + '/api/tags') -TimeoutSec 10
 if ($installed.models.name -contains 'qwen2.5:1.5b') {
+    # Daftarkan pengait sekali agar terminal baru dapat memakai flutter run langsung.
+    & $shellExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'install_autostart.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'Pemasangan pengait Flutter gagal.' }
     Write-Output 'Ollama dan model campus_app sudah terpasang. Smart Chatbot menyambung otomatis saat dibuka.'
     exit 0
 }
 Write-Output 'Mengunduh model qwen2.5:1.5b ke penyimpanan campus_app...'
 $result = Invoke-RestMethod ($endpoint + '/api/pull') -Method Post -ContentType 'application/json' -Body '{"model":"qwen2.5:1.5b","stream":false}' -TimeoutSec 3600
 if ($result.status -ne 'success') { throw 'Unduhan model belum berhasil.' }
+# Profil hanya memuat pengait; AI tidak menyala saat Windows login atau terminal dibuka.
+& $shellExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'install_autostart.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Pemasangan pengait Flutter gagal.' }
 Write-Output 'Selesai. Smart Chatbot menyambung otomatis saat dibuka.'
