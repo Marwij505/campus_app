@@ -2,7 +2,19 @@
 # Jalankan memakai powershell.exe -NoProfile -File tool/local_ai/test_autostart.ps1.
 $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$fixture = Join-Path $projectRoot ('build/autostart-test-' + [Guid]::NewGuid().ToString('N'))
+# Folder biasa dan file workspace harus memuat profil terminal yang sama.
+$folderSettings = Get-Content (Join-Path $projectRoot '.vscode/settings.json') -Raw | ConvertFrom-Json
+$workspaceSettings = (Get-Content (Join-Path $projectRoot 'campus_app.code-workspace') -Raw | ConvertFrom-Json).settings
+if (($folderSettings | ConvertTo-Json -Depth 10 -Compress) -ne ($workspaceSettings | ConvertTo-Json -Depth 10 -Compress)) {
+    throw 'Konfigurasi terminal folder dan workspace berbeda.'
+}
+$terminal = $folderSettings.'terminal.integrated.profiles.windows'.'Campus App (AI otomatis)'
+if ($terminal.args[-1] -ne '${workspaceFolder}\tool\local_ai\flutter_hook.ps1' -or
+    $terminal.args -notcontains '-NoExit' -or $terminal.args -notcontains '-File' -or
+    $folderSettings.'terminal.integrated.defaultProfile.windows' -ne 'Campus App (AI otomatis)') {
+    throw 'Profil terminal harus memuat pengait proyek dan tetap terbuka.'
+}
+$fixture = Join-Path $projectRoot ('build/autostart test-' + [Guid]::NewGuid().ToString('N'))
 $scripts = Join-Path $fixture 'tool/local_ai'
 $null = New-Item -ItemType Directory -Force -Path $scripts
 $null = New-Item -ItemType Directory -Force -Path (Join-Path $fixture 'lib')
@@ -11,8 +23,9 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'flutter_hook.ps1') -Destination
 
 # Server palsu mencatat bahwa penyiapan terjadi sebelum panggilan SDK.
 @'
-param([switch]$RequireModel)
+param([switch]$RequireModel, [switch]$Repair)
 if (!$RequireModel) { throw 'Model harus diperiksa sebelum Flutter.' }
+if (!$Repair) { throw 'Pemulihan instalasi harus aktif sebelum Flutter.' }
 Add-Content -LiteralPath $env:CAMPUS_TEST_EVENTS -Value 'ai'
 if ($env:CAMPUS_TEST_FAIL -eq '1') { exit 1 }
 exit 0
@@ -46,7 +59,9 @@ function Assert-Calls([string]$Expected) {
 
 Push-Location $fixture
 try {
-    . (Join-Path $scripts 'flutter_hook.ps1')
+    # Jalankan sebagai file, seperti profil VS Code; tidak memerlukan profil pengguna.
+    & (Join-Path $scripts 'flutter_hook.ps1')
+    Assert-True (!(Test-Path $env:CAMPUS_TEST_EVENTS)) 'membuka terminal belum mengunduh atau menjalankan AI'
     foreach ($device in @('chrome', 'emulator-5554')) {
         Reset-Calls
         flutter run -d $device '--dart-define=LABEL=dua kata'
@@ -58,6 +73,11 @@ try {
     Reset-Calls
     flutter run
     Assert-Calls 'ai,flutter'
+    Reset-Calls
+    flutter run -d chrome --release --target lib/main.dart
+    Assert-Calls 'ai,flutter'
+    $forwarded = Get-Content -LiteralPath $env:CAMPUS_TEST_ARGUMENTS -Raw | ConvertFrom-Json
+    Assert-True (($forwarded -join '|') -eq 'run|-d|chrome|--release|--target|lib/main.dart') 'opsi Flutter diteruskan utuh'
     # Memuat profil dua kali tidak boleh membuat pemanggilan bertumpuk/rekursif.
     . (Join-Path $scripts 'flutter_hook.ps1')
     Reset-Calls

@@ -1,12 +1,16 @@
 # Nyalakan Ollama khusus campus_app, lalu tunggu layanan benar-benar siap.
-# RequireModel dipakai pengait flutter run; setup boleh mulai sebelum model diunduh.
-param([switch]$LocalOnly, [switch]$RequireModel)
+# RequireModel memeriksa model; Repair memulihkan instalasi yang belum lengkap.
+param([switch]$LocalOnly, [switch]$RequireModel, [switch]$Repair)
 $ErrorActionPreference = 'Stop'
+# Proses tersembunyi dari PowerShell 7 dapat mewarisi daftar modul shell induk.
+# Muat modul bawaan shell ini secara eksplisit agar checksum/ZIP tetap tersedia.
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility') -ErrorAction Stop
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Archive') -ErrorAction Stop
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $aiRoot = Join-Path $projectRoot '.local-ai'
 $exe = Join-Path $aiRoot 'runtime/ollama.exe'
 $pidFile = Join-Path $aiRoot 'server.pid'
-if (!(Test-Path -LiteralPath $exe)) { throw 'Jalankan tool/local_ai/setup.ps1 sekali untuk memasang runtime dan model.' }
+. (Join-Path $PSScriptRoot 'runtime.ps1')
 
 # Dua terminal yang menjalankan Flutter bersamaan harus bergiliran menyiapkan server.
 $hash = [Security.Cryptography.SHA256]::Create()
@@ -15,10 +19,42 @@ try {
 } finally { $hash.Dispose() }
 $mutex = New-Object Threading.Mutex($false, ('Local\CampusAppAI-' + $key))
 $locked = $false
+$waiting = $false
+$waitStarted = Get-Date
 try {
-    try { $locked = $mutex.WaitOne(120000) }
+    # Unduhan pertama dapat lama. Terminal kedua menunggu tanpa mengunduh berbarengan.
+    try {
+        while (!$locked) {
+            $locked = $mutex.WaitOne(10000)
+            if (!$locked) {
+                # Proses lain bisa berupa pemulihan latar belakang, bukan terminal terlihat.
+                # Pesan tetap ditulis sekali; progres diperbarui pada baris yang sama.
+                if (!$waiting) {
+                    Write-Output '[campus_app] Penyiapan AI masih berjalan di proses lain/latar belakang. Menunggu selesai; Ctrl+C membatalkan penantian ini.'
+                    $waiting = $true
+                }
+                $elapsed = [int]((Get-Date) - $waitStarted).TotalSeconds
+                $status = "Menunggu $elapsed detik. Proses pemilik instalasi masih bekerja."
+                $archive = Get-Item -LiteralPath (Join-Path $aiRoot 'ollama-windows-amd64.zip') -ErrorAction SilentlyContinue
+                if ($archive -and !(Test-CampusRuntime $aiRoot)) {
+                    # Ukuran berkas adalah progres unduhan, bukan persentase semua instalasi.
+                    $downloaded = [math]::Round($archive.Length / 1MB, 1)
+                    $status = "Runtime terunduh $downloaded MiB; menunggu unduhan/verifikasi/ekstraksi. Waktu tunggu $elapsed detik."
+                }
+                Write-Progress -Id 35 -Activity 'Menunggu penyiapan Ollama proyek' -Status $status
+            }
+        }
+    }
     catch [Threading.AbandonedMutexException] { $locked = $true }
-    if (!$locked) { throw 'Penyiapan AI oleh terminal lain belum selesai. Coba lagi sebentar.' }
+    if ($waiting) { Write-Progress -Id 35 -Activity 'Menunggu penyiapan Ollama proyek' -Completed }
+
+    if ($Repair -and !(Test-CampusRuntime $aiRoot)) {
+        # Jangan menimpa runtime yang sedang digunakan meskipun penandanya hilang.
+        $running = Get-Process -Name ollama -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe }
+        if ($running) { throw 'Runtime perlu diperiksa, tetapi server proyek masih aktif. Jalankan stop.ps1 dahulu lalu ulangi flutter run.' }
+        Restore-CampusRuntime $aiRoot
+    }
+    if (!(Test-Path -LiteralPath $exe)) { throw 'Runtime Ollama tidak ditemukan. Jalankan setup.ps1 atau flutter run melalui pengait pemulihan.' }
 
     # Pilih satu jaringan fisik. Tanpa LAN, Chrome dan emulator memakai loopback.
     $lan = Get-NetIPConfiguration | Where-Object {
@@ -86,10 +122,7 @@ try {
     }
     if (!$ready) { throw 'Ollama belum siap. Periksa .local-ai/server.err.log.' }
     if ($RequireModel) {
-        $installed = Invoke-RestMethod ($endpoint + '/api/tags') -TimeoutSec 10
-        if ($installed.models.name -notcontains 'qwen2.5:1.5b') {
-            throw 'Model qwen2.5:1.5b belum ada. Jalankan tool/local_ai/setup.ps1 sekali sebelum flutter run.'
-        }
+        Confirm-CampusModel -Executable $exe -Endpoint $endpoint -Repair:$Repair
     }
 
     # Perbarui alamat sebelum Flutter membundel aset; IP baru setelah cold boot ikut terbaca.
@@ -100,6 +133,7 @@ try {
     Set-Content -LiteralPath (Join-Path $aiRoot 'endpoint.txt') -Value $endpoint
     Write-Output ('Ollama campus_app siap di ' + $endpoint + $(if ($reuse) { ' (memakai server yang sudah aktif).' } else { ' (server baru).' }))
 } finally {
+    if ($waiting) { Write-Progress -Id 35 -Activity 'Menunggu penyiapan Ollama proyek' -Completed }
     if ($locked) { $mutex.ReleaseMutex() }
     $mutex.Dispose()
 }

@@ -1,4 +1,6 @@
-# Dimuat oleh profil PowerShell. File ini hanya memasang fungsi, belum menyalakan AI.
+# Dimuat oleh terminal proyek VS Code atau profil PowerShell yang sudah dipasang.
+# VS Code memakai -File dan -NoExit: fungsi tetap ada saat pengguna mulai mengetik.
+# File ini hanya memasang fungsi di terminal itu, belum mengunduh/menyalakan AI.
 # Pengait berlaku untuk flutter run di proyek ini; perintah lain langsung ke SDK.
 & {
     $campusProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -42,7 +44,7 @@
             $shell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
             & $shell -NoProfile -ExecutionPolicy Bypass -File (
                 Join-Path $campusProjectRoot 'tool/local_ai/start.ps1'
-            ) -RequireModel
+            ) -RequireModel -Repair
             if ($LASTEXITCODE -ne 0) {
                 Write-Error 'AI belum siap; Flutter belum dijalankan. Periksa pesan di atas lalu coba lagi.' -ErrorAction Continue
                 $global:LASTEXITCODE = 1

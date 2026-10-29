@@ -157,6 +157,8 @@ Smart Chatbot tersedia melalui Akses Cepat dan menu Layanan. Pesan singkat seper
 
 Chatbot membedakan pertanyaan umum, data pribadi, aturan kampus, dan permintaan tindakan. Ada glosarium akademik umum, konteks percakapan, validasi respons, serta penyuntingan alasan/kronologi dengan tinjauan pengguna. Lihat [upgrade dan pengujian kualitas](docs/chatbot_quality.md).
 
-Chat mencoba menyambung otomatis saat dibuka. Setelah pengait dipasang, cukup `flutter run -d chrome`, `flutter run`, atau `flutter run -d <id-perangkat>` dari terminal PowerShell baru di proyek ini: Ollama disiapkan sebelum Flutter, termasuk setelah cold boot. Model/runtime cukup dipasang sekali. Lihat [pengaturan autostart proyek](docs/local_ai_autostart.md). HP fisik harus berada di jaringan komputer AI; komputer dan Ollama tetap menyala. Alamat dapat diperbarui melalui ikon pengaturan chatbot jika Wi-Fi/IP berubah.
+Di **VS Code Windows**, buka folder `campus_app` atau file `campus_app.code-workspace`, lalu buat terminal baru **Campus App (AI otomatis)**. Cukup jalankan `flutter run -d chrome`, `flutter run`, atau `flutter run -d <id-perangkat>`: runtime/model Ollama yang belum ada dipasang otomatis, lalu server disiapkan sebelum Flutter. Tidak perlu mengetik `setup.ps1` di terminal proyek ini. Unduhan awal sekitar 2,5 GB membutuhkan internet; instalasi lengkap dipakai kembali, termasuk setelah cold boot. Terminal PowerShell di luar VS Code tetap perlu pemasangan pengait sekali. Lihat [pengaturan autostart proyek](docs/local_ai_autostart.md).
+
+Chat mencoba menyambung otomatis saat dibuka. HP fisik harus berada di jaringan komputer AI; komputer dan Ollama tetap menyala. Alamat dapat diperbarui melalui ikon pengaturan chatbot jika Wi-Fi/IP berubah.
 
 Lihat [panduan Smart Chatbot dan pemasangan Ollama](docs/smart_chatbot.md) untuk menjalankan server, batas kemampuan, struktur kode, dan pengujian.

@@ -21,7 +21,9 @@ Data akademik tidak dikarang. Pertanyaan layanan kampus yang dikenali diarahkan 
 
 ## Ollama khusus proyek di Windows
 
-Jalankan dari akar proyek menggunakan Windows PowerShell bawaan. Tidak perlu memasang PowerShell 7. Skrip juga mendukung PowerShell 7 bila sudah tersedia.
+Cara langsung setelah clone/pull di **VS Code Windows**: buka folder `campus_app` atau `campus_app.code-workspace`, buat terminal baru **Campus App (AI otomatis)**, lalu ketik `flutter run -d chrome` atau `flutter run`. Tidak perlu menjalankan setup secara manual. Runtime/model yang belum ada diunduh, lalu AI dinyalakan sebelum Flutter. Flutter SDK harus sudah tersedia; unduhan awal sekitar 2,5 GB memerlukan internet. Lihat [panduan terminal proyek](local_ai_autostart.md).
+
+Alternatif untuk PowerShell di luar VS Code: jalankan setup sekali dari akar proyek. Tidak perlu memasang PowerShell 7. Skrip juga mendukung PowerShell 7 bila sudah tersedia.
 
 ```powershell
 # Sekali saat pemasangan: unduh runtime resmi dan model (~2,5 GB unduhan total).
@@ -40,7 +42,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tool\local_ai\stop.ps1
 
 Runtime portable v0.40.5 (SHA-256 diverifikasi), model `qwen2.5:1.5b`, log, dan PID disimpan di `.local-ai/`, yang diabaikan Git. `start.ps1` memilih satu IP LAN fisik yang memiliki gateway (Wi-Fi/Ethernet); jika tidak ada, memakai `127.0.0.1`. Server memakai port 11435 dan tidak bind ke semua antarmuka/VPN. Penyimpanan model khusus proyek dan cloud dinonaktifkan. Tidak mengubah PATH, tidak memasang layanan/startup Windows, dan tidak memakai API key.
 
-`setup.ps1` juga memasang pengait pada profil pengguna Windows PowerShell 5.1 dan PowerShell 7. Pengait hanya menyiapkan AI untuk `flutter run` di proyek ini, lalu meneruskan argumen dan kontrol interaktif ke SDK asli. Model tidak diunduh ulang saat menjalankan aplikasi. Profil lama dicadangkan jika perlu diubah. Untuk instalasi yang sudah punya Ollama, cukup jalankan `install_autostart.ps1` sekali; lihat [panduan autostart](local_ai_autostart.md), termasuk cara menonaktifkan dan batas terminal yang didukung.
+`setup.ps1` juga memasang pengait pada profil pengguna Windows PowerShell 5.1 dan PowerShell 7. Pengait hanya menyiapkan AI untuk `flutter run` di proyek ini, lalu meneruskan argumen dan kontrol interaktif ke SDK asli. Runtime/model lengkap dipakai kembali; jika hilang, pengait memulihkannya otomatis (unduhan memerlukan internet). Profil lama dicadangkan jika perlu diubah. Untuk instalasi yang sudah punya Ollama, cukup jalankan `install_autostart.ps1` sekali; lihat [panduan autostart](local_ai_autostart.md), termasuk cara menonaktifkan dan batas terminal yang didukung.
 
 Internet diperlukan saat unduhan awal. Setelah model tersedia, jawaban lokal tidak memerlukan internet; komputer dan proses Ollama tetap harus menyala. Model ringan dipilih untuk prototipe, bukan jaminan kualitas jawaban bahasa Indonesia atau aturan akademik.
 

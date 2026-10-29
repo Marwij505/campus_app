@@ -1,0 +1,18 @@
+{
+  "terminal.integrated.profiles.windows": {
+    "Campus App (AI otomatis)": {
+      "path": "${env:windir}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\tool\\local_ai\\flutter_hook.ps1"
+      ],
+      "icon": "terminal-powershell"
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "Campus App (AI otomatis)",
+  "terminal.integrated.cwd": "${workspaceFolder}"
+}
