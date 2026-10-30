@@ -66,3 +66,7 @@ assets/local_ai/connection.json
 /windows/flutter/generated_plugin_registrant.cc
 /windows/flutter/generated_plugin_registrant.h
 /windows/flutter/generated_plugins.cmake
+
+# Header plugin dibuat ulang otomatis oleh Flutter.
+/linux/flutter/generated_plugin_registrant.h
+/windows/flutter/generated_plugin_registrant.h
