@@ -1,11 +1,11 @@
 {
-    "name": "money_management",
-    "short_name": "money_management",
+    "name": "campus_app",
+    "short_name": "campus_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A Academic Information Project Using Flutter Framework and Supabase as Database",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

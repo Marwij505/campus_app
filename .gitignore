@@ -50,6 +50,12 @@ app.*.map.json
 # Runtime dan model AI lokal hanya milik mesin ini, tidak dimasukkan ke Git.
 .local-ai/
 
+# Cache CLI dan rahasia lokal tidak dibagikan bersama source code.
+/supabase/.temp/
+.env
+.env.*
+!.env.example
+
 # Alamat LAN komputer dibuat ulang oleh start.ps1, bukan dibagikan melalui Git.
 assets/local_ai/connection.json
 

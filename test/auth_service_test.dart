@@ -1,3 +1,4 @@
+import 'support/fake_auth_service.dart';
 // Pengujian aturan login dan sesi tanpa membuka tampilan.
 //
 // expect membandingkan hasil dengan harapan.
@@ -10,7 +11,7 @@ import 'package:campus_app/data/auth_service.dart';
 void main() {
   test('Akun salah ditolak dan tidak membuat sesi', () async {
     // Gunakan layanan baru agar test tidak berbagi sesi.
-    final service = AuthService();
+    final service = FakeAuthService();
 
     // Akun salah harus menghasilkan AuthException.
     await expectLater(
@@ -26,7 +27,7 @@ void main() {
   test('Kedua akun demo dapat login', () async {
     // Jalankan pemeriksaan untuk masing-masing NIM demo.
     for (final nim in ['20240801001', '20240801002']) {
-      final service = AuthService();
+      final service = FakeAuthService();
 
       final student = await service.login(identity: nim, password: '123456');
 
@@ -42,7 +43,7 @@ void main() {
   });
 
   test('Logout menghapus sesi', () async {
-    final service = AuthService();
+    final service = FakeAuthService();
 
     await service.login(identity: '20240801002', password: '123456');
 
@@ -61,7 +62,7 @@ void main() {
     var currentTime = DateTime.utc(2026, 10, 11, 8);
 
     // Layanan membaca currentTime setiap kali memeriksa waktu.
-    final service = AuthService(now: () => currentTime);
+    final service = FakeAuthService(now: () => currentTime);
 
     await service.login(identity: '20240801001', password: '123456');
 

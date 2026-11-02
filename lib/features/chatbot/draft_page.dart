@@ -42,6 +42,12 @@ class _DraftPageState extends State<DraftPage> {
   @override
   void initState() {
     super.initState();
+    final profile = widget.chat?.profile;
+    if (profile?.id != null) {
+      draft.fields['Nama'] = profile!.name ?? '';
+      draft.fields['NIM'] = profile.nim;
+      draft.preview = null;
+    }
     _preview.text = draft.preview ?? '';
   }
 
@@ -204,9 +210,11 @@ class _DraftPageState extends State<DraftPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Identitas diisi manual dan belum diverifikasi kampus. Draf hanya tersimpan selama sesi login. Lampiran tidak diunggah ke AI atau kampus.',
-                          style: TextStyle(fontSize: 11),
+                        Text(
+                          widget.chat?.profile?.id != null
+                              ? 'Identitas mengikuti profil akun; status verifikasi kampus tetap mengikuti Biodata. Draf lokal belum dikirim. Lampiran tidak diunggah ke AI atau kampus.'
+                              : 'Identitas diisi manual dan belum diverifikasi kampus. Draf hanya tersimpan selama sesi login. Lampiran tidak diunggah ke AI atau kampus.',
+                          style: const TextStyle(fontSize: 11),
                         ),
                         const SizedBox(height: 20),
                         for (final field in fields)
@@ -216,6 +224,9 @@ class _DraftPageState extends State<DraftPage> {
                             child: TextFormField(
                               key: ValueKey('draft-$field'),
                               initialValue: draft.fields[field],
+                              readOnly:
+                                  widget.chat?.profile?.id != null &&
+                                  ['Nama', 'NIM'].contains(field),
                               minLines:
                                   field == 'Alasan' || field == 'Kronologi'
                                   ? 3

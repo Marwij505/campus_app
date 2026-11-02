@@ -1,0 +1,5 @@
+project_id = "campus_app"
+
+[functions.login-with-nim]
+# Fungsi melakukan autentikasi password sendiri, sebab pengguna belum memiliki JWT.
+verify_jwt = false

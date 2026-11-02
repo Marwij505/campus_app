@@ -62,8 +62,14 @@ Future<void> openSmartChat(
 }
 
 class ChatLauncher extends StatelessWidget {
-  const ChatLauncher({super.key, required this.controller});
+  const ChatLauncher({
+    super.key,
+    required this.controller,
+    this.docked = false,
+  });
   final ChatController controller;
+  // Tombol tengah navigasi memakai bentuk bulat agar menjadi aksi utama.
+  final bool docked;
 
   @override
   Widget build(BuildContext context) {
@@ -79,10 +85,12 @@ class ChatLauncher extends StatelessWidget {
       tooltip: 'Buka Smart Chatbot',
       backgroundColor: AppTheme.blue,
       foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppTheme.ink, width: 2),
-      ),
+      shape: docked
+          ? const CircleBorder(side: BorderSide(color: AppTheme.ink, width: 2))
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: AppTheme.ink, width: 2),
+            ),
       onPressed: () => openSmartChat(context, controller),
       child: const Icon(Icons.smart_toy_outlined),
     );

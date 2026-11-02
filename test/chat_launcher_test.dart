@@ -1,3 +1,5 @@
+import 'support/fake_auth_service.dart';
+
 // Uji akses chat di seluruh halaman serta pemisahan riwayat antarakun.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,16 +59,20 @@ void main() {
       );
       await tester.pumpAndSettle();
       final rect = tester.getRect(launcher);
-      expect(size.width - rect.right, closeTo(16, 1));
       if (size.width < 600) {
+        // Di HP tombol menjadi aksi tengah, menonjol di atas garis navigasi.
+        expect(rect.center.dx, closeTo(size.width / 2, 1));
         expect(
-          rect.bottom,
-          lessThan(
+          rect.top,
+          closeTo(
             tester
                 .getTopLeft(find.byKey(const ValueKey('phone-navigation')))
                 .dy,
+            1,
           ),
         );
+      } else {
+        expect(size.width - rect.right, closeTo(16, 1));
       }
       await tap(tester, launcher);
       final chatRect = tester.getRect(find.byType(ChatPage));
@@ -160,7 +166,7 @@ void main() {
     'Semua akun memiliki pintasan dan tombol; logout membersihkan chat',
     (tester) async {
       viewport(tester, const Size(390, 844));
-      await tester.pumpWidget(const CampusApp());
+      await tester.pumpWidget(CampusApp(authService: FakeAuthService()));
       await tester.pumpAndSettle();
       expect(launcher, findsNothing);
       for (final nim in ['20240801001', '20240801002']) {

@@ -13,12 +13,15 @@ import '../../core/responsive_layout.dart';
 import '../../data/dashboard_models.dart';
 import '../../data/dashboard_repository.dart';
 import '../../data/student_profile.dart';
+import '../../data/auth_service.dart';
+import '../profile/profile_page.dart';
 import '../../shared/pixel_widgets.dart';
 import '../chatbot/chat_controller.dart';
 import '../chatbot/chat_launcher.dart';
 import '../leave/leave_page.dart';
 import '../leave/leave_repository.dart';
 import 'dashboard_detail_page.dart';
+import 'dashboard_navigation.dart';
 import 'dashboard_widgets.dart';
 import 'executive_menu.dart';
 import 'information_panels.dart';
@@ -36,6 +39,7 @@ class DashboardPage extends StatefulWidget {
     this.repository = const EmptyDashboardRepository(),
     this.clock,
     this.leaveRepository,
+    this.authService,
   });
   // Profil awal dari login; bisa dilengkapi oleh profil dari hasil repository.
   final StudentProfile student;
@@ -47,6 +51,7 @@ class DashboardPage extends StatefulWidget {
   // Jam opsional; jika tidak diberikan, halaman membaca waktu perangkat.
   final DateTime Function()? clock;
   final LeaveRepository? leaveRepository;
+  final AuthService? authService;
   @override
   // Hubungkan konfigurasi widget dengan objek State yang menyimpan perubahan selama tampil.
   State<DashboardPage> createState() => _DashboardPageState();
@@ -57,20 +62,20 @@ class _DashboardPageState extends State<DashboardPage> {
   // Chat dan draf bertahan saat kembali ke beranda, lalu dibersihkan ketika logout.
   final _chat = ChatController();
   late final LeaveRepository _leaves;
-  // Kunci-kunci berikut menjadi penanda lokasi panel untuk tujuan gulir otomatis.
+  // Pengendali posisi gulir untuk scrollbar dan perintah kembali ke bagian atas.
+  final _scroll = ScrollController();
+  // Penanda lokasi panel agar tombol bawah dapat menggulir tepat ke tujuannya.
   final _profileKey = GlobalKey();
   final _scheduleKey = GlobalKey();
   final _academicKey = GlobalKey();
-  // Pengendali posisi gulir untuk scrollbar dan perintah kembali ke bagian atas.
-  final _scroll = ScrollController();
+  // Menyimpan tombol terakhir yang dipilih pada navigasi bawah.
+  int _selectedNavigation = 0;
   // Paket data yang sedang ditampilkan; awalnya kosong sambil menunggu pemuatan.
   DashboardData _data = const DashboardData();
   // true menampilkan indikator pemuatan dan menonaktifkan tombol muat ulang.
   bool _loading = true;
   // Pesan pemuatan gagal; null berarti belum ada kesalahan yang perlu ditampilkan.
   String? _error;
-  // Nomor menu yang aktif: 0 beranda, 1 jadwal, 2 akademik, 3 profil.
-  int _navIndex = 0;
   // Nomor urut permintaan untuk mencegah respons lama menimpa hasil permintaan terbaru.
   int _requestId = 0;
   // Pembaruan berkala agar tanggal dan status kelas mengikuti waktu berjalan.
@@ -86,6 +91,7 @@ class _DashboardPageState extends State<DashboardPage> {
         widget.leaveRepository ??
         LeaveRepository(session: () => widget.student);
     _chat.openLeave = _openLeave;
+    _chat.updateProfile(widget.student);
     _now = (widget.clock ?? DateTime.now)().toLocal();
     _load();
     // Timer hanya mengubah status/tanggal setiap menit, bukan setiap frame.
@@ -100,6 +106,9 @@ class _DashboardPageState extends State<DashboardPage> {
   // Jika induk mengganti sumber data atau NIM, ambil ulang data untuk konfigurasi baru.
   void didUpdateWidget(covariant DashboardPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.student != widget.student) {
+      _chat.updateProfile(widget.student);
+    }
     if (oldWidget.repository != widget.repository ||
         oldWidget.student.nim != widget.student.nim) {
       _load();
@@ -150,34 +159,49 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
-  /// Navigasi pada beranda menggulir ke bagian yang bersangkutan.
+  /// Navigasi bawah hanya berpindah posisi di dalam dashboard.
   void _navigate(int index) {
-    setState(() => _navIndex = index);
-    // Menu Beranda menggulir ke paling atas; menu lain mencari panel tujuannya.
-    if (index == 0) {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(
-          0,
-          duration: AppMotion.duration(context, 420),
-          curve: Curves.easeInOutCubic,
-        );
-      }
-      return;
-    }
-    final key = [_profileKey, _scheduleKey, _academicKey, _profileKey][index];
-    _showSection(key);
-  }
+    if (index < 0 || index > 3) return;
 
-  // Bawa panel dengan kunci tertentu ke area layar yang terlihat.
-  void _showSection(GlobalKey key) {
-    final target = key.currentContext;
-    if (target != null) {
-      Scrollable.ensureVisible(
-        target,
+    if (index == 0) {
+      if (!_scroll.hasClients) return;
+
+      setState(() => _selectedNavigation = index);
+      _scroll.animateTo(
+        0,
         duration: AppMotion.duration(context, 420),
         curve: Curves.easeInOutCubic,
       );
+      return;
     }
+
+    // Setiap pilihan menunjuk panel yang sudah ada di landing page.
+    final targetKey = switch (index) {
+      1 => _scheduleKey,
+      2 => _academicKey,
+      _ => _profileKey,
+    };
+    final targetContext = targetKey.currentContext;
+
+    // Panel jadwal/akademik belum tampil saat pemuatan atau ketika terjadi error.
+    if (targetContext == null) {
+      _message(
+        _loading
+            ? 'Beranda sedang dimuat. Coba lagi sebentar.'
+            : 'Bagian ini belum tersedia. Coba muat ulang beranda.',
+      );
+      return;
+    }
+
+    setState(() => _selectedNavigation = index);
+
+    // Posisi dihitung dari widget, sehingga tidak bergantung tinggi kartu atau HP.
+    Scrollable.ensureVisible(
+      targetContext,
+      alignment: 0,
+      duration: AppMotion.duration(context, 420),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   // Tampilkan satu pesan singkat; hapus pesan lama agar pemberitahuan tidak menumpuk.
@@ -277,10 +301,19 @@ class _DashboardPageState extends State<DashboardPage> {
   );
 
   // Akses Cepat dan Executive Menu memakai tujuan yang sama.
-  // Modul yang belum siap, termasuk Biodata, Nilai & Presensi, dan Konseling,
-  // membuka halaman kosong tersendiri, bukan menggulir ke panel beranda.
+  // Biodata memakai layanan profil; modul yang belum siap membuka halaman kosong.
   void _quickAction(String label) {
     switch (label) {
+      case 'Biodata':
+        if (widget.authService == null) {
+          _unavailable(label);
+          return;
+        }
+        Navigator.of(context).push(
+          AppMotion.route(
+            ProfilePage(service: widget.authService!, chat: _chat),
+          ),
+        );
       case 'Izin Online':
         _openLeave();
       case 'Smart Chatbot':
@@ -307,7 +340,8 @@ class _DashboardPageState extends State<DashboardPage> {
       // Deteksi teks yang diperbesar agar header dapat memberi ruang lebih banyak.
       final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
       return Scaffold(
-        floatingActionButton: ChatLauncher(controller: _chat),
+        // HP memakai satu tombol chat di tengah navigasi, tanpa tombol duplikat.
+        floatingActionButton: compact ? null : ChatLauncher(controller: _chat),
         // Bagian paling atas berisi identitas aplikasi dan tombol navigasi.
         appBar: AppBar(
           backgroundColor: AppTheme.red,
@@ -485,27 +519,12 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
         ),
-        // Pada layar kecil, empat menu utama dipasang di bawah agar mudah disentuh.
+        // Pada layar kecil, empat tujuan mengapit tombol utama Smart Chatbot.
         bottomNavigationBar: compact
-            ? Material(
-                color: Colors.white,
-                child: SafeArea(
-                  top: false,
-                  child: Container(
-                    key: const ValueKey('phone-navigation'),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: AppTheme.ink, width: 3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        for (var i = 0; i < _destinations.length; i++)
-                          Expanded(child: _navButton(i)),
-                      ],
-                    ),
-                  ),
-                ),
+            ? DashboardNavigation(
+                selectedIndex: _selectedNavigation,
+                onSelected: _navigate,
+                chatButton: ChatLauncher(controller: _chat, docked: true),
               )
             : null,
       );
@@ -525,53 +544,23 @@ class _DashboardPageState extends State<DashboardPage> {
         label: Text(label, style: const TextStyle(fontSize: 11)),
       );
 
-  // Navigasi bawah hanya dipakai HP; tablet mengakses menu melalui header.
-  Widget _navButton(int index) {
-    final entry = _destinations[index];
-    final selected = _navIndex == index;
-    // Berikan informasi tombol dan pilihan aktif kepada pembaca layar.
-    return Semantics(
-      selected: selected,
-      button: true,
-      child: InkWell(
-        onTap: () => _navigate(index),
-        child: AnimatedContainer(
-          duration: AppMotion.duration(context, 180),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-          color: selected ? const Color(0xFFEAF2FC) : Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                entry.icon,
-                size: 23,
-                color: selected ? AppTheme.blue : AppTheme.muted,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                entry.label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                  color: selected ? AppTheme.blue : AppTheme.muted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // Susun isi utama berdasarkan keadaan memuat, gagal, atau berhasil mendapatkan data.
   Widget _content() {
     // Pilih profil repository bila tersedia; jika tidak, tetap tampilkan NIM dari login.
-    final profile = _data.student ?? widget.student;
+    final profile = widget.student.id != null
+        ? widget.student
+        : _data.student ?? widget.student;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('SELAMAT DATANG', style: AppTheme.pixel(9, color: AppTheme.blue)),
+        if (profile.id != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Halo, ${profile.greetingName}.',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
         const SizedBox(height: 8),
         const Text(
           'Ruang akademikmu, dalam satu beranda.',
@@ -626,8 +615,10 @@ class _DashboardPageState extends State<DashboardPage> {
           _agendaBanner(),
           const SizedBox(height: 20),
         ],
+        // Profil pada navigasi bawah menggulir ke kartu informasi mahasiswa.
         Entrance(
-          child: ProfilePanel(key: _profileKey, student: profile),
+          key: _profileKey,
+          child: ProfilePanel(student: profile),
         ),
         const SizedBox(height: 24),
         Text('AKSES CEPAT', style: AppTheme.pixel(9, color: AppTheme.blue)),
@@ -873,15 +864,4 @@ const _quickEntries = [
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   _MenuEntry('Konseling', Icons.handshake_outlined, Color(0xFF198754)),
   _MenuEntry('Izin Online', Icons.description_outlined, Color(0xFF198754)),
-];
-// Urutan ini harus sejalan dengan nomor menu yang ditangani _navigate.
-const _destinations = [
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
-  _MenuEntry('Beranda', Icons.home_outlined),
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
-  _MenuEntry('Jadwal', Icons.calendar_month_outlined),
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
-  _MenuEntry('Akademik', Icons.school_outlined),
-  // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
-  _MenuEntry('Profil', Icons.person_outline),
 ];

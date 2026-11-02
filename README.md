@@ -1,155 +1,89 @@
 # Campus App — SIAKAD Fasilkom
 
-Aplikasi prototipe Sistem Informasi Akademik (SIAKAD) Fasilkom berbasis Flutter. Aplikasi menampilkan alur login dan dashboard mahasiswa dengan gaya retro/pixel, font lokal, serta animasi transisi.
+Aplikasi Flutter SIAKAD dengan tema retro/pixel. **Login dan profil mahasiswa memakai Supabase Auth, Postgres, serta Storage privat.** Data akademik, keuangan, dan administrasi kampus masih dikembangkan; data yang belum tersedia tidak dibuat-buat.
 
-Saat ini aplikasi menggunakan akun dan data contoh di dalam kode. Belum ada integrasi backend, database, atau layanan email.
+## Fitur dan status
 
-## Fitur
+- **Login nyata:** NIM/password melalui Edge Function, pembatasan percobaan, pesan kesalahan umum, logout, dan sesi absolut 30 menit yang ditegakkan server.
+- **Biodata:** tujuh tab untuk biodata, pendidikan, keluarga, pekerjaan, disabilitas, riwayat keuangan, dan berkas privat. Formulir pribadi tersimpan di Supabase; data resmi/keuangan hanya dibaca. Foto lintas format dikonversi ke JPEG, nomor `08…` diterima, email kampus/pribadi/login dipisahkan.
+- **Profil bersama:** dashboard, Biodata, chatbot, draf surat, dan form izin menggunakan identitas yang sama. Logout membersihkan state privat.
+- **Pemulihan password:** menggunakan Supabase Auth dan halaman perubahan password. Email dan callback perangkat memerlukan konfigurasi provider.
+- **Dashboard:** akses cepat, menu Akademik/Tugas Akhir/Layanan, tampilan responsif, halaman layanan, serta keadaan kosong untuk data akademik yang belum terintegrasi.
+- **Chatbot:** bantuan terpandu dan Ollama lokal. Identitas dijawab langsung dari profil tanpa dikirim ke model AI.
+- **Izin Online:** alur pengajuan → BAP → PDF → dosen masih simulasi lokal. Backend Auth saat ini melayani mahasiswa; akun staf dummy hanya dipakai dalam pengujian.
 
-- **Login demo:** validasi NIM/NIP dan password, tampil/sembunyikan password, indikator loading, pesan kesalahan, dan opsi ingat sesi.
-- **Pemulihan password demo:** validasi email dan simulasi permintaan reset.
-- **Dashboard mahasiswa:** profil, IPK, masa studi, SKS lulus, persentase nilai A, jadwal kuliah, dan grafik ringkasan akademik.
-- **Informasi kampus:** contoh pengumuman, berita, jadwal konseling, serta daftar pedoman dan panduan.
-- **Navigasi:** drawer, akses cepat, navigasi ke bagian dashboard, dan logout.
-- **Tampilan:** tema Material 3 dengan komponen pixel, font Press Start 2P dan Space Mono, serta animasi yang mengikuti pengaturan pengurangan animasi perangkat.
+## Menjalankan
 
-## Teknologi
-
-| Komponen | Implementasi |
-| --- | --- |
-| Framework | Flutter |
-| Bahasa | Dart, constraint SDK `^3.13.3` |
-| State UI | `StatefulWidget` dan `setState` |
-| Grafik akademik | `CustomPainter` |
-| Pengujian | `flutter_test` |
-| Lint | `flutter_lints` |
-
-Folder platform tersedia untuk Android, iOS, web, Windows, macOS, dan Linux. Build masing-masing platform memerlukan toolchain yang sesuai; keberadaan folder tersebut bukan jaminan seluruh platform telah diuji.
-
-## Persiapan
-
-1. Pasang Flutter SDK dengan Dart yang memenuhi constraint pada `pubspec.yaml` (`>=3.13.3 <4.0.0`).
-2. Siapkan perangkat, emulator, atau browser untuk target yang ingin dijalankan. Untuk Android, siapkan Android SDK dan emulator/perangkat Android; untuk iOS, gunakan macOS dengan Xcode.
-3. Dari direktori utama proyek, periksa lingkungan dan unduh dependensi:
-
-   ```sh
-   flutter doctor
-   flutter pub get
-   ```
-
-Tidak diperlukan file `.env`, API key, maupun konfigurasi database untuk menjalankan demo.
-
-## Menjalankan Aplikasi
-
-Lihat perangkat yang tersedia, lalu jalankan aplikasi:
+Gunakan Flutter dengan Dart sesuai `pubspec.yaml` (`>=3.13.3 <4.0.0`). Android memerlukan Android SDK; iOS memerlukan macOS/Xcode; build Windows memerlukan Visual Studio dengan workload C++.
 
 ```sh
+flutter doctor
+flutter pub get
 flutter devices
-flutter run
-```
-
-Untuk memilih perangkat tertentu, gunakan `flutter run -d <device-id>` dengan ID dari `flutter devices`.
-
-Contoh menjalankan versi web melalui Chrome:
-
-```sh
 flutter run -d chrome
 ```
 
-### Akun Demo
+Target lain: `flutter run -d <device-id>` atau `flutter run`. Internet diperlukan untuk login dan menyimpan/membaca profil. Ollama tidak menggantikan backend profil.
 
-| NIM/kode akun | Password | Peran |
-| --- | --- | --- |
-| `20240801001` | `123456` | Mahasiswa |
-| `20240801002` | `123456` | Mahasiswa |
-| `BAP001` | `123456` | Pemeriksa izin BAP |
-| `DOS001` | `123456` | Dosen penerima hasil |
-| `DOS002` | `123456` | Dosen penerima hasil |
+Jika Android Emulator menampilkan layar hitam setelah Quick Boot, lihat [panduan pemulihan emulator](docs/android_emulator.md). Script `tool/android/configure_emulator.ps1` mengatur cold boot pada AVD yang dipilih tanpa menghapus data.
 
-Akun mahasiswa menampilkan keadaan tanpa data akademik. Akun BAP/dosen membuka kotak masuk Izin Online. Semua kredensial khusus simulasi. Kedua dosen uji sengaja bernama sama; penerima ditentukan oleh kode unik. Lihat [panduan mencoba alur izin](docs/izin_online.md).
+URL dan **publishable key** proyek development sudah tersedia di `lib/core/config/supabase_config.dart`. Kunci klien tersebut boleh dibagikan; hak akses tetap dijaga server. **Secret/service-role key, password database, dan password pengguna tidak boleh masuk source code.**
 
-### Batasan Demo
+Backend terpisah harus menerapkan migrasi, Edge Function, dan provisioning akun. Ganti konfigurasi saat build:
 
-- Sesi berada di memori, berlaku 30 menit, dan aplikasi keluar otomatis ketika sesi berakhir. Refresh/restart menghapus sesi dan data simulasi.
-- Form lupa password tidak mengirim email dan tidak mengubah password.
-- Sumber akademik belum terhubung. Profil, statistik, jadwal, dan pengumuman menampilkan keadaan belum tersedia.
-- Halaman biodata, KRS, nilai/presensi, tagihan, serta konseling belum berisi data layanan kampus.
-- Izin Online menjalankan pengajuan → pemeriksaan BAP → PDF → kotak masuk dosen dalam satu proses aplikasi. Pengajuan bertahan saat berganti akun, tetapi belum tersimpan di server atau terkirim antarperangkat.
-- Navigasi bawah mengarahkan pengguna ke bagian-bagian dashboard; belum semuanya memiliki halaman tersendiri.
+```sh
+flutter run -d chrome --dart-define=SUPABASE_URL=https://PROJECT.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
 
-## Struktur Proyek
+Untuk menguji recovery web, gunakan port tetap yang terdaftar di Redirect URLs, misalnya `flutter run -d chrome --web-port 3000`.
+
+## Akun development
+
+**Prismatine Dante Viergo**, panggilan **Dante**, NIM **20240801001**, terhubung ke akun Auth yang dibuat pemilik proyek. Gunakan password akun tersebut; tidak ada password demo pada aplikasi produksi. Identitas tetap **belum diverifikasi kampus**.
+
+Angkatan, semester, kampus, status akademik, telepon, dan nilai tetap kosong sampai datanya tersedia. NIM tidak digunakan untuk menebak semester/tahun masuk. Akun baru memerlukan Auth user dan profil mahasiswa yang diprovisikan pengelola; clone repository tidak otomatis membuat akun.
+
+Refresh/restart meminta login kembali. Sesi tidak disimpan permanen atau diperpanjang aktivitas, sedangkan profil tetap tersimpan di Supabase. Lihat [panduan profil mahasiswa](docs/student_profile.md) untuk skema, keamanan, provisioning, pemulihan password, dan pengujian.
+
+## Struktur
 
 ```text
 lib/
-├── main.dart                       # Entry point, tema, dan perpindahan login/dashboard
-├── core/                           # Tema, animasi, navigasi, dan elemen visual
-├── data/
-│   ├── auth_service.dart           # Layanan autentikasi demo yang dipakai aplikasi
-│   └── demo_data.dart              # Model profil dan data akademik contoh
-├── features/
-│   ├── auth/
-│   │   ├── login_page.dart         # Form login
-│   │   ├── forgot_password_page.dart
-│   │   └── services/               # Kontrak/implementasi demo terpisah
-│   └── dashboard/
-│       ├── dashboard_page.dart     # Dashboard mahasiswa
-│       └── academic_charts.dart    # Grafik akademik
-└── shared/
-    └── pixel_widgets.dart          # Komponen UI bersama
-assets/
-├── images/                         # Latar kampus pixel
-└── fonts/                          # Font lokal dan berkas lisensinya
-test/
-├── auth_service_test.dart          # Login, status sesi, dan logout
-└── widget_test.dart                # Alur autentikasi dan layout form
+  main.dart                         # Startup, AuthGate, sesi, dan logout
+  core/config/                      # Konfigurasi Supabase dan layar startup
+  data/                             # Kontrak/model/repository Auth dan profil
+  features/auth/                    # Login dan pemulihan password
+  features/profile/                 # Biodata dan editor
+  features/dashboard/               # Beranda serta menu
+  features/chatbot/                  # Bantuan terpandu dan Ollama
+  features/leave/                    # Alur Izin Online lokal
+  shared/                           # Widget pixel dan avatar bersama
+supabase/
+  migrations/                       # Skema, RLS, sesi, dan bucket privat
+  functions/login-with-nim/          # Autentikasi/pemetaan NIM di server
+  tests/profile_access.sql          # Tes SQL dengan rollback
+  seed_profile.sql                  # Template provisioning pengelola
+test/support/                       # Fake Auth/HTTP, hanya untuk pengujian
 ```
 
-Alur aplikasi dimulai dari `CampusApp` → `AuthGate` → `LoginPage`. Login berhasil mengganti halaman menjadi `DashboardPage`, sedangkan logout mengembalikannya ke login.
+## Pemeriksaan dan build
 
-Layanan yang digunakan alur tersebut berada di `lib/data/auth_service.dart`. Berkas `lib/features/auth/services/auth_service.dart` berisi kontrak dan implementasi demo lain yang belum terhubung ke alur utama. Saat mengintegrasikan backend, perhatikan layanan yang benar-benar diimpor oleh halaman.
-
-## Pemeriksaan Kode dan Pengujian
+Langkah uji manual dan hasil yang diharapkan tersedia di [checklist profil](docs/profile_test_checklist.md).
 
 ```sh
 flutter analyze
 flutter test
-```
-
-Tes yang tersedia mencakup penolakan kredensial salah, login berhasil, penghapusan sesi, logout, validasi email, simulasi reset password, layout form pada beberapa ukuran layar, dan kemampuan menggulir form saat keyboard terbuka.
-
-Untuk memeriksa format kode tanpa mengubah berkas:
-
-```sh
 dart format --output=none --set-exit-if-changed lib test
-```
-
-## Build
-
-Build APK Android:
-
-```sh
-flutter build apk --release
-```
-
-Hasil build: `build/app/outputs/flutter-apk/app-release.apk`.
-
-Build web:
-
-```sh
 flutter build web
 ```
 
-Hasil build: direktori `build/web/`.
+Tes mencakup Auth produksi dengan SDK asli dan HTTP terkendali, isolasi sesi, profil/foto, kegagalan simpan, chatbot, izin lokal, dan layout HP/tablet/desktop. Uji database dijalankan terpisah sesuai panduan profil. Tes buatan tidak menggantikan pengujian email/perangkat nyata.
 
-## Aset dan Lisensi Font
+Build Android: `flutter build apk --release`; hasil di `build/app/outputs/flutter-apk/app-release.apk`. Hasil web: `build/web/`. Folder platform tersedia bukan berarti seluruh platform telah diuji.
 
-Gambar latar berada di `assets/images/pixel-campus.png`. Font dimuat dari aset lokal sehingga penggunaannya tidak membutuhkan koneksi internet. Teks lisensi font tersedia di:
+## Aset dan lisensi
 
-- [Press Start 2P](assets/fonts/PressStart2P-OFL.txt)
-- [Space Mono](assets/fonts/SpaceMono-OFL.txt)
-
-Kedua lisensi juga didaftarkan melalui `LicenseRegistry` saat aplikasi dimulai.
-
+Latar: `assets/images/pixel-campus.png`. Font lokal: [Press Start 2P](assets/fonts/PressStart2P-OFL.txt) dan [Space Mono](assets/fonts/SpaceMono-OFL.txt), juga didaftarkan dalam `LicenseRegistry`. Avatar bawaan digambar lokal memakai `CustomPainter`; tidak mengunduh gambar dari layanan lain.
 
 ## Smart Chatbot lokal
 
@@ -162,3 +96,7 @@ Di **VS Code Windows**, buka folder `campus_app` atau file `campus_app.code-work
 Chat mencoba menyambung otomatis saat dibuka. HP fisik harus berada di jaringan komputer AI; komputer dan Ollama tetap menyala. Alamat dapat diperbarui melalui ikon pengaturan chatbot jika Wi-Fi/IP berubah.
 
 Lihat [panduan Smart Chatbot dan pemasangan Ollama](docs/smart_chatbot.md) untuk menjalankan server, batas kemampuan, struktur kode, dan pengujian.
+
+
+
+Catatan integrasi: bagian akun demo pada panduan izin merupakan riwayat simulasi. Login aplikasi sekarang mengikuti Supabase. Instalasi Ollama otomatis bergantung pengait terminal proyek; perintah Flutter standar sendiri tidak memasang Ollama.

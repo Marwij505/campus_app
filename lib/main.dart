@@ -12,6 +12,13 @@ import 'package:flutter/services.dart';
 import 'core/app_motion.dart';
 import 'core/app_theme.dart';
 import 'data/auth_service.dart';
+import 'data/supabase_auth_service.dart';
+import 'core/config/supabase_config.dart';
+import 'core/config/app_startup.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
+
+import 'features/auth/reset_password_page.dart';
 import 'data/dashboard_repository.dart';
 import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
@@ -19,7 +26,7 @@ import 'features/dashboard/dashboard_page.dart';
 import 'features/leave/leave_repository.dart';
 import 'features/leave/leave_page.dart';
 
-void main() {
+Future<void> main() async {
   // Siapkan Flutter sebelum menggunakan layanan dan aset.
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -35,7 +42,9 @@ void main() {
   });
 
   // Mulai aplikasi dari widget utama.
-  runApp(const CampusApp());
+  runApp(
+    AppStartup(initialize: SupabaseConfig.initialize, child: const CampusApp()),
+  );
 }
 
 /// Menetapkan tema, nama aplikasi, dan halaman pembuka.
@@ -43,18 +52,21 @@ class CampusApp extends StatelessWidget {
   const CampusApp({
     super.key,
     this.dashboardRepository = const EmptyDashboardRepository(),
+    this.authService,
   });
 
   // Sumber data beranda masih mengembalikan data kosong.
   // Nantinya dapat diganti dengan repository yang memanggil API.
   final DashboardRepository dashboardRepository;
+  // Tes menyuntikkan fake; aplikasi normal selalu memakai Supabase.
+  final AuthService? authService;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'campus_app',
     theme: AppTheme.data,
-    home: AuthGate(repository: dashboardRepository),
+    home: AuthGate(repository: dashboardRepository, service: authService),
   );
 }
 
@@ -63,10 +75,12 @@ class AuthGate extends StatefulWidget {
   const AuthGate({
     super.key,
     this.repository = const EmptyDashboardRepository(),
+    this.service,
   });
 
   // Teruskan sumber data ke dashboard setelah login.
   final DashboardRepository repository;
+  final AuthService? service;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -78,7 +92,8 @@ class AuthGate extends StatefulWidget {
 /// termasuk ketika aplikasi kembali aktif dari background.
 class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   // Satu layanan digunakan bersama untuk login, reset, dan logout.
-  final _service = AuthService();
+  late final _service =
+      widget.service ?? SupabaseAuthService(Supabase.instance.client);
   // Antrean simulasi bertahan saat berganti akun untuk mencoba alur lintas peran.
   late final _leaves = LeaveRepository(session: () => _service.currentUser);
 
@@ -94,6 +109,24 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
     // Mulai mendengarkan perubahan status aplikasi.
     WidgetsBinding.instance.addObserver(this);
+    _service.addListener(_serviceChanged);
+  }
+
+  // Profil edit, pemulihan, atau pencabutan sesi diperlihatkan pada seluruh halaman.
+  void _serviceChanged() {
+    if (!mounted) return;
+    final user = _service.currentUser;
+    if (user == null && _student != null) {
+      _leaves.clearDraft(_student!.nim);
+      // Data simulasi pengguna nyata tidak ikut tertinggal untuk sesi berikutnya.
+      if (_student!.id != null) _leaves.clearSessionData();
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      _sessionTimer?.cancel();
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    }
+    setState(() => _student = user);
+    if (user != null) _scheduleSessionCheck();
   }
 
   /// Menerima profil dari halaman login.
@@ -147,6 +180,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
     // Jadwalkan ulang hanya untuk waktu sesi yang masih tersisa.
     _scheduleSessionCheck();
+    unawaited(_service.checkSession());
   }
 
   @override
@@ -166,7 +200,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     _sessionTimer = null;
 
     // Hapus sesi pada layanan.
-    _service.logout();
+    unawaited(_service.logout());
 
     // Tidak perlu memperbarui halaman jika sudah ditutup/belum login.
     if (!mounted || _student == null) return;
@@ -190,7 +224,12 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
 
     // Hapus sesi ketika AuthGate dibuang.
-    _service.logout();
+    _service.removeListener(_serviceChanged);
+    unawaited(
+      _service.logout().whenComplete(() {
+        if (widget.service == null) _service.dispose();
+      }),
+    );
     _leaves.dispose();
 
     super.dispose();
@@ -199,7 +238,10 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
     // Pertahankan transisi halus dari desain sebelumnya.
-    duration: AppMotion.duration(context, 420),
+    // Halaman privat langsung dilepas saat logout; tidak dipertahankan animasi keluar.
+    duration: _student == null
+        ? Duration.zero
+        : AppMotion.duration(context, 420),
     switchInCurve: Curves.easeOutCubic,
     switchOutCurve: Curves.easeInCubic,
 
@@ -214,7 +256,9 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
     // Tanpa profil: tampilkan login.
     // Dengan profil: tampilkan dashboard.
-    child: _student == null
+    child: _service.recovering
+        ? ResetPasswordPage(service: _service)
+        : _student == null
         ? LoginPage(
             key: const ValueKey('login'),
             service: _service,
@@ -231,6 +275,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
             student: _student!,
             repository: widget.repository,
             leaveRepository: _leaves,
+            authService: _service,
             onLogout: _logout,
           ),
   );

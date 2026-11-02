@@ -18,9 +18,11 @@ enum RequestKind {
 enum CampusSource { records, regulations, contacts, submissions }
 
 class ChatCapabilities {
-  const ChatCapabilities();
+  const ChatCapabilities({this.profileAvailable = false});
+  final bool profileAvailable;
   String status(CampusSource source) => 'Belum terhubung';
   String get summary =>
+      '${profileAvailable ? 'Profil akun sudah terhubung. ' : 'Profil akun belum terhubung. '}'
       'Data akademik, panduan resmi, kontak dosen, dan pengiriman belum terhubung. '
       'Penjelasan umum dan draf dari isian manual tersedia; lampiran hanya diperiksa format/ukurannya.';
 }

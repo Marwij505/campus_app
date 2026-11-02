@@ -36,11 +36,18 @@ dependencies:
   cupertino_icons: ^2.0.0
   http: ^1.6.0
   file_selector: ^1.1.0
+  # HP memakai lembar berbagi sistem untuk menyimpan atau mengekspor berkas.
+  share_plus: 13.3.1
   shared_preferences: ^2.5.6
   pdf: ^3.13.1
   printing: ^5.15.1
+  supabase_flutter: 2.18.3
+  # Decoder tambahan untuk foto BMP, GIF, TIFF, WebP, ICO, dan format raster lain.
+  image: 4.12.0
 
 dev_dependencies:
+  # Antarmuka platform untuk menguji ekspor HP tanpa membuka aplikasi eksternal.
+  share_plus_platform_interface: 7.2.0
   flutter_test:
     sdk: flutter
 

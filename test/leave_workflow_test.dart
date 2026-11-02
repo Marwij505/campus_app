@@ -1,3 +1,5 @@
+import 'support/fake_auth_service.dart';
+
 // Uji lintas peran memakai akun sintetis dan bukti uji; tidak menyentuh data kampus.
 import 'dart:async';
 import 'dart:convert';
@@ -5,7 +7,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:campus_app/data/auth_service.dart';
 import 'package:campus_app/data/student_profile.dart';
 import 'package:campus_app/features/chatbot/chat_models.dart';
 import 'package:campus_app/features/chatbot/chat_controller.dart';
@@ -270,7 +271,7 @@ void main() {
     'Akun staf login dengan peran yang benar dan masa sesi tetap 30 menit',
     () async {
       var now = DateTime(2026, 10, 19);
-      final auth = AuthService(now: () => now);
+      final auth = FakeAuthService(now: () => now);
       expect(
         (await auth.login(identity: 'BAP001', password: '123456')).role,
         UserRole.bap,

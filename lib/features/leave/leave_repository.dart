@@ -42,6 +42,13 @@ class LeaveRepository extends ChangeNotifier {
 
   void clearDraft(String identity) => _drafts.remove(identity);
 
+  // Logout akun nyata membuang lampiran, PDF, dan draf simulasi dari memori.
+  void clearSessionData() {
+    _drafts.clear();
+    _records.clear();
+    _reviewing.clear();
+  }
+
   bool _canRead(LeaveRequest row, StudentProfile user) => switch (user.role) {
     UserRole.bap => true,
     UserRole.student => row.studentId == user.nim,
@@ -94,6 +101,13 @@ class LeaveRepository extends ChangeNotifier {
     _role(UserRole.student);
     final user = actor;
     final submitted = preview ?? input;
+    if (user.id != null &&
+        (submitted.value('Nama') != user.name ||
+            submitted.value('Program studi') != user.major)) {
+      throw StateError(
+        'Identitas surat harus mengikuti profil akun yang sedang login.',
+      );
+    }
     final error = submitted.validate(lecturers);
     if (error != null) throw StateError(error);
     final previous = revisionId == null ? null : _records[revisionId];

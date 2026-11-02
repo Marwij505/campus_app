@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../data/student_profile.dart';
 import 'dashboard_widgets.dart';
+import '../../shared/student_profile_avatar.dart';
 
 /// Profil tidak memakai nama atau foto contoh dari referensi.
 /// Nilai null ditampilkan sebagai tanda — hingga backend mengirim data.
@@ -42,16 +43,16 @@ class ProfilePanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 54,
+                  width: 64,
                   height: 64,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: .12),
                     border: Border.all(color: Colors.white, width: 3),
                   ),
-                  child: const Icon(
-                    Icons.person_outline,
-                    color: Colors.white,
-                    size: 34,
+                  child: StudentProfileAvatar(
+                    variant: student.avatarVariant,
+                    photo: student.avatarBytes,
+                    size: 64,
                   ),
                 ),
                 const SizedBox(width: 14),

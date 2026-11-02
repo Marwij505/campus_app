@@ -1,6 +1,6 @@
 // Form permintaan pemulihan akun melalui alamat email.
-// Alur saat ini adalah simulasi: email diperiksa bentuknya, lalu layanan ditunggu.
-// Keberhasilan simulasi tidak berarti email terkirim atau password berubah.
+// Email diperiksa bentuknya, lalu permintaan dikirim ke Supabase Auth.
+// Respons berhasil bukan bukti email diterima; penyedia email dan tautan tetap perlu diuji.
 
 import 'package:flutter/material.dart';
 
@@ -33,7 +33,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _loading = false;
   // Memilih gaya pesan berhasil; bukan bukti email telah dikirim.
   bool _success = false;
-  // Menyimpan hasil simulasi atau pesan gagal; null membuat area pesan kosong.
+  // Menyimpan hasil permintaan atau pesan gagal; null membuat area pesan kosong.
   String? _message;
 
   // Periksa email terlebih dahulu, lalu jalankan permintaan melalui layanan.
@@ -55,7 +55,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      // trim membersihkan spasi di tepi email; await menunggu simulasi selesai.
+      // trim membersihkan spasi di tepi email; await menunggu respons layanan.
       await widget.service.requestReset(_email.text.trim());
 
       // Jangan menyentuh layar apabila pengguna sudah meninggalkan halaman ini.
@@ -65,9 +65,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       setState(() {
         _success = true;
 
-        // Jangan mengklaim email sudah dikirim pada layanan demo.
-        _message =
-            'Simulasi berhasil. Email belum dikirim dan password belum diubah.';
+        // Pesan seragam tidak membocorkan apakah alamat terdaftar.
+        _message = 'Jika email terdaftar, tautan pemulihan akan diterima. Periksa kotak masuk dan spam; password belum berubah.';
       });
     } catch (_) {
       // Tampilkan pesan yang dapat dipahami jika layanan gagal menyelesaikan permintaan.

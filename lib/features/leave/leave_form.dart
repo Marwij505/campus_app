@@ -28,11 +28,24 @@ class _LeaveFormState extends State<LeaveForm> {
   String? _error;
   bool _busy = false;
   int _textVersion = 0;
+  @override
+  void initState() {
+    super.initState();
+    final user = widget.repository.actor;
+    if (user.id != null) {
+      draft.fields['Nama'] = user.name ?? '';
+      draft.fields['Program studi'] = user.major ?? '';
+    }
+  }
+
   Widget _field(String label, {bool multiline = false}) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: TextFormField(
       key: ValueKey('leave-$label-$_textVersion'),
       initialValue: draft.value(label),
+      readOnly:
+          widget.repository.actor.id != null &&
+          ['Nama', 'Program studi'].contains(label),
       decoration: InputDecoration(
         labelText: '$label *',
         border: const OutlineInputBorder(),
@@ -142,8 +155,10 @@ class _LeaveFormState extends State<LeaveForm> {
               'NIM akun: ${widget.repository.actor.nim}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            const Text(
-              'Nama, program studi, dan perkuliahan diisi manual; belum diverifikasi dari data akademik.',
+            Text(
+              widget.repository.actor.id != null
+                  ? 'Identitas mengikuti profil akun. Perkuliahan diisi manual; pengajuan masih simulasi lokal.'
+                  : 'Nama, program studi, dan perkuliahan diisi manual; belum diverifikasi dari data akademik.',
               style: TextStyle(fontSize: 11),
             ),
             const SizedBox(height: 20),

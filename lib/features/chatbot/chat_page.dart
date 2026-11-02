@@ -264,9 +264,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           style: AppTheme.pixel(9, color: AppTheme.blue),
         ),
         const SizedBox(height: 10),
-        const Text(
-          'Data kampus belum terhubung. Draf belum dikirim. Jawaban AI berupa informasi umum yang perlu diperiksa.',
-          style: TextStyle(fontSize: 11, height: 1.5),
+        Text(
+          chat.profile?.id != null
+              ? 'Profil akun terhubung. Nilai, jadwal, KRS, dan tagihan belum diintegrasikan. Draf belum dikirim. Jawaban AI umum perlu diperiksa.'
+              : 'Data kampus belum terhubung. Draf belum dikirim. Jawaban AI berupa informasi umum yang perlu diperiksa.',
+          style: const TextStyle(fontSize: 11, height: 1.5),
         ),
         const SizedBox(height: 8),
         ExpansionTile(

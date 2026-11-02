@@ -1,3 +1,4 @@
+import 'support/fake_auth_service.dart';
 // Uji alur pengguna dari login sampai pemulihan akun serta kenyamanan layout form.
 // Tes membuka aplikasi sungguhan dalam lingkungan simulasi tanpa perangkat fisik.
 // find mencari komponen; tester meniru mengetik/mengetuk; expect memeriksa hasil.
@@ -41,7 +42,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     // Buka akar aplikasi seperti pengguna baru menjalankannya.
-    await tester.pumpWidget(const CampusApp());
+    await tester.pumpWidget(CampusApp(authService: FakeAuthService()));
     await tester.pumpAndSettle();
 
     // Pembantu untuk mencari tombol berdasarkan label, menggulir ke sana, lalu menekannya.
@@ -98,7 +99,7 @@ void main() {
     await submit('KIRIM LINK RESET');
 
     // Pastikan pemberitahuan menjelaskan batas simulasi dengan jujur.
-    expect(find.textContaining('Email belum dikirim'), findsOneWidget);
+    expect(find.textContaining('Jika email terdaftar'), findsOneWidget);
 
     // Selain teks yang benar, pastikan tidak ada kesalahan layout atau Flutter selama proses.
     expect(tester.takeException(), isNull);
@@ -121,7 +122,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
       // Buka akar aplikasi seperti pengguna baru menjalankannya.
-      await tester.pumpWidget(const CampusApp());
+      await tester.pumpWidget(CampusApp(authService: FakeAuthService()));
       await tester.pumpAndSettle();
       // Selain teks yang benar, pastikan tidak ada kesalahan layout atau Flutter selama proses.
       expect(tester.takeException(), isNull);
@@ -153,7 +154,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetViewInsets);
     // Buka akar aplikasi seperti pengguna baru menjalankannya.
-    await tester.pumpWidget(const CampusApp());
+    await tester.pumpWidget(CampusApp(authService: FakeAuthService()));
     await tester.pumpAndSettle();
     final button = find.widgetWithText(PixelButton, 'MASUK');
     // Pastikan tombol terlihat sebelum diketuk, sama seperti pengguna perlu menggulir form.

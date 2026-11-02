@@ -5,12 +5,32 @@ import 'chat_models.dart';
 import 'chat_connection.dart';
 import 'ollama_service.dart';
 import 'chat_policy.dart';
+import '../../data/student_profile.dart';
+import 'profile_answers.dart';
 
 class ChatController extends ChangeNotifier {
   ChatController({ChatService? service})
     : _service = service ?? OllamaService(addresses: ChatConnection.candidates);
   final ChatService _service;
-  final capabilities = const ChatCapabilities();
+  StudentProfile? profile;
+  ChatCapabilities get capabilities =>
+      ChatCapabilities(profileAvailable: profile?.id != null);
+  // Tidak meneruskan profil, email, foto, atau kontak kepada model Ollama.
+  void updateProfile(StudentProfile value) {
+    profile = value;
+    if (value.id != null && messages.length == 1 && !messages.first.isUser) {
+      messages[0] = ChatMessage(
+        'Halo, ${value.greetingName}. Profil akunmu tersedia. Ketik nama, NIM, atau jurusan. Jadwal, KRS, dan nilai belum diintegrasikan.',
+      );
+    }
+    for (final draft in [letter, issue]) {
+      if (value.id != null) {
+        draft.fields['Nama'] = value.name ?? '';
+        draft.fields['NIM'] = value.nim;
+      }
+    }
+  }
+
   RequestPlan? _plan;
   // Halaman induk menghubungkan formulir izin dengan akun dan antrean yang sama.
   VoidCallback? openLeave;
@@ -108,6 +128,14 @@ class ChatController extends ChangeNotifier {
     error = null;
     canRetry = false;
     messages.add(ChatMessage(text, isUser: true));
+    final profileAnswer = ProfileAnswers.reply(text, profile);
+    if (profileAnswer != null) {
+      _aiHistory.clear();
+      _plan = null;
+      messages.add(ChatMessage(profileAnswer, label: 'Profil akun · Supabase'));
+      notifyListeners();
+      return;
+    }
     var plan = ChatPolicy.route(text, previous: _plan);
     if (plan.followUp && _aiHistory.isEmpty) {
       plan = const RequestPlan(
@@ -209,8 +237,10 @@ class ChatController extends ChangeNotifier {
     messages
       ..clear()
       ..add(
-        const ChatMessage(
-          'Percakapan baru. Sebutkan topik yang ingin dibahas. Data kampus belum terhubung.',
+        ChatMessage(
+          profile?.id != null
+              ? 'Halo, ${profile!.greetingName}. Profil akunmu tersedia. Data akademik belum diintegrasikan. Ada yang bisa dibantu?'
+              : 'Percakapan baru. Sebutkan topik yang ingin dibahas. Data kampus belum terhubung.',
         ),
       );
     notifyListeners();
@@ -218,6 +248,7 @@ class ChatController extends ChangeNotifier {
 
   @override
   void dispose() {
+    profile = null;
     _disposed = true;
     _request++;
     _service.cancel();
