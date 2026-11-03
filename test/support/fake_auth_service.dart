@@ -106,6 +106,16 @@ class FakeAuthService extends AuthService {
     await Future<void>.delayed(const Duration(milliseconds: 800));
   }
 
+  // Simulasi khusus tes UI; tidak mengirim email atau mengubah akun sungguhan.
+  @override
+  Future<void> confirmReset({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+  }
+
   /// Menghapus sesi ketika pengguna keluar.
   @override
   Future<void> logout() async {

@@ -7,7 +7,7 @@ Aplikasi Flutter SIAKAD dengan tema retro/pixel. **Login dan profil mahasiswa me
 - **Login nyata:** NIM/password melalui Edge Function, pembatasan percobaan, pesan kesalahan umum, logout, dan sesi absolut 30 menit yang ditegakkan server.
 - **Biodata:** tujuh tab untuk biodata, pendidikan, keluarga, pekerjaan, disabilitas, riwayat keuangan, dan berkas privat. Formulir pribadi tersimpan di Supabase; data resmi/keuangan hanya dibaca. Foto lintas format dikonversi ke JPEG, nomor `08…` diterima, email kampus/pribadi/login dipisahkan.
 - **Profil bersama:** dashboard, Biodata, chatbot, draf surat, dan form izin menggunakan identitas yang sama. Logout membersihkan state privat.
-- **Pemulihan password:** menggunakan Supabase Auth dan halaman perubahan password. Email dan callback perangkat memerlukan konfigurasi provider.
+- **Pemulihan password:** kode OTP enam karakter campuran huruf besar dan angka melalui Resend, diverifikasi server sebelum Supabase Auth mengganti password. Satu email uji berstatus delivered pada 3 November 2026; reset dan login ulang nyata melalui aplikasi masih perlu diuji. Lihat [aktivasi dan checklist OTP](docs/password_reset_otp.md).
 - **Dashboard:** akses cepat, menu Akademik/Tugas Akhir/Layanan, tampilan responsif, halaman layanan, serta keadaan kosong untuk data akademik yang belum terintegrasi.
 - **Chatbot:** bantuan terpandu dan Ollama lokal. Identitas dijawab langsung dari profil tanpa dikirim ke model AI.
 - **Izin Online:** alur pengajuan → BAP → PDF → dosen masih simulasi lokal. Backend Auth saat ini melayani mahasiswa; akun staf dummy hanya dipakai dalam pengujian.
@@ -35,7 +35,7 @@ Backend terpisah harus menerapkan migrasi, Edge Function, dan provisioning akun.
 flutter run -d chrome --dart-define=SUPABASE_URL=https://PROJECT.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-Untuk menguji recovery web, gunakan port tetap yang terdaftar di Redirect URLs, misalnya `flutter run -d chrome --web-port 3000`.
+Pemulihan OTP diketik langsung di aplikasi; tidak memerlukan port web tetap atau deep link. Konfigurasi Redirect URLs hanya diperlukan bila menguji alur tautan Auth lama.
 
 ## Akun development
 

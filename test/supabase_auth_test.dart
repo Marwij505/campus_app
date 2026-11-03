@@ -1,5 +1,6 @@
 // Periksa implementasi Auth produksi dengan SDK nyata dan respons HTTP terkendali.
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:campus_app/data/auth_service.dart';
@@ -114,11 +115,66 @@ void main() {
     'Reset menggunakan Auth server dan menolak perubahan password tanpa sesi',
     () async {
       await auth.requestReset('student@example.test');
-      expect(server.requests.last.url.path, endsWith('/recover'));
+      expect(server.requests.last.url.path, endsWith('/password-reset'));
       await expectLater(
         auth.changePassword('strong-test-password'),
         throwsA(isA<AuthException>()),
       );
     },
   );
+
+  test('OTP dinormalisasi dan tidak mengembalikan sesi login', () async {
+    await auth.confirmReset(
+      email: ' STUDENT@EXAMPLE.TEST ',
+      code: ' ab3c4d ',
+      password: 'strong-test-password',
+    );
+    expect(jsonDecode(server.requests.last.body), {
+      'action': 'confirm',
+      'email': 'student@example.test',
+      'code': 'AB3C4D',
+      'password': 'strong-test-password',
+    });
+    expect(server.client.auth.currentSession, isNull);
+    expect(auth.hasSession, isFalse);
+  });
+  test('Format email, OTP, dan password ditolak sebelum jaringan', () async {
+    await expectLater(
+      auth.requestReset('invalid'),
+      throwsA(isA<AuthException>()),
+    );
+    for (final code in ['123456', 'ABCDEF', 'A1', 'AB3C4!', 'AB3C4D7']) {
+      await expectLater(
+        auth.confirmReset(
+          email: 'student@example.test',
+          code: code,
+          password: 'strong-test-password',
+        ),
+        throwsA(isA<AuthException>()),
+      );
+    }
+    await expectLater(
+      auth.confirmReset(
+        email: 'student@example.test',
+        code: 'AB3C4D',
+        password: 'short',
+      ),
+      throwsA(isA<AuthException>()),
+    );
+    expect(server.requests, isEmpty);
+  });
+  for (final status in [400, 429, 503]) {
+    test('HTTP OTP $status tidak dianggap sukses', () async {
+      server.resetStatus = status;
+      await expectLater(
+        auth.confirmReset(
+          email: 'student@example.test',
+          code: 'AB3C4D',
+          password: 'strong-test-password',
+        ),
+        throwsA(isA<AuthException>()),
+      );
+      expect(auth.hasSession, isFalse);
+    });
+  }
 }

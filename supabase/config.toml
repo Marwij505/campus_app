@@ -3,3 +3,7 @@ project_id = "campus_app"
 [functions.login-with-nim]
 # Fungsi melakukan autentikasi password sendiri, sebab pengguna belum memiliki JWT.
 verify_jwt = false
+
+[functions.password-reset]
+# Pengguna belum login; autentikasi penggantian password dilakukan dengan OTP sekali pakai.
+verify_jwt = false

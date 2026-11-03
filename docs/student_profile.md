@@ -105,7 +105,7 @@ Backend development saat ini: `campus-app`, ref `taqmosufhapstehgeonz`, organisa
 1. Buat proyek Supabase; simpan kredensial pengelola di luar repository.
 2. Jalankan `supabase login`, lalu `supabase link --project-ref REF`.
 3. Tinjau migrasi kemudian `supabase db push`. Jangan menjalankan ulang isi migrasi pada database yang sudah menerapkannya.
-4. Jalankan `supabase functions deploy login-with-nim --no-verify-jwt`. Fungsi login menerima permintaan sebelum pengguna punya JWT dan memverifikasi password lewat Auth; ini bukan endpoint provisioning admin.
+4. Jalankan `supabase functions deploy login-with-nim --no-verify-jwt`. Fungsi login menerima permintaan sebelum pengguna punya JWT dan memverifikasi password lewat Auth; ini bukan endpoint provisioning admin. Untuk pemulihan OTP, deploy juga `supabase functions deploy password-reset --no-verify-jwt` setelah migrasinya diterapkan, lalu isi secrets sesuai [panduan Resend](password_reset_otp.md).
 5. Buat Auth user melalui Authentication → Users. Auto Confirm hanya untuk akun development yang disetujui pemilik; pengguna nyata memerlukan verifikasi email yang sesuai.
 6. Ganti placeholder email di `supabase/seed_profile.sql`, periksa identitas/NIM, lalu jalankan sebagai administrator. Skrip tidak membuat password atau akun staf.
 7. Atur URL/publishable key Flutter melalui dart-define sebagaimana README.
@@ -114,16 +114,11 @@ Login aplikasi tidak menerima akun dummy BAP001/DOS001/DOS002. Fake Auth hanya a
 
 ## Pemulihan password
 
-Form memanggil Supabase Auth dan memberi pesan umum agar tidak membocorkan email terdaftar. Penggantian membutuhkan sesi login atau tautan recovery yang sah, konfirmasi sama, dan minimal 12 karakter; kebijakan provider juga berlaku. Setelah berhasil, pengguna masuk ulang.
+Form Lupa password sekarang memanggil Edge Function `password-reset`: email Auth → kode enam karakter campuran huruf besar dan angka → password baru dan konfirmasi → login ulang. Respons permintaan dibuat umum agar tidak membocorkan email terdaftar. Kode berlaku 10 menit, sekali pakai, maksimal lima percobaan; kirim ulang minimal 60 detik. Password 12–256 karakter tetap diperiksa Supabase Auth.
 
-Pengelola perlu mengatur Authentication → URL Configuration:
+Migrasi dan fungsi sudah dipasang pada proyek development. **Tiga secrets server telah dikonfigurasi oleh pengguna; satu email OTP nyata terverifikasi delivered pada 3 November 2026.** Reset password dan login ulang melalui aplikasi masih perlu diuji. Ikuti [panduan aktivasi Resend dan checklist OTP](password_reset_otp.md). Akun dengan MFA terverifikasi memerlukan proses pemulihan khusus pengelola.
 
-- Site URL sesuai aplikasi.
-- Redirect URLs berisi origin web yang digunakan, misalnya `http://localhost:3000`. Gunakan port tetap saat menguji recovery.
-- Tambahkan `campusapp://auth-callback` untuk Android/iOS. Intent filter Android dan URL scheme iOS sudah tersedia di source.
-- Atur SMTP/template sebelum pemakaian banyak pengguna; provider bawaan mempunyai pembatasan pengiriman.
-
-Pengiriman email, allowlist callback cloud, dan callback Android/iOS belum diverifikasi langsung. Pesan permintaan diterima bukan bukti email sampai. Callback native Windows/macOS/Linux belum dikonfigurasi; gunakan recovery web pada lingkungan yang diizinkan.
+Email tujuan adalah email akun Supabase Auth, bukan email kampus tampilan atau kontak pribadi yang dapat diedit. OTP diketik di aplikasi sehingga tidak memerlukan port web tetap, SMTP Supabase, atau deep link. Handler tautan lama tetap tersedia; hanya pengujian tautan lama yang memerlukan Site URL/Redirect URLs dan `campusapp://auth-callback` pada mobile. Pesan permintaan diterima bukan bukti email sampai.
 
 Advisory Supabase masih menunjukkan leaked password protection belum aktif. Aktifkan melalui Auth jika tersedia pada paket proyek; validasi panjang klien tidak menggantikannya. [Dokumentasi keamanan password Supabase](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 
@@ -156,4 +151,8 @@ flutter build web
 
 Jalankan `supabase/tests/profile_access.sql` sebagai administrator pada **database development** dengan profil Dante. Semua sesi/objek uji di-ROLLBACK: baca/edit sendiri, penolakan field resmi, lookup email, identitas lain, Storage, sesi habis/dicabut, dan anonim. Skrip tidak mengirim email, menerbitkan token, atau mengunggah berkas nyata.
 
-Penerimaan manual: login → Biodata → edit/simpan → periksa beranda/chat → logout → login ulang → periksa persistensi; unggah/ganti/hapus foto; coba jaringan putus; uji email recovery; tunggu 30 menit; uji perangkat target. Login Dante di browser sudah dikonfirmasi pengguna. Tes SQL/HTTP tidak menggantikan seluruh pemeriksaan manual ini.
+Pembaruan 2 November 2026: seluruh **218 tes Flutter lulus**, analisis bersih, build web berhasil, **15 tes Deno OTP lulus**, dan uji SQL OTP pada Supabase lulus dengan rollback. Pengiriman Resend dan penggantian password akun nyata belum diuji. Hasil Android terbaru dicatat di `project_progress.md`.
+
+Pembaruan 3 November 2026: seluruh 218 tes Flutter dan 15 tes Deno kembali lulus, analisis/check/lint bersih, tes SQL OTP kembali lulus dengan rollback, serta satu email OTP nyata berstatus delivered. Password pengguna tidak diubah. Rincian dan batas bukti ada di `project_progress.md`.
+
+Penerimaan manual: login → Biodata → edit/simpan → periksa beranda/chat → logout → login ulang → periksa persistensi; unggah/ganti/hapus foto; coba jaringan putus; uji reset OTP dan login ulang pada perangkat target; tunggu 30 menit; uji perangkat target. Login Dante di browser sudah dikonfirmasi pengguna. Tes SQL/HTTP tidak menggantikan seluruh pemeriksaan manual ini.

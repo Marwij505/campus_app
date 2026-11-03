@@ -5,7 +5,7 @@ Gunakan backend development. Password tidak perlu dikirim kepada siapa pun. Saat
 ## Mulai
 
 1. Hentikan aplikasi lama dengan `q` di terminal Flutter.
-2. Jalankan `flutter pub get`, kemudian `flutter run -d chrome --web-port 3000` dari folder proyek. Port tetap membantu pengujian tautan recovery. Jika port digunakan aplikasi lain, hentikan proses yang kamu kenali atau pilih port lain dan sesuaikan Redirect URLs.
+2. Jalankan `flutter pub get`, kemudian `flutter run -d chrome` dari folder proyek. OTP diketik langsung di aplikasi, jadi port web tetap tidak diperlukan.
 3. Login NIM **20240801001** dengan password Auth yang sudah dibuat. Tidak memakai password demo lama.
 
 ## Login, profil, dan persistensi
@@ -111,11 +111,11 @@ Berkas langsung tersimpan setelah dipilih; tidak menunggu tombol Simpan formulir
 ## Password — lakukan paling akhir
 
 1. **Ubah password saat login:** buka Biodata → Ubah password. Konfirmasi berbeda/password <12 karakter harus ditolak. Password baru yang memenuhi kebijakan harus tersimpan, lalu pengguna keluar. Login ulang menggunakan password baru.
-2. **Lupa password:** pastikan Site URL/Redirect URLs mencakup origin pengujian, misalnya `http://localhost:3000`, lalu ajukan pemulihan dengan email akun sendiri. Pesan umum tidak membuktikan email terkirim. Periksa inbox/spam, buka tautan, lalu ganti password dan login ulang.
-3. **Tautan kedaluwarsa:** tautan yang tidak valid tidak boleh memberikan akses profil. Ajukan tautan baru jika diperlukan.
-4. **Android/iOS:** tambah `campusapp://auth-callback` pada Redirect URLs sebelum menguji email recovery di perangkat. Jalankan pada perangkat nyata/emulator dan ulangi edit/persistensi/layout. Callback desktop native belum dikonfigurasi; gunakan recovery web.
+2. **Lupa password:** selesaikan [aktivasi Resend](password_reset_otp.md), lalu ajukan kode ke email Auth sendiri. Periksa inbox/spam, masukkan OTP enam karakter beserta password baru dan konfirmasi di aplikasi. Setelah sukses, login dengan password baru; password lama harus gagal. Pesan umum saat meminta kode tidak membuktikan email sudah sampai.
+3. **Kode salah/kedaluwarsa:** kode salah, lebih dari lima percobaan, sudah dipakai, atau melewati 10 menit harus ditolak. Setelah kirim ulang, kode lama tidak berlaku. Ikuti checklist OTP lengkap agar tidak melampaui rate limit tanpa sengaja.
+4. **Android/iOS/desktop:** gunakan form OTP yang sama; tidak perlu membuka tautan email. Uji keyboard, layar kecil, kirim ulang, dan kembali ke login. Uji persistensi/edit profil tetap dilakukan terpisah.
 
-Jika email belum sampai atau callback gagal, periksa konfigurasi Auth/SMTP di Supabase terlebih dahulu. Pengiriman email dan callback perangkat belum diuji langsung pada pengerjaan ini.
+Jika email belum sampai, periksa secrets Edge Function dan status pengiriman Resend. Satu pengiriman nyata melalui endpoint aplikasi sudah delivered pada 3 November 2026; reset password dan login ulang akun nyata belum diuji. Alur tautan Auth lama masih tersedia untuk kompatibilitas dan memiliki konfigurasi callback tersendiri.
 
 ## Pemeriksaan pengelola
 

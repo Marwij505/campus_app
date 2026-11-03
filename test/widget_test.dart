@@ -90,13 +90,13 @@ void main() {
 
     // Contoh bentuk alamat yang salah harus ditolak sebelum layanan reset dipanggil.
     await tester.enterText(find.byType(TextFormField), 'bukan-email');
-    await submit('KIRIM LINK RESET');
+    await submit('KIRIM KODE OTP');
 
     expect(find.text('Alamat email belum valid.'), findsOneWidget);
 
     // Alamat berbentuk valid boleh menyelesaikan simulasi, tanpa klaim email sudah terkirim.
     await tester.enterText(find.byType(TextFormField), 'demo@example.com');
-    await submit('KIRIM LINK RESET');
+    await submit('KIRIM KODE OTP');
 
     // Pastikan pemberitahuan menjelaskan batas simulasi dengan jujur.
     expect(find.textContaining('Jika email terdaftar'), findsOneWidget);

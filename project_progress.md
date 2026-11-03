@@ -1,10 +1,10 @@
 # Project Progress — Campus App / SIAKAD FASILKOM Esa Unggul
 
 **Tanggal audit awal:** 1 November 2026, zona waktu Asia/Jakarta.  
-**Pembaruan terakhir:** 2 November 2026 — navigasi bawah dikembalikan menjadi pintasan gulir dashboard, Chatbot tetap di tengah, serta pembaruan bukti validasi.
+**Pembaruan terakhir:** 3 November 2026 — pengiriman OTP Resend nyata terverifikasi, pengujian ulang Flutter/Deno/SQL, dan pencatatan skill/plugin Resend. Navigasi bawah tetap menjadi pintasan gulir dengan Chatbot di tengah.
 **Repository lokal:** `C:/Users/Marcell/Repositories/campus_app`.  
 **Branch aktif:** `marcell-works`.  
-**Git HEAD:** `5c9acc052f2b4cdfd74f2dcc3e4c7a3b34e54859`.  
+**Git HEAD dasar pengerjaan OTP:** `d2e584f61975f793c56da3903d60b7562ca453ce`.
 **Versi aplikasi dalam pubspec:** `1.0.0+1`; nama package `campus_app`.  
 **Jenis dokumen:** audit kondisi aktual, keputusan pengembangan, dan serah terima.
 
@@ -18,23 +18,25 @@ Smart Chatbot menggabungkan aturan aplikasi, glosarium, pengenal pesan singkat, 
 
 Izin Online mempunyai formulir, validasi, status peninjauan BAP, penerima berdasarkan kode dosen, dan PDF. Namun repositorinya masih **memori proses**, penerima dosen masih contoh, dan login nyata saat ini menyelesaikan NIM mahasiswa saja. Karena itu, alur mahasiswa–BAP–dosen lintas akun/perangkat belum menjadi layanan backend nyata.
 
-Audit awal mencatat **208 tes Flutter lulus** dan build web berhasil pada 1 November 2026. Pada 2 November, enam tes startup/login lulus, APK debug berhasil dibangun, dan emulator `Medium_Phone` berhasil menampilkan login serta keyboard setelah pengaturan cold boot. Setelah penyeragaman nama proyek, analisis kode bersih dan build Windows debug menghasilkan `campus_app.exe`. Revisi navigasi yang membuka halaman tersendiri kemudian melewati **31 tes terarah**. Setelah navigasi bawah dikembalikan menjadi pintasan gulir dashboard, pengguna mengonfirmasi perubahan berhasil dan screenshot menunjukkan analisis kode bersih dalam 3,4 detik. Hasil akhir tes untuk revisi gulir belum tercatat. Angka subset tidak dijumlahkan dengan 208 dan bukan pengganti pengujian ulang seluruh suite. Build native sebelumnya belum memuat revisi navigasi terakhir.
+Audit awal mencatat **208 tes Flutter lulus** pada 1 November. Perbaikan emulator/nama dan navigasi sebelumnya memiliki bukti historis terpisah di bagian J. Setelah revisi OTP pada 2 November, **seluruh 218 tes Flutter lulus**, `flutter analyze --no-pub` bersih, dan build web berhasil. **15 tes Deno** serta uji SQL OTP dengan rollback pada Supabase juga lulus. Angka subset historis tidak dijumlahkan dengan suite terbaru. **APK debug terbaru berhasil dibangun** memakai JBR 25.0.3 bawaan Android Studio dan cache Gradle terpisah setelah menemui lock/JDK 26; APK OTP ini belum diuji interaktif pada emulator.
+
+Lupa password sekarang memakai kode enam karakter campuran huruf besar dan angka yang diketik di aplikasi. Server memeriksa kelayakan akun, membatasi percobaan, menyimpan HMAC, dan mencabut sesi setelah reset. Migrasi serta Edge Function `password-reset` sudah diterapkan. **Pada 3 November, satu permintaan OTP nyata menghasilkan email berstatus delivered di Resend; format kode sesuai.** Seluruh 218 tes Flutter dan 15 tes Deno kembali lulus, analisis bersih, serta tes SQL OTP lulus dengan rollback. Password pengguna tidak diubah. Reset password dan login ulang nyata melalui aplikasi masih perlu diuji; rincian ada di bagian J dan `docs/password_reset_otp.md`.
 
 Pada dashboard dengan lebar di bawah 600 px, navigasi bawah berurutan **Beranda, Jadwal, Chatbot, Akademik, Profil**. Chatbot menjadi tombol bulat menonjol di tengah. Empat tombol lainnya merupakan pintasan informasi landing page: Beranda menggulir ke awal dashboard, Jadwal ke panel jadwal hari ini, Akademik ke Kemajuan Belajar, dan Profil ke kartu informasi mahasiswa. Tombol tersebut tidak membuka halaman baru. Indikator aktif mengikuti tombol terakhir yang diketuk. Halaman kumpulan menu Akademik dari navigasi bawah sudah dihapus; layanan akademik tetap tersedia melalui Executive Menu. Akses Cepat tetap membuka halaman masing-masing. Halaman lain serta dashboard layar lebar mempertahankan launcher Chatbot kanan bawah.
 
 Nama teknis proyek diseragamkan menjadi `campus_app`, termasuk konfigurasi platform, judul jendela desktop, metadata executable, modul IDE, dan metadata preview lokal. Android/Linux menggunakan `com.example.campus_app`; bundle identifier iOS/macOS menggunakan `com.example.campusApp`. Login nyata sebelumnya dikonfirmasi pengguna pada web; login nyata di emulator, penyimpanan terbaru pada semua perangkat, pemulihan email, dan seluruh format foto masih memerlukan verifikasi.
 
-**Peringatan serah terima:** working tree berisi banyak perubahan dan file baru yang belum masuk commit, termasuk integrasi Supabase/profil. HEAD di atas bukan representasi lengkap kondisi yang didokumentasikan. Clone hanya sampai HEAD tersebut tidak otomatis mendapatkan seluruh implementasi ini.
+**Peringatan serah terima:** working tree awal pengerjaan OTP bersih pada HEAD di atas. Perubahan OTP, tes, dan dokumentasi saat ini belum di-commit. Clone HEAD tersebut belum mendapatkan revisi OTP sampai perubahan dibagikan melalui Git. Database dan fungsi cloud sudah diterapkan terpisah; merge tidak mengisi secrets Resend.
 
 ### Dasar dan batas audit
 
 - Fakta utama berasal dari source `lib/`, `test/`, `supabase/`, skrip `tool/`, konfigurasi platform, dokumentasi, status Git, dan riwayat commit.
-- Pada audit awal 1 November, plugin Supabase digunakan secara **baca saja** untuk daftar tabel, migrasi, Edge Functions, serta security advisor proyek yang sudah disetujui pengguna. Pembaruan 2 November ini tidak memeriksa ulang backend dan tidak mengubah database; status backend/advisor di bawah tetap merupakan temuan audit awal.
+- Audit awal 1 November memakai plugin Supabase secara baca saja. Pada pengerjaan OTP 2 November, plugin dipakai untuk pemeriksaan schema, penerapan migrasi `password_reset_otp`, deploy fungsi, tes SQL rollback, dan pemeriksaan advisor. Pengujian 2 November tidak mengirim email atau mereset password pengguna. Pada 3 November, satu email OTP nyata dikirim melalui endpoint aplikasi dan statusnya diperiksa melalui plugin Resend; password tetap tidak diubah.
 - Audit awal membaca akhir tiga log pengujian di `build/`. Ketiga log tersebut tidak lagi tersedia saat pembaruan 2 November, sehingga hasilnya dicatat sebagai bukti historis. Bukti tambahan berasal dari hasil perintah pada sesi perbaikan, artefak APK/EXE, dan screenshot lokal `build/diagnostics/`. Cache dan artefak lokal dapat hilang saat `flutter clean`; objek Git dan isi model `.local-ai` tidak diaudit.
 - Bukti dibedakan menjadi **source saat audit**, **metadata backend saat audit**, **log pengujian tersimpan**, **konfirmasi pengguna**, dan **rencana/rekomendasi**. Keberadaan source atau tes bukan bukti bahwa semua skenario sudah berhasil pada semua perangkat.
 - Audit ini bukan pengujian penetrasi, sertifikasi keamanan, penilaian kepatuhan institusi, atau persetujuan penggunaan data produksi.
 - Path bukti di bawah relatif terhadap root repository agar dokumen dapat dipindahkan ke komputer anggota tim lain. Data pribadi, kata sandi, dan nilai kunci akses sengaja tidak disalin.
-- Satu-satunya perubahan yang diizinkan pada tugas dokumentasi ini adalah file `project_progress.md`.
+- Batas tugas audit dokumentasi awal hanya `project_progress.md`. Permintaan berikutnya secara eksplisit mengizinkan implementasi OTP/Resend, perubahan backend yang terkait, pengujian, dan pembaruan dokumentasi ini.
 
 ## Daftar isi
 
@@ -79,7 +81,7 @@ Istilah BAP pada alur aplikasi mengacu pada **unit yang memeriksa pengajuan**. B
 - Frontend: Flutter/Dart, Material 3 dengan komponen khusus bergaya pixel/retro.
 - Platform scaffold: web, Android, iOS, Windows, macOS, Linux. Keberadaan folder platform tidak berarti semua target sudah dibangun dan diuji.
 - Lingkungan yang digunakan: Windows, VS Code, PowerShell, Chrome, Flutter 3.47.5/Dart 3.13.4 pada host pengujian. Build web tercatat pada 1 November; build APK debug dan Windows debug berhasil pada 2 November. Startup Android diverifikasi pada AVD `Medium_Phone` x86_64; runtime Windows, perangkat Android fisik, iOS, macOS, dan Linux belum diverifikasi melalui pengujian terbaru ini.
-- Backend nyata: Supabase berbasis PostgreSQL, Auth, Storage, Data API/RPC, dan satu Edge Function TypeScript/Deno.
+- Backend nyata: Supabase berbasis PostgreSQL, Auth, Storage, Data API/RPC, dan dua Edge Function TypeScript/Deno: `login-with-nim` dan `password-reset`.
 - AI: Ollama portable khusus proyek pada host Windows, diakses melalui HTTP lokal/LAN; model tidak dibundel ke Flutter.
 - Pengelolaan state: `StatefulWidget`, `ChangeNotifier`, listener, dan objek repository/service yang diinjeksi. Tidak ditemukan penerapan Provider, Riverpod, atau Bloc sebagai fondasi saat ini.
 
@@ -135,6 +137,7 @@ campus_app/
 │   ├── data/
 │   │   ├── auth_service.dart
 │   │   ├── supabase_auth_service.dart
+│   │   ├── password_reset_validation.dart
 │   │   ├── student_profile.dart
 │   │   ├── profile_repository.dart
 │   │   ├── supabase_profile_repository.dart
@@ -193,6 +196,7 @@ campus_app/
 │   ├── app_startup_test.dart
 │   ├── auth_service_test.dart
 │   ├── supabase_auth_test.dart
+│   ├── password_reset_widget_test.dart
 │   ├── widget_test.dart
 │   ├── profile_test.dart
 │   ├── profile_widget_test.dart
@@ -221,11 +225,14 @@ campus_app/
 │   ├── config.toml
 │   ├── seed_profile.sql
 │   ├── functions/login-with-nim/index.ts
+│   ├── functions/password-reset/{index.ts,handler.ts,otp.ts,services.ts}
+│   ├── functions/password-reset/{handler_test.ts,services_test.ts}
 │   ├── migrations/
 │   │   ├── 20261030080318_student_profiles.sql
 │   │   ├── 20261031082459_session_rpc_boundaries.sql
-│   │   └── 20261101015234_student_biodata_sections.sql
-│   └── tests/profile_access.sql
+│   │   ├── 20261101015234_student_biodata_sections.sql
+│   │   └── 20261102065453_password_reset_otp.sql
+│   └── tests/{profile_access.sql,password_reset.sql}
 ├── tool/
 │   ├── android/configure_emulator.ps1
 │   ├── verify_profile_photo.dart
@@ -331,7 +338,7 @@ Versi di tabel adalah **deklarasi pubspec**, bukan klaim seluruh package berada 
 | 1 | Startup dan penanganan gagal inisialisasi | COMPLETED | Startup async dengan tampilan kegagalan; tes tersedia dalam suite lulus | `lib/core/config/app_startup.dart`, `test/app_startup_test.dart` | Pertahankan regresi |
 | 2 | Login mahasiswa Supabase | COMPLETED | NIM dipetakan privat ke Auth; login nyata dikonfirmasi pengguna | `supabase/functions/login-with-nim/index.ts`, `lib/data/supabase_auth_service.dart` | Verifikasi akun kedua dan provisioning tim |
 | 3 | Logout dan sesi absolut | COMPLETED | Batas 30 menit, pencabutan, timer/resume, pembersihan UI; pengujian kontrak/RLS tersedia | `lib/main.dart`, `supabase/migrations/*`, `test/supabase_auth_test.dart` | Uji waktu nyata lintas perangkat tetap diperlukan |
-| 4 | Forgot/change password | PARTIALLY COMPLETED | Form, SDK recovery, minimum password, callback mobile tersedia | `lib/features/auth/*`, `lib/data/supabase_auth_service.dart` | Uji email/SMTP, allowlist redirect, deep link dan kedaluwarsa |
+| 4 | Forgot/change password | PARTIALLY COMPLETED | OTP campuran 6 karakter, Resend adapter, RPC service-only, rate limit, TTL, revoke sesi; backend deployed; satu email uji delivered pada 3 November | `lib/features/auth/*`, `supabase/functions/password-reset/`, `docs/password_reset_otp.md` | Uji reset/login nyata dan sesi lama lintas perangkat; verifikasi domain pengirim sebelum penggunaan umum |
 | 5 | Dashboard responsif | PARTIALLY COMPLETED | Layout, kartu, ringkasan, grafik dan keadaan kosong; belum data akademik nyata | `lib/features/dashboard/*`, `lib/data/dashboard_repository.dart` | Repository backend akademik |
 | 6 | Executive Menu | COMPLETED | Menu bertingkat desktop/mobile, teks konsisten, scroll/keyboard; tes widget lulus | `executive_menu.dart`, `test/executive_menu_test.dart` | Isi modul tujuan yang masih kosong |
 | 7 | Akses Cepat | COMPLETED | Tujuan bersama menu; profil/izin/chat/jadwal mendapat handler khusus | `dashboard_page.dart`, `test/dashboard_widget_test.dart` | Tambahkan tujuan nyata saat modul siap |
@@ -483,8 +490,18 @@ Tidak ada seed nilai, jadwal, tagihan, atau dokumen pribadi dari screenshot refe
 | `student_profiles` | `20261030080318_student_profiles.sql` | `20261030080557` |
 | `session_rpc_boundaries` | `20261031082459_session_rpc_boundaries.sql` | `20261031082535` |
 | `student_biodata_sections` | `20261101015234_student_biodata_sections.sql` | `20261101020002` |
+| `password_reset_otp` | `20261102065453_password_reset_otp.sql` | `20261102071019` |
 
-Nama migrasi berpadanan, tetapi timestamp berbeda. Ini adalah temuan terverifikasi; kesetaraan isi SQL remote/lokal secara lengkap belum dibandingkan. **Jangan langsung menjalankan db push atau repair history** sebelum mencocokkan schema, isi migrasi, dan ledger remote. Audit dokumentasi ini tidak memperbaiki history dan tidak menerapkan ulang migrasi.
+Nama migrasi berpadanan, tetapi timestamp berbeda. Ledger diperiksa kembali pada 2 November; migrasi OTP diterapkan melalui plugin dan tidak perlu diterapkan ulang. Kesetaraan seluruh migrasi lama secara lengkap belum dibandingkan. **Jangan langsung menjalankan db push atau repair history** sebelum mencocokkan schema, isi migrasi, dan ledger remote. Pengerjaan OTP tidak memperbaiki ledger historis.
+
+### Backend pemulihan OTP — 2 November 2026
+
+- Tabel `private.password_reset_challenges` menyimpan HMAC email/kode, ID challenge, pemilik opsional, waktu penerbitan/expiry, jumlah percobaan, dan konsumsi. Tidak ada kode asli atau password baru tersimpan di tabel.
+- RPC `issue_password_reset`, `consume_password_reset`, `cancel_password_reset`, dan `revoke_password_reset_sessions` hanya dapat dieksekusi service-role. RLS tabel tidak memberi akses client; konsumsi mengunci baris sehingga kode tidak dapat dipakai dua kali bersamaan.
+- Edge Function `password-reset` versi 1 **ACTIVE**, `verify_jwt=false` karena form berjalan sebelum login. Otorisasi perubahan tetap memakai OTP sah. `login-with-nim` tidak diganti.
+- Akun harus terkonfirmasi, tidak dihapus/diblokir, memiliki profil aktif, dan tidak mempunyai MFA terverifikasi. Email dicek ulang saat konsumsi. Respons permintaan umum untuk mencegah pengungkapan akun terdaftar.
+- Resend mengirim kode sebagai tugas latar Edge Runtime. `RESEND_API_KEY`, `RESET_EMAIL_FROM`, dan `RESET_OTP_SECRET` hanya di Secrets server; belum tersedia pada 2 November. Probe saat itu membuktikan respons konfigurasi kosong 503. Pada pemeriksaan 3 November, fungsi `password-reset` versi 2 ACTIVE dan pengiriman nyata delivered; lihat bagian J. Tidak ada deploy atau perubahan migrasi pada pemeriksaan 3 November.
+- Panduan pengirim/domain, konfigurasi, batas keamanan, dan 12 langkah penerimaan: [Pemulihan OTP](docs/password_reset_otp.md).
 
 ## G. AI Chatbot Development
 
@@ -602,6 +619,8 @@ Komentar `app_theme.dart` menyebut referensi `index.css` Figma. Namun tidak dite
 |---|---|---|
 | Password | Diperiksa Supabase Auth; tidak disimpan sebagai password aplikasi; perubahan baru minimum 12 karakter pada service | `supabase_auth_service.dart`, Edge login |
 | Login | Validasi NIM/password, POST, batas body yang diperiksa, pesan gagal generik, rate limit atomik | `supabase/functions/login-with-nim/index.ts` |
+| Pemulihan OTP | Acak kriptografis 6 karakter campuran, HMAC-SHA-256, TTL 10 menit, sekali pakai, 5 percobaan; password 12–256 karakter dan kebijakan Auth | `password-reset/`, migrasi OTP, `password_reset.sql` |
+| Batas pemulihan | 40/IP, 5 permintaan/email, 10 konfirmasi/email per 15 menit; kirim ulang minimal 60 detik | Edge handler + RPC rate limit/OTP |
 | Rate limit | Batas konfigurasi Edge 40 per IP dan 8 per NIM dalam 15 menit; identitas pembatas di-hash | Edge + `consume_login_attempt` |
 | Sesi | Tenggat 30 menit dari waktu sesi Auth di server; refresh/aktivitas tidak memperpanjang | SQL sesi, `SupabaseAuthService`, `AuthGate` |
 | Penyimpanan token | `persistSession: false`; restart/refresh meminta login ulang | `supabase_config.dart` |
@@ -618,8 +637,9 @@ Batas dimensi foto terukur pada decoder raster adalah 40 megapiksel dan sisi 16.
 ### Temuan dan hal yang belum dibuktikan
 
 - Security advisor Supabase saat audit masih mengeluarkan **WARN leaked password protection disabled**. Evaluasi pengaktifan sesuai kemampuan paket: [panduan keamanan password Supabase](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
-- Dua **INFO RLS enabled no policy** pada `private.app_sessions` dan `private.login_limits` sesuai desain tanpa akses langsung tabel bagi client. Jangan menambahkan policy permisif hanya untuk menghilangkan informasi advisor. Pemeriksaan akses melalui fungsi tetap diperlukan: [penjelasan linter Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
-- Email recovery/SMTP dan allowlist redirect belum terbukti end-to-end pada semua perangkat. Android/iOS memiliki callback `campusapp://auth-callback`; desktop native belum mempunyai alur callback terkonfigurasi yang terverifikasi.
+- Pemeriksaan advisor 2 November menunjukkan tiga **INFO RLS enabled no policy** pada `private.app_sessions`, `private.login_limits`, dan `private.password_reset_challenges`, sesuai desain tanpa akses langsung client. Jangan menambahkan policy permisif hanya untuk menghilangkan informasi advisor. Pemeriksaan akses melalui fungsi tetap diperlukan: [penjelasan linter Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+- Pengiriman OTP nyata sudah delivered pada 3 November; reset password dan login ulang end-to-end belum diuji. Tidak memerlukan port web tetap/deep link; konfigurasi callback hanya relevan untuk handler tautan Auth lama. Kegagalan provider membatalkan challenge pengiriman itu, dan respons request 200 sendiri bukan bukti email sampai.
+- Reset mencabut sesi aplikasi melalui RLS dan refresh session Auth melalui global sign-out. JWT lama dapat tetap berlaku sampai expiry pada layanan yang hanya memeriksa JWT. Kode dikonsumsi sebelum perubahan Auth; kegagalan/timeout memerlukan pemeriksaan hasil login dan kode baru, bukan pemakaian ulang OTP.
 - Konfigurasi menggunakan implicit flow dan token memori. Perubahan strategi Auth harus dievaluasi bersama kebutuhan platform, callback, sesi absolut dan tes; jangan mengganti hanya karena preferensi library.
 - Ollama LAN menggunakan HTTP tanpa autentikasi aplikasi tersendiri. Firewall/CORS bukan pengganti otorisasi pengguna. Jangan mengekspos port ke internet atau menganggap layanan host aman untuk data produksi hanya karena lokal.
 - Android mengizinkan cleartext traffic untuk kebutuhan AI lokal; iOS mengaktifkan local networking; macOS memiliki entitlement network client. Konfigurasi release perlu ditinjau per platform.
@@ -663,23 +683,61 @@ Tidak ditemukan direktori suite `integration_test` lengkap. Fixture HTTP dan wid
 | Analisis revisi navigasi halaman sebelumnya | `No issues found!`, 82,6 detik | Bukti historis sebelum revisi pintasan gulir |
 | `build/navigation-verification/dashboard-phone.png` pada pemeriksaan sebelumnya | Render widget 390 × 844 diperiksa; tombol Chatbot berada di tengah dan empat menu tertata tanpa overflow | Artefak lokal dapat ditimpa ketika tes dijalankan ulang; pemeriksaan sebelumnya tidak membuktikan perilaku gulir terbaru |
 | Screenshot pengguna setelah revisi pintasan gulir | Format tiga file selesai tanpa perubahan; `flutter analyze --no-pub` menghasilkan `No issues found!`, 3,4 detik | Analisis Flutter/Dart bersih; bukan bukti seluruh tes atau build berhasil |
-| Tes setelah revisi pintasan gulir | Empat file tes dijalankan; screenshot menunjukkan tahap `loading` | Hasil akhir belum tercatat; jangan menyatakan tes terbaru lulus sebelum muncul `All tests passed!` |
+| Screenshot tes setelah revisi pintasan gulir | Empat file tes saat itu terlihat pada tahap `loading` | Bukti historis tidak lengkap; suite 218 terbaru di bawah sudah mencakup tes navigasi |
 | Konfirmasi pengguna setelah revisi pintasan gulir | Pengguna menyatakan perubahan berhasil | Konfirmasi penggunaan; belum merupakan verifikasi lengkap seluruh perangkat dan kondisi pemuatan/error |
 | Pemeriksaan metadata EXE, XML, dan penamaan setelah revisi | ProductName/FileDescription/InternalName `campus_app`, OriginalFilename `campus_app.exe`; XML terkait dapat diparse; nama lama tidak ditemukan pada pemindaian proyek | Pencarian tidak mencakup riwayat/objek `.git`, isi biner model, dan dependensi melalui symlink; bukan pengujian runtime seluruh platform |
 | Konfirmasi pengguna pada percakapan | Login nyata menampilkan profil akun pengembangan yang dimaksud | Tidak otomatis membuktikan seluruh edit terbaru sudah diuji |
 | Riwayat pengerjaan sebelumnya | Uji akses SQL rollback dan probe foto web dilaporkan berhasil | Tidak dijalankan ulang; log lengkap hasil tersebut tidak dipersistenkan sebagai bukti versi dalam dokumen ini |
 | Screenshot editor pengguna terakhir | Deno terpasang; error merah hilang, tersisa satu lint deklarasi fungsi | Bukti editor pengguna, bukan hasil CI/deploy baru |
+| `build/otp-flutter-test.log`, 2 November | **218 tes lulus**, `All tests passed!` | Seluruh suite Flutter, termasuk navigasi gulir dan OTP; jaringan/Auth/email memakai fixture |
+| `build/otp-analyze.log` | `No issues found!`, 6,6 detik | Analisis Dart; bukan uji runtime |
+| `build/otp-build-web.log` | Build web berhasil, 76,7 detik | Source terbaru termasuk OTP; bukan deploy publik atau uji email |
+| `deno check`, `deno lint`, dan tes `password-reset/` | Pemeriksaan bersih; **15 tes lulus** | Handler, crypto, dan adapter SDK asli dengan transport HTTP tiruan; tidak mengirim email |
+| `supabase/tests/password_reset.sql` pada proyek development | PASS; transaksi rollback | Hak akses, cooldown, salah/replay/expiry, batas percobaan, resend/cancel, email berubah, akun nonaktif/MFA, revoke; fixture tidak dipertahankan |
+| Deploy dan `build/otp-remote-probe.json` | Fungsi v1 ACTIVE; OPTIONS 200, email invalid 400, Resend belum diatur 503 | Uji HTTP cloud tanpa reset akun atau email nyata |
+| `build/otp-build-android.log` | Build gagal menunggu lock Gradle milik proses lain | Tidak menghentikan proses IDE pengguna |
+| `build/otp-build-android-isolated.log` | Cache proyek terpisah melewati lock; gagal `JdkImageTransform` memakai JDK 26 | Masalah toolchain saat kompilasi `app_links`; bukan bukti error OTP Dart |
+| `build/otp-build-android-jbr.log` | **BUILD SUCCESSFUL**, 1 menit 52 detik, 304 task; `assembleDebug` dengan JBR 25.0.3 Android Studio | Source OTP terbaru; cache proyek terpisah, JAVA_HOME hanya pada proses tes; pengaturan JDK global tidak diubah |
 
 Probe foto pada pengerjaan sebelumnya mencakup JPG, PNG, GIF, BMP, TIFF, ICO, WebP dan penolakan byte invalid. Tes browser Flutter sempat terhambat pemuatan CanvasKit lokal/404 dan tidak boleh dilaporkan lulus; verifikasi memakai probe web terpisah sebagai bukti terbatas.
 
 `docs/chatbot_quality.md` mencatat evaluasi terdahulu 12 alur dan suite 151 tes. Angka tersebut bersifat historis sebelum pengembangan profil terbaru, bukan konflik dengan log 208 tes. Tidak ada skor akurasi chatbot menyeluruh yang dapat dinyatakan dari hasil routing tersebut.
 
-### Matriks verifikasi platform per 2 November 2026
+### Verifikasi aktivasi Resend — 3 November 2026
+
+Pengguna mengonfirmasi penyimpanan tiga secrets melalui dashboard Supabase. Nilai secrets tidak dibaca, disalin ke repository, atau dicantumkan dalam laporan. Pengujian mengirim **satu** email OTP ke akun pengembangan milik pengguna melalui endpoint `password-reset`, bukan langsung melalui API pengiriman Resend.
+
+| Pemeriksaan | Hasil | Batas bukti |
+|---|---|---|
+| Metadata Supabase | `password-reset` v2 ACTIVE; `login-with-nim` v2 ACTIVE | Tidak ada deploy atau migrasi baru pada pemeriksaan ini |
+| Permintaan OTP cloud, sekitar 11:04 WIB | HTTP 200 dengan pesan umum; `build/otp-nov3-remote-probe.json` | Respons ini sendiri tidak menjamin delivery |
+| Plugin Resend: metadata email hasil permintaan | **delivered**, waktu kirim 04:04:51 UTC / 11:04:51 WIB | Server email penerima menerima pesan; belum membuktikan posisi inbox/spam atau dibaca pengguna |
+| Pemeriksaan isi email secara terbatas | Kode enam karakter, hanya huruf besar/angka, memuat keduanya; informasi berlaku 10 menit dan sekali pakai tersedia | Kode dan isi email privat tidak ditampilkan atau disimpan dalam laporan |
+| `flutter analyze --no-pub` | **No issues found**, 4,5 detik; `build/otp-nov3-analyze.log` | Analisis Dart, bukan pengujian runtime perangkat |
+| `flutter test --no-pub` | **218 lulus, 0 gagal**, sekitar 54 detik; `build/otp-nov3-flutter-test.log` | Seluruh suite otomatis; integrasi Auth/email pada tes memakai fixture |
+| `deno check`, `deno lint`, `deno test supabase/functions/password-reset` | Check/lint bersih; **15 lulus, 0 gagal** | Tes handler dan adapter memakai transport tiruan |
+| `supabase/tests/password_reset.sql` pada proyek development | **PASS**, transaksi rollback | Permissions, cooldown, kode salah/replay, batas percobaan, resend/cancel/expiry, email berubah, akun nonaktif/unknown/MFA, dan revoke; fixture tidak dipertahankan |
+
+Pengujian Flutter sempat tertahan oleh pembatasan lingkungan eksekusi. Proses tes milik sesi ini dihentikan setelah command line diverifikasi, lalu perintah dijalankan ulang dengan akses yang diperlukan. Hasil di atas berasal dari pengulangan yang selesai; proses IDE pengguna tidak dihentikan.
+
+**Belum diuji pada sesi ini:** memasukkan OTP melalui UI, mengganti password akun nyata, login dengan password baru, penolakan password lama, dan pencabutan sesi nyata lintas perangkat. Password pengguna tetap. Tidak ada build web/APK baru atau uji emulator interaktif pada 3 November; bukti build 2 November tetap bersifat historis. Domain pengirim untuk pemakaian umum juga belum diverifikasi dalam pengujian ini. Log `build/` diabaikan Git dan dapat hilang ketika `flutter clean`.
+
+### Skill dan plugin yang tersedia — 3 November 2026
+
+| Skill/plugin | Penggunaan dalam sesi |
+|---|---|
+| `caveman` | Tersedia dan digunakan untuk komunikasi ringkas; kelengkapan kode, pengujian, dan dokumentasi tidak dikurangi |
+| `supabase:supabase` | Tersedia; connector digunakan untuk memeriksa fungsi cloud dan menjalankan tes SQL dengan rollback |
+| `app-6a3c407853888191beddc2151c2b6f8b:resend-cli` / Resend | Skill tersedia dan digunakan; **integrasi plugin baru yang dicatat pada pembaruan ini**. Connector Resend digunakan untuk memeriksa email uji dan status delivered |
+
+Executable `resend` belum ditemukan pada PATH lokal. Pemeriksaan memakai connector yang tersedia, sehingga tidak memasang CLI tambahan. Skill/plugin ini milik lingkungan asisten; tidak otomatis terpasang pada komputer anggota tim lewat clone/merge, dan ketersediaannya harus diperiksa kembali pada sesi/akun lain. Backend aplikasi memakai secrets server dan integrasi Resend dalam Edge Function, bukan bergantung pada plugin asisten.
+
+### Matriks verifikasi platform (build 2 November; status tindak lanjut 3 November 2026)
 
 | Target | Build | Runtime yang teramati | Pekerjaan tersisa |
 |---|---|---|---|
-| Web/Chrome | Berhasil pada pengujian 1 November | Login nyata pernah dikonfirmasi pengguna; probe foto terpisah tersedia | Uji penerimaan profil lengkap dan recovery email; build web belum diulang setelah revisi nama native |
-| Android emulator | APK debug berhasil pada 2 November | `Medium_Phone`, image Android 37.2 x86_64, GPU host, renderer bawaan; login, lupa password, dan keyboard tampil setelah cold boot | Login nyata, persistensi profil, upload/ekspor, callback recovery, dan pengukuran kinerja |
+| Web/Chrome | Build terbaru OTP berhasil pada 2 November | Login nyata pernah dikonfirmasi pengguna; probe foto terpisah tersedia; delivery OTP via endpoint terverifikasi 3 November | Uji penerimaan profil lengkap, reset OTP melalui UI, login ulang dan sesi lama |
+| Android emulator | APK OTP terbaru berhasil dengan JBR Android Studio/cache terpisah | Pada diagnosis sebelumnya `Medium_Phone`, image Android 37.2 x86_64, GPU host; login, lupa password lama, keyboard tampil. APK OTP terbaru belum dijalankan interaktif | Verifikasi APK OTP terbaru, login nyata, persistensi, upload/ekspor, delivery OTP, kinerja |
 | Android fisik | Belum diuji ulang | Belum ada bukti terbaru | Instalasi, jaringan Ollama, input, foto/berkas, dan seluruh alur utama |
 | Windows desktop | Debug berhasil pada 2 November | Belum diuji interaktif | Startup, Auth, ekspor, koneksi AI, dan callback pada desktop |
 | iOS/macOS | Konfigurasi identitas diperbarui; build belum diuji di host ini | Belum ada bukti terbaru | Build pada macOS/Xcode, signing, provisioning, callback dan alur fitur |
@@ -689,13 +747,16 @@ Seluruh durasi di atas merupakan hasil satu eksekusi pada host pengembangan, buk
 
 ### Analisis, format dan pemeriksaan berikutnya
 
-Perintah untuk verifikasi lanjutan. Revisi navigasi sebelumnya melewati empat file tes terarah. Setelah navigasi dikembalikan menjadi pintasan gulir, screenshot pengguna menunjukkan analisis kode bersih; hasil akhir tes terbaru belum terlihat. Seluruh suite dan build belum diulang untuk revisi terakhir:
+Perintah untuk verifikasi ketika source berubah. Suite Flutter 218 tes, analisis, Deno, dan SQL OTP dijalankan ulang pada 3 November; delivery email nyata juga terverifikasi. Build web/Android berasal dari 2 November. Reset password dan login ulang melalui UI masih perlu pemeriksaan manual:
 
 ```powershell
 flutter analyze
 flutter test
 dart format --output=none --set-exit-if-changed lib test
 deno check .\supabase\functions\login-with-nim\index.ts
+deno check .\supabase\functions\password-reset\index.ts
+deno lint .\supabase\functions\password-reset
+deno test .\supabase\functions\password-reset\handler_test.ts .\supabase\functions\password-reset\services_test.ts
 flutter build web --no-web-resources-cdn
 ```
 
@@ -704,6 +765,14 @@ Tidak ada log pemeriksaan `dart format` terbaru yang cukup untuk mengklaim selur
 Checklist manual terbaru berada di `docs/profile_test_checklist.md`. Prioritas verifikasi: simpan–muat ulang–logout/login tiap bagian, foto nyata, dua jendela mengedit versi yang sama, jaringan terputus, dokumen, sesi 30 menit, akun kedua, password recovery, serta HP/emulator.
 
 ## K. Development History & Technical Decisions
+
+### Pemulihan OTP dan Resend — 2 November 2026
+
+Permintaan pengguna mengganti link email pada form Lupa password menjadi kode enam karakter campuran huruf besar dan angka. Kode dibuat di server dengan generator kriptografis, disimpan sebagai HMAC, berlaku 10 menit, maksimal lima percobaan, dan dikonsumsi atomik sebelum perubahan password. Form memeriksa format email; server memeriksa akun yang memenuhi syarat tanpa mengungkap keberadaan akun kepada pemohon.
+
+Resend dipilih karena pengguna belum memiliki layanan email. Migrasi dan Edge Function sudah diterapkan, tetapi tiga secrets pengirim belum tersedia. Tes HTTP memakai transport tiruan dan tes SQL melakukan rollback; tidak ada email nyata atau password pengguna yang diubah. Panduan aktivasi dan penerimaan lengkap tersedia di `docs/password_reset_otp.md`.
+
+Build APK terbaru sempat terhalang lock Gradle milik proses lain dan JDK 26. Build akhirnya berhasil dengan cache proyek terpisah serta JBR 25.0.3 Android Studio yang dipilih hanya pada proses build. Proses IDE pengguna tidak dihentikan dan pengaturan Java global tidak diubah. Karena itu keberhasilan build terisolasi belum menjamin terminal tim dengan JDK berbeda langsung berhasil.
 
 ### Riwayat yang didukung Git
 
@@ -791,7 +860,7 @@ Prioritas merupakan penilaian kebutuhan pengembangan, bukan klaim semua risiko s
 | L03 HIGH | Data akademik belum terhubung | `EmptyDashboardRepository` aktif | Dashboard/chat tidak dapat memberikan informasi kuliah nyata | Kontrak data resmi dan repository berotorisasi | Belum diimplementasikan |
 | L04 HIGH | Izin hanya memori dan penerima contoh | `LeaveRepository`, `demoLecturers`; logout akun nyata membersihkan data sesi | Pengajuan hilang; tidak sampai kepada BAP/dosen perangkat lain | Backend izin, transaksi review, Storage bukti dan inbox | Simulasi terimplementasi; backend belum |
 | L05 HIGH | Login staf belum tersedia | RPC hanya `student`; profil mengharapkan `students` | UI BAP/dosen tidak dapat digunakan sebagai layanan nyata melalui login sekarang | Provisioning staf, pemetaan identitas dan akses role server | Belum diimplementasikan |
-| L06 HIGH | Recovery dan persistensi terbaru belum uji nyata lengkap | Checklist tersedia; pengguna belum menyelesaikan semua langkah | Kesalahan callback, SMTP, atau operasi perangkat lolos dari fixture | Jalankan checklist dan catat hasil tanpa membagikan password | NEEDS VERIFICATION |
+| L06 HIGH | Reset OTP dan persistensi belum uji nyata lengkap | Backend OTP deployed; satu email nyata delivered 3 November; checklist tersedia | Delivery tidak membuktikan reset/login/pencabutan sesi pada perangkat | Jalankan checklist OTP/profil tanpa membagikan rahasia; verifikasi domain untuk pemakaian umum | NEEDS VERIFICATION |
 | L07 HIGH sebelum produksi | Leaked password protection nonaktif | WARN security advisor saat audit | Password yang bocor tidak memperoleh perlindungan tambahan tersebut | Aktifkan bila tersedia; verifikasi kebijakan password backend | Terbuka |
 | L08 HIGH sebelum deployment | AI LAN HTTP tanpa Auth aplikasi; cleartext Android luas | Terverifikasi konfigurasi; eksploitasi tidak diuji | Akses jaringan tidak diinginkan/mixed content dan kegagalan pada web publik | Rancang gateway terautentikasi/TLS atau batasi mode development; uji platform | Rekomendasi belum diterapkan |
 | L09 MEDIUM | Hook AI menghalangi Flutter ketika unduhan gagal | Source hook; gangguan DNS pernah dilaporkan | Pengembang tidak bisa menjalankan UI melalui hook saat model belum siap | Putuskan mode gagal yang jelas; opsi bantuan terpandu/offline tanpa mengaku AI aktif | Perilaku sekarang terverifikasi |
@@ -806,7 +875,7 @@ Prioritas merupakan penilaian kebutuhan pengembangan, bukan klaim semua risiko s
 | L18 MEDIUM | Belum CI/CD dan uji perangkat lengkap | Tidak ada workflow aplikasi atau suite integration_test; startup satu AVD dan build Windows kini terverifikasi | Regresi/perbedaan platform tidak segera terdeteksi | CI analyze/test/build, staging, dan perluasan matriks perangkat pada bagian J | Verifikasi manual sebagian; CI belum diimplementasikan |
 | L19 LOW | Satu lint TypeScript deklarasi fungsi dalam blok | Screenshot terakhir pada `allowed()` di Edge | Noise editor; bukan bukti runtime gagal | Refactor kecil dengan parameter/scope tetap benar pada tugas kode berikutnya | Belum diperbaiki; perlu cek ulang diagnostik |
 | L20 LOW | Tema alternatif/font tidak terdaftar dan ignore duplikat | `retro_theme.dart`, `.gitignore`; bagian penamaan lama sudah diselesaikan pada 2 November | Kebingungan pemeliharaan | Audit pemanggil dan rapikan hanya setelah cakupan jelas | Terbuka sebagian; penamaan proyek selesai pada cakupan bagian K |
-| L21 MEDIUM | Konsistensi visual referensi dan penerimaan navigasi bawah | Navigasi bawah kembali menggulir ke panel dashboard; Chatbot tetap di tengah | Perbedaan posisi gulir dan tampilan lintas perangkat masih perlu diperiksa | Uji Beranda ke atas, Jadwal ke jadwal hari ini, Akademik ke Kemajuan Belajar, Profil ke kartu mahasiswa, serta Chatbot | Pengguna mengonfirmasi berhasil; verifikasi lintas perangkat dan hasil akhir tes terbaru belum tercatat |
+| L21 MEDIUM | Konsistensi visual referensi dan penerimaan navigasi bawah | Navigasi gulir/Chatbot tercakup suite 218 tes yang lulus | Posisi gulir dan tampilan perangkat nyata masih perlu diperiksa | Uji Beranda, Jadwal, Kemajuan Belajar, kartu Profil, serta Chatbot | Pengguna mengonfirmasi berhasil; penerimaan lintas perangkat tetap diperlukan |
 | L22 HIGH sebelum produksi | Backup, retensi, audit kegiatan dan operasi pengelola belum lengkap | Tidak ditemukan implementasi/panduan operasional lengkap | Data dan keputusan layanan sulit dipulihkan/dilacak | Tetapkan kebijakan, backup/restore drill, audit trail dan pemantauan | PLANNED |
 | L23 MEDIUM | Layar hitam dari kondisi boot AVD yang diuji | APK yang sama tampil setelah cold boot; startup normal setelah konfigurasi berhasil | Host anggota tim masih dapat mengalami masalah emulator berbeda | Terapkan panduan per AVD yang bermasalah; kumpulkan log jika tetap terjadi | Terselesaikan pada `Medium_Phone`; pengaturan host tidak ikut merge |
 | L24 MEDIUM | Kinerja startup debug dan matriks build native belum lengkap | Frame terlewat pada emulator; build Windows berhasil tetapi runtime belum diuji; Apple/Linux belum dibangun | Build sukses disalahartikan sebagai kesiapan semua perangkat | Profil kinerja dan uji alur lintas platform sesuai matriks J | NEEDS VERIFICATION |
@@ -875,7 +944,7 @@ Per 2 November, penamaan teknis sudah seragam menjadi `campus_app`; ID Apple `co
 
 1. Baca dokumen ini, `README.md`, `docs/student_profile.md`, `docs/profile_test_checklist.md`, dan `docs/android_emulator.md`. Perlakukan dokumen chatbot/izin lama sebagai konteks yang harus dicocokkan dengan source.
 2. Jalankan pemeriksaan baca `git status --short`, `git branch --show-current`, `git rev-parse HEAD`. Jangan menimpa perubahan pengguna, menghidupkan kembali file yang sengaja dihapus, atau berpindah branch otomatis.
-3. Baca instruksi `AGENTS.md`/skill yang tersedia pada lingkungan baru. Pada audit ini tidak ditemukan AGENTS yang menambah aturan proyek. Skill Caveman tersedia untuk komunikasi; Supabase tersedia untuk pekerjaan backend. Ketersediaan plugin/skill tidak dijamin melekat selamanya antar akun: verifikasi, lalu beri tahu pengguna jika tidak tersedia.
+3. Baca instruksi `AGENTS.md`/skill yang tersedia pada lingkungan baru. Pada audit ini tidak ditemukan AGENTS yang menambah aturan proyek. Caveman, Supabase, dan Resend (`resend-cli` skill serta connector) tersedia pada sesi 3 November. Ketersediaan plugin/skill tidak dijamin melekat selamanya antar akun: verifikasi, lalu beri tahu pengguna jika tidak tersedia.
 4. Mulai alur code dari `main.dart` dan kontrak `data/`; periksa pemanggil sebelum mengubah widget. Jangan mengganti backend/state management hanya demi merapikan struktur.
 5. Jika menyentuh database, pastikan proyek/lingkungan yang benar, tinjau schema/RLS, dan selesaikan selisih versi migrasi. Jangan menjalankan seed development pada akun/lingkungan lain tanpa kebutuhan jelas.
 6. Gunakan akun uji yang dibuat pemilik. Jangan meminta password di chat, membaca token untuk dilaporkan, atau memasukkan service-role key ke Flutter.
@@ -899,7 +968,7 @@ flutter pub get
 flutter run -d chrome --web-port 3000
 ```
 
-Gunakan terminal **Campus App (AI otomatis)** untuk pemulihan/start model sebelum Flutter. Port web tetap memudahkan allowlist redirect pengujian recovery. Untuk target lain:
+Gunakan terminal **Campus App (AI otomatis)** untuk pemulihan/start model sebelum Flutter. OTP tidak membutuhkan port web tetap; allowlist redirect hanya untuk alur tautan Auth lama. Untuk target lain:
 
 ```powershell
 flutter devices
@@ -936,13 +1005,13 @@ HP nyata perlu berada pada jaringan yang dapat menjangkau host, host tetap hidup
 
 ### O.5 Memeriksa kualitas dan penerimaan
 
-1. Jalankan tes yang berhubungan dengan perubahan, lalu `flutter analyze` dan `flutter test` bila diperlukan untuk penerimaan. Bukti lama 208 tes tidak otomatis berlaku setelah source berubah.
+1. Jalankan tes yang berhubungan dengan perubahan, lalu `flutter analyze` dan `flutter test` untuk penerimaan. Bukti terbaru 218 tes pada revisi OTP tidak otomatis berlaku setelah source berikutnya berubah.
 2. Gunakan `dart format --output=none --set-exit-if-changed lib test` untuk pemeriksaan tanpa penulisan; formatter penulisan hanya pada tugas perubahan kode yang diizinkan.
 3. Periksa Edge dengan `deno check` dan konfigurasi Deno yang benar. Satu lint pemindahan deklarasi fungsi tidak sama dengan error runtime.
 4. Uji SQL `supabase/tests/profile_access.sql` hanya pada development dengan pemahaman bahwa script membuat fixture dan rollback; jangan menjalankannya secara otomatis pada produksi.
 5. Jalankan `tool/local_ai/smoke.dart`/`evaluate.dart` hanya saat perlu memverifikasi model nyata. Bedakan keberhasilan routing aplikasi dari ketepatan jawaban LLM.
 6. Untuk profil, jalankan checklist manual. Penerimaan minimal: simpan data/foto/berkas, muat ulang, login ulang, batal edit, konflik dua jendela, gagal jaringan, akses akun lain ditolak, dan sesi habis benar.
-7. Recovery email, callback Android/iOS, ekspor HP, format foto tambahan, layout perangkat, dan kesesuaian visual referensi masih perlu hasil tertulis.
+7. Resend sudah mengirim satu OTP nyata berstatus delivered pada 3 November. Lanjutkan `docs/password_reset_otp.md` untuk reset melalui UI, login ulang, dan sesi lama. Ekspor HP, format foto tambahan, layout perangkat, dan kesesuaian visual referensi masih memerlukan hasil tertulis. Callback Auth lama diuji terpisah bila tetap digunakan.
 8. Saat mengubah startup/platform, gunakan enam tes terarah `flutter test test/app_startup_test.dart test/widget_test.dart` dan build target yang relevan. Periksa juga tampilan nyata; build Windows berhasil tidak membuktikan login atau callback desktop berjalan.
 9. Bukti lama di `build/` dapat hilang saat pembersihan. Tiga log audit 1 November sudah tidak tersedia pada pembaruan ini. Catat tanggal, perintah, hasil dan batas verifikasi baru tanpa mengubah hasil historis menjadi klaim pengujian ulang.
 

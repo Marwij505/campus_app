@@ -1,10 +1,10 @@
 // Auth menyimpan token di memori; server menegakkan tenggat absolut setiap sesi.
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import 'auth_service.dart';
+import 'password_reset_validation.dart';
 import 'profile_repository.dart';
 import 'student_profile.dart';
 import 'supabase_profile_repository.dart';
@@ -184,12 +184,51 @@ class SupabaseAuthService extends AuthService {
 
   @override
   Future<void> requestReset(String email) async {
-    await client.auth
-        .resetPasswordForEmail(
-          email,
-          redirectTo: kIsWeb ? Uri.base.origin : 'campusapp://auth-callback',
-        )
-        .timeout(const Duration(seconds: 30));
+    final error = PasswordResetValidation.emailError(email);
+    if (error != null) throw AuthException(error);
+    await _resetRequest({
+      'action': 'request',
+      'email': PasswordResetValidation.email(email),
+    });
+  }
+
+  @override
+  Future<void> confirmReset({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    final error =
+        PasswordResetValidation.emailError(email) ??
+        PasswordResetValidation.codeError(code) ??
+        PasswordResetValidation.passwordError(password);
+    if (error != null) throw AuthException(error);
+    await _resetRequest({
+      'action': 'confirm',
+      'email': PasswordResetValidation.email(email),
+      'code': PasswordResetValidation.code(code),
+      'password': password,
+    });
+  }
+
+  Future<void> _resetRequest(Map<String, String> body) async {
+    try {
+      await client.functions
+          .invoke('password-reset', body: body)
+          .timeout(const Duration(seconds: 30));
+    } on sb.FunctionException catch (e) {
+      // Batasi pesan agar detail internal dari layanan tidak tampil pada aplikasi.
+      throw AuthException(switch (e.status) {
+        429 => 'Terlalu banyak percobaan. Coba lagi setelah 15 menit.',
+        400 => 'Kode salah, kedaluwarsa, atau sudah dipakai. Periksa isian atau minta kode baru.',
+        _ => 'Layanan pemulihan belum siap atau sedang terganggu. Hubungi pengelola. Jika sudah mencoba kode, minta kode baru.',
+      });
+    } catch (_) {
+      // Timeout bisa terjadi setelah server selesai; jangan mengklaim password belum berubah.
+      throw const AuthException(
+        'Hasil pemulihan belum dapat dipastikan. Periksa koneksi; coba login atau minta kode baru.',
+      );
+    }
   }
 
   @override

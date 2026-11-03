@@ -21,6 +21,12 @@ abstract class AuthService extends ChangeNotifier {
     required String password,
   });
   Future<void> requestReset(String email);
+  // OTP membuktikan akses email; keberhasilan tidak membuat sesi login otomatis.
+  Future<void> confirmReset({
+    required String email,
+    required String code,
+    required String password,
+  });
   Future<void> changePassword(String password);
   Future<void> logout();
   Future<void> checkSession();

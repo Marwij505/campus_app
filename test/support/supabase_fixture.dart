@@ -39,6 +39,7 @@ class SupabaseFixture {
   bool conflict = false, failSections = false;
   int revision = 0;
   int loginStatus = 200;
+  int resetStatus = 200;
   bool profileMissing = false, failSave = false, sessionValid = true;
   Uint8List? photoBytes;
   Completer<void>? loginGate, logoutGate, statusGate;
@@ -72,6 +73,9 @@ class SupabaseFixture {
   Future<http.Response> handle(http.Request request) async {
     requests.add(request);
     final path = request.url.path;
+    if (path.endsWith('/password-reset')) {
+      return json({'message': 'Respons pemulihan terkendali'}, resetStatus);
+    }
     if (path.endsWith('/login-with-nim')) {
       await loginGate?.future;
       return loginStatus == 200
