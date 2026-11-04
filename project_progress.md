@@ -1,7 +1,8 @@
 # Project Progress — Campus App / SIAKAD FASILKOM Esa Unggul
 
 **Tanggal audit awal:** 1 November 2026, zona waktu Asia/Jakarta.  
-**Pembaruan terakhir:** 3 November 2026 — pengiriman OTP Resend nyata terverifikasi, pengujian ulang Flutter/Deno/SQL, dan pencatatan skill/plugin Resend. Navigasi bawah tetap menjadi pintasan gulir dengan Chatbot di tengah.
+**Pembaruan terakhir:** 4 November 2026 — penambahan prosedur manajemen token, verifikasi teknologi melalui source/configuration, dan pedoman kesinambungan sesi pada bagian P. Pembaruan ini hanya dokumentasi.
+**Verifikasi fungsional terakhir:** 3 November 2026 — pengiriman OTP Resend nyata terverifikasi, pengujian ulang Flutter/Deno/SQL, dan pencatatan skill/plugin Resend. Navigasi bawah tetap menjadi pintasan gulir dengan Chatbot di tengah.
 **Repository lokal:** `C:/Users/Marcell/Repositories/campus_app`.  
 **Branch aktif:** `marcell-works`.  
 **Git HEAD dasar pengerjaan OTP:** `d2e584f61975f793c56da3903d60b7562ca453ce`.
@@ -55,6 +56,7 @@ Nama teknis proyek diseragamkan menjadi `campus_app`, termasuk konfigurasi platf
 - [M. Development Roadmap](#m-development-roadmap)
 - [N. Priority Tasks & Next Development Steps](#n-priority-tasks--next-development-steps)
 - [O. Project Handover — New Codex Account](#o-project-handover--new-codex-account)
+- [P. Prosedur Manajemen Token — GPT-6 Astra High](#p-prosedur-manajemen-token--gpt-6-astra-high)
 
 ## A. Project Overview
 
@@ -1032,3 +1034,83 @@ HP nyata perlu berada pada jaringan yang dapat menjangkau host, host tetap hidup
 Mulai dari peninjauan working tree dan penyelarasan sumber untuk tim, lalu cocokkan migrasi remote/lokal. Setelah itu selesaikan verifikasi profil terbaru menggunakan checklist yang sudah ada. Jangan membangun ulang formulir/profil dari nol. Tentukan bersama pemilik apakah modul berikutnya adalah jadwal akademik atau backend izin; keduanya membutuhkan sumber data dan otorisasi yang belum lengkap.
 
 Dokumen ini harus diperbarui ketika ada implementasi atau bukti pengujian baru, dengan tanggal/commit yang sesuai. Tandai rencana sebagai rencana sampai source, backend, dan verifikasi benar-benar mendukung status selesai.
+
+## P. Prosedur Manajemen Token — GPT-6 Astra High
+
+**Ditetapkan:** 4 November 2026. Prosedur ini menjadi pedoman pengembangan dan serah terima lintas sesi maupun akun Codex. Efisiensi token tidak boleh mengurangi kelengkapan kebutuhan SIAKAD, keamanan, akurasi, kualitas implementasi, atau validasi penting.
+
+### 1. Model dan Efisiensi
+
+- Model utama yang ditetapkan pengguna adalah **GPT-6 Astra High**. Jangan mengganti model tanpa instruksi pengguna. Ketentuan ini merupakan preferensi pengguna; pencatatan di dokumen tidak mengubah konfigurasi model pada antarmuka Codex atau membuktikan model yang sedang aktif.
+- Minimalkan token dari input, output, pembacaan file, dan pemanggilan tools dengan memilih informasi yang langsung mendukung tugas.
+- Gunakan instruksi singkat. Hindari analisis dan penjelasan berulang yang tidak menambah bukti atau keputusan.
+- Prioritaskan ketepatan dan kualitas hasil dibanding sekadar mengurangi token. Dokumentasi atau penjelasan detail yang diminta pengguna tetap harus lengkap.
+
+### 2. Manajemen Konteks dan Sesi
+
+- Pada sesi baru, baca ringkasan eksekutif, keputusan teknis, dan tugas aktif dari dokumen ini; gunakan bagian K, N, dan O sesuai kebutuhan. Periksa apakah status tersebut masih cocok dengan keadaan proyek sebelum melanjutkan.
+- Baca bagian dokumentasi tambahan dan source code hanya jika berhubungan dengan tugas. Hindari membaca ulang file yang tidak berubah dan masih tersedia dalam konteks.
+- Setelah satu fitur atau milestone selesai, perbarui bagian progres yang terdampak, termasuk hasil validasi dan pekerjaan yang belum selesai.
+- Setelah pekerjaan selesai dan dokumentasi tersimpan, pengguna dapat memulai sesi baru melalui **New Chat** atau `/clear` apabila tersedia pada antarmuka yang digunakan. Pastikan ringkasan serah terima sudah tersimpan terlebih dahulu.
+- Untuk sesi panjang yang masih memerlukan konteks sebelumnya, gunakan `/compact` apabila tersedia. Ketersediaan perintah harus diperiksa pada antarmuka yang digunakan, bukan diasumsikan sama di semua akun.
+- Jangan menghapus konteks ketika tugas masih berjalan atau pekerjaan belum diverifikasi. Catat status sementara bila sesi harus terputus.
+
+### 3. Pembatasan Pembacaan File
+
+- Cari nama file, fungsi, class, atau simbol sebelum membuka source code; utamakan `rg --files` dan `rg -n` untuk mempersempit lokasi.
+- Baca bagian yang diperlukan terlebih dahulu. Lakukan pemeriksaan seluruh repository hanya jika cakupan tugas atau bukti masalah memerlukannya.
+- Kecualikan cache, hasil build, dependensi, file model AI berukuran besar, dan log yang tidak relevan dari pencarian rutin. Buka artefak tersebut secara terarah hanya ketika dibutuhkan untuk diagnosis.
+- Jangan membuka dokumentasi atau memanggil plugin/MCP yang tidak berkaitan dengan tugas. Pilih alat yang memberi bukti paling langsung.
+- Jangan mengulang operasi yang sudah berhasil kecuali ada perubahan, hasil kedaluwarsa, kegagalan baru, atau kebutuhan verifikasi yang jelas.
+
+### 4. Perubahan Source Code
+
+- Terapkan perubahan sekecil mungkin melalui edit atau patch terarah. Jangan menulis ulang seluruh file jika perubahan lokal sudah mencukupi.
+- Pertahankan arsitektur, fitur, desain yang telah disetujui, dan perilaku yang tidak berkaitan dengan permintaan.
+- Jangan melakukan refactoring tambahan atau membuat file baru tanpa kebutuhan teknis. Pertahankan pembagian tanggung jawab file yang seimbang dan komentar yang mudah dipahami.
+- Hemat token dengan membatasi cakupan perubahan, bukan dengan menghilangkan validasi, penanganan error, kontrol akses, atau kebutuhan pengguna.
+
+### 5. Pengujian dan Validasi
+
+- Jalankan pengujian yang relevan dengan bagian yang berubah. Gunakan analisis atau pengujian menyeluruh bila perubahan memengaruhi banyak modul atau diperlukan untuk keamanan dan stabilitas.
+- Jangan mengulang pengujian yang telah lulus tanpa perubahan baru, kegagalan, atau persoalan yang belum terjawab.
+- Batasi keluaran log ke hasil dan bagian relevan, terutama error serta warning. Simpan rincian bila diperlukan sebagai bukti tanpa menyalin seluruh log ke percakapan.
+- Jangan mengorbankan validasi penting demi penghematan token. Bedakan hasil pengujian aktual, bukti historis, dan skenario yang belum diuji.
+- Untuk pembaruan dokumentasi saja, cukup periksa perubahan teks, struktur, tautan internal, dan whitespace; jangan menjalankan suite aplikasi tanpa alasan terkait perubahan.
+
+### 6. Format Respons
+
+- Gunakan gaya Caveman: jawaban singkat, jelas, langsung ke hasil, tanpa pengulangan informasi yang sudah diketahui. Tetap gunakan penjelasan lengkap ketika pengguna memintanya.
+- Jangan menampilkan seluruh source code yang sudah tersimpan. Untuk perubahan kode, laporkan nama file, ringkasan perubahan, hasil pengujian, dan batas verifikasi yang material.
+- Tampilkan code diff hanya jika diminta pengguna atau diperlukan untuk menjelaskan perubahan.
+- Jangan mengklaim pekerjaan selesai, integrasi aktif, atau pengujian lulus tanpa bukti yang sesuai.
+
+### 7. Verifikasi Teknologi dan Plugins
+
+Verifikasi penggunaan berdasarkan source code, konfigurasi, dan dokumentasi proyek. Ketersediaan plugin pada akun Codex tidak membuktikan integrasi aplikasi. Gunakan dokumentasi resmi atau skill yang relevan untuk API yang belum pasti; jangan menebak sintaks.
+
+Gunakan status berikut secara konsisten:
+
+- **Aktif:** penggunaan atau integrasi memiliki bukti; jelaskan cakupan dan batas verifikasinya.
+- **Direncanakan:** tercatat dalam roadmap, tetapi implementasi belum tersedia.
+- **Tidak Digunakan:** hasil pemeriksaan menunjukkan teknologi tidak dipakai dalam cakupan yang dinilai.
+- **Belum Terverifikasi:** bukti belum cukup; jangan menyimpulkan aktif maupun tidak digunakan.
+
+| Teknologi/skill | Status | Bukti dan batas penggunaan |
+| --- | --- | --- |
+| Flutter/Dart | **Aktif** | `pubspec.yaml` menetapkan package `campus_app` dan Flutter SDK; `lib/main.dart` menjadi titik masuk aplikasi. |
+| Supabase | **Aktif** | Dependency `supabase_flutter` pada `pubspec.yaml` dan penggunaan `SupabaseAuthService(Supabase.instance.client)` pada `lib/main.dart` mendukung integrasi Auth/profil yang dijelaskan di bagian F dan I. Status ini tidak berarti seluruh modul akademik sudah mempunyai data nyata. |
+| Resend | **Aktif** | `supabase/functions/password-reset/index.ts` membaca `RESEND_API_KEY`; `services.ts` menggunakan endpoint `https://api.resend.com/emails`. Bukti pengiriman nyata terakhir bertanggal 3 November ada di bagian J; tidak dilakukan pengiriman ulang pada pembaruan dokumentasi ini. |
+| Ollama lokal | **Aktif** | `lib/features/chatbot/ollama_service.dart` memuat model `qwen2.5:1.5b` dan endpoint `/api/chat`. Integrasi source tersedia; server/model tetap harus siap pada host. Status proses dan koneksi runtime tidak diperiksa ulang pada 4 November. |
+| Caveman | **Aktif** | Skill tersedia dan dibaca dari `C:/Users/Marcell/.agents/skills/caveman/SKILL.md` pada sesi ini. Fungsinya mengatur gaya komunikasi Codex yang ringkas; bukan framework aplikasi atau dependency Flutter. |
+
+**Batas pemeriksaan 4 November 2026:** pemeriksaan source/configuration dan dokumentasi secara baca-saja. Tidak ada pemeriksaan cloud langsung, instalasi, migrasi, atau pengujian fungsional baru. Status historis pengujian tetap memakai tanggal aslinya. Pada akun/sesi baru, periksa kembali ketersediaan skill Caveman, plugin Supabase, dan plugin/skill Resend beserta aksesnya; jangan menganggapnya ikut terpasang melalui clone Git. Jika tidak tersedia, beri tahu pengguna tanpa menyatakan integrasi aplikasi otomatis hilang.
+
+### 8. Dokumentasi dan Serah Terima
+
+- Perbarui bagian terkait dalam `project_progress.md` setelah perubahan fitur signifikan atau milestone selesai. Hindari penulisan ulang dokumen secara keseluruhan.
+- Pertahankan informasi historis dan roadmap yang masih relevan. Tandai keputusan yang diganti dengan status terbaru agar sejarah tetap dapat ditelusuri.
+- Catat fitur selesai, keputusan teknis, file/modul terkait, bukti validasi beserta tanggal, masalah tersisa, dan pekerjaan berikutnya.
+- Bedakan perubahan lokal, commit/push, migrasi database, deploy Edge Function, dan konfigurasi layanan eksternal. Satu tahap tidak otomatis membuktikan tahap lainnya selesai.
+- Pastikan akun Codex berikutnya dapat menemukan tujuan aktif, batas pekerjaan, status source/backend, dan langkah validasi tanpa membaca ulang seluruh percakapan. Jangan menyimpan password, API key, OTP, atau nilai secret dalam dokumen serah terima.
+- Pembaruan 4 November ini hanya menambahkan prosedur dan catatan verifikasi teknologi. Tidak mengubah source aplikasi, memasang dependency, memigrasikan database, menjalankan pengujian menyeluruh, atau melakukan commit/push. Pekerjaan produk berikutnya tetap mengacu pada bagian N dan O.
