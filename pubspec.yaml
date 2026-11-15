@@ -43,7 +43,7 @@ dependencies:
   printing: ^5.15.1
   supabase_flutter: 2.18.3
   # Decoder tambahan untuk foto BMP, GIF, TIFF, WebP, ICO, dan format raster lain.
-  image: 4.12.0
+  image: ^4.13.1
 
 dev_dependencies:
   # Antarmuka platform untuk menguji ekspor HP tanpa membuka aplikasi eksternal.

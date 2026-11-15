@@ -1,8 +1,8 @@
 # Project Progress — Campus App / SIAKAD FASILKOM Esa Unggul
 
 **Tanggal audit awal:** 1 November 2026, zona waktu Asia/Jakarta.  
-**Pembaruan terakhir:** 4 November 2026 — penambahan prosedur manajemen token, verifikasi teknologi melalui source/configuration, dan pedoman kesinambungan sesi pada bagian P. Pembaruan ini hanya dokumentasi.
-**Verifikasi fungsional terakhir:** 3 November 2026 — pengiriman OTP Resend nyata terverifikasi, pengujian ulang Flutter/Deno/SQL, dan pencatatan skill/plugin Resend. Navigasi bawah tetap menjadi pintasan gulir dengan Chatbot di tengah.
+**Pembaruan terakhir:** 15 November 2026 — M1 November 2026 diterima dengan pengecualian pengujian yang disetujui pengguna. Salinan source bersih terverifikasi; paket source/APK dan dokumentasi serah terima disiapkan. Tidak ada commit/push; M2/M3 belum dimulai.
+**Verifikasi fungsional terakhir:** 15 November 2026 — salinan bersih dengan lockfile terbaru dan cache Pub/Gradle baru: 248 tes Flutter, analyzer bersih, build web/APK berhasil. Uji akun/OTP nyata berasal dari 10–11 November. Bukti backend 10 November: 95 assertion cloud, 33 SQL lokal, 22 tes Deno; tidak dijalankan ulang pada serah terima.
 **Repository lokal:** `C:/Users/Marcell/Repositories/campus_app`.  
 **Branch aktif:** `marcell-works`.  
 **Git HEAD dasar pengerjaan OTP:** `d2e584f61975f793c56da3903d60b7562ca453ce`.
@@ -10,6 +10,8 @@
 **Jenis dokumen:** audit kondisi aktual, keputusan pengembangan, dan serah terima.
 
 ## Ringkasan eksekutif
+
+**Periode milestone:** pekerjaan sebelum M1 Penutupan Fondasi Akun dikelompokkan sebagai **Milestones Oktober 2026**. Penutupan Fondasi Akun adalah **M1 November 2026**; sebutan M1 dalam dokumen ini merujuk pada milestone tersebut. Pengelompokan mengikuti periode milestone, bukan perubahan tanggal pelaksanaan: audit, perbaikan lanjutan, dan pengujian awal November tetap memakai tanggal aktualnya.
 
 Campus App adalah aplikasi Flutter untuk Sistem Informasi Akademik Fakultas Ilmu Komputer Universitas Esa Unggul. Fondasi antarmuka responsif, dashboard, menu bertingkat, chatbot lokal, formulir profil, dan simulasi izin sudah tersedia. **Sistem belum merupakan SIAKAD produksi dengan seluruh data akademik terhubung.**
 
@@ -27,7 +29,9 @@ Pada dashboard dengan lebar di bawah 600 px, navigasi bawah berurutan **Beranda,
 
 Nama teknis proyek diseragamkan menjadi `campus_app`, termasuk konfigurasi platform, judul jendela desktop, metadata executable, modul IDE, dan metadata preview lokal. Android/Linux menggunakan `com.example.campus_app`; bundle identifier iOS/macOS menggunakan `com.example.campusApp`. Login nyata sebelumnya dikonfirmasi pengguna pada web; login nyata di emulator, penyimpanan terbaru pada semua perangkat, pemulihan email, dan seluruh format foto masih memerlukan verifikasi.
 
-**Peringatan serah terima:** working tree awal pengerjaan OTP bersih pada HEAD di atas. Perubahan OTP, tes, dan dokumentasi saat ini belum di-commit. Clone HEAD tersebut belum mendapatkan revisi OTP sampai perubahan dibagikan melalui Git. Database dan fungsi cloud sudah diterapkan terpisah; merge tidak mengisi secrets Resend.
+**Peringatan serah terima (diperbarui M1):** catatan OTP belum di-commit berasal dari audit lama. Pada awal tugas M1, HEAD `733f6bf` di branch `marcell-works` sudah memuat source OTP; working tree hanya mencatat perubahan `AGENTS.md` dan dokumen ini. Patch M1 berikut migrasi lokal dan bukti pengujiannya belum di-commit/push. Tahap awal M1 hanya lokal; pada 10 November pengguna mengotorisasi nomor 1 development dan tiga migrasi M1 serta gateway sudah diterapkan. Merge tetap tidak otomatis menerapkan backend lain atau mengisi secrets Resend.
+
+**M1 November 2026 — implementasi 9–11 November, serah terima 15 November 2026:** RPC transaksi profil/Biodata, konflik PT409, gateway privat, dan ledger development selesai. Uji akun nyata membuktikan profil/foto/berkas, perubahan password, reset/login OTP, revocation, batas lima percobaan, cooldown, resend dan replay. Salinan 270 file dengan cache dependency baru lulus analyze, 248 tes, build web dan APK. Status **ACCEPTED WITH TEST EXCEPTIONS**: 56 kriteria PASS sesuai bukti, 4 diterima dengan pengecualian (tunggu OTP/sesi, perubahan jam perangkat fisik, runtime HP/emulator). Source belum di-commit/push, sehingga clone HEAD lama belum memuat M1. Paket terbaru dan batas lengkap ada di [laporan M1](docs/m1_account_foundation.md); M2/M3 belum dimulai.
 
 ### Dasar dan batas audit
 
@@ -230,10 +234,10 @@ campus_app/
 │   ├── functions/password-reset/{index.ts,handler.ts,otp.ts,services.ts}
 │   ├── functions/password-reset/{handler_test.ts,services_test.ts}
 │   ├── migrations/
-│   │   ├── 20261030080318_student_profiles.sql
-│   │   ├── 20261031082459_session_rpc_boundaries.sql
-│   │   ├── 20261101015234_student_biodata_sections.sql
-│   │   └── 20261102065453_password_reset_otp.sql
+│   │   ├── 20261030080557_student_profiles.sql
+│   │   ├── 20261031082535_session_rpc_boundaries.sql
+│   │   ├── 20261101020002_student_biodata_sections.sql
+│   │   └── 20261102071019_password_reset_otp.sql
 │   └── tests/{profile_access.sql,password_reset.sql}
 ├── tool/
 │   ├── android/configure_emulator.ps1
@@ -469,7 +473,9 @@ Relasi utama: `auth.users → profiles → students → bagian biodata/keuangan/
 
 | Komponen | Fungsi | Batas |
 |---|---|---|
-| `login-with-nim` | Login sebelum pengguna memiliki JWT; rate limit, Auth, pendaftaran sesi | Metadata cloud: ACTIVE, versi 1, `verify_jwt=false`; validasi password dilakukan di dalam fungsi |
+| `login-with-nim` | Login sebelum pengguna memiliki JWT; rate limit, Auth, pendaftaran sesi | Metadata terakhir M1: ACTIVE, versi 2, `verify_jwt=false`; validasi password dilakukan di dalam fungsi |
+| `load_student_biodata` / `save_student_biodata` | Snapshot dan transaksi dua versi | Invoker, RLS pemilik+sesi, konflik PT409; aktif development M1 |
+| `private-file` | Unduh byte foto/dokumen lewat POST tanpa cache | Edge v1 ACTIVE; Auth.getUser + metadata RLS + cek sesi sesudah fetch; direct Storage ditutup |
 | `resolve_student_login` | Resolusi identitas NIM pada server | Hanya service role; query memerlukan peran student dan akun enabled |
 | `consume_login_attempt` | Pembatasan atomik percobaan | Hanya service role; batas dari Edge, jendela 15 menit |
 | `register_profile_session` | Tenggat absolut berdasarkan sesi Auth | Hanya service role; tidak dapat dipanggil client untuk memperpanjang sesi |
@@ -485,16 +491,16 @@ Profil pengembangan terhubung ke akun Supabase Auth yang dibuat pengguna, dan lo
 
 Tidak ada seed nilai, jadwal, tagihan, atau dokumen pribadi dari screenshot referensi yang boleh diasumsikan telah dimasukkan. Dashboard tetap kosong. Tabel keuangan dan sebagian tabel biodata kosong saat audit. Penerima izin contoh masih didefinisikan dalam source; fixture pengujian sengaja tetap ada.
 
-### Riwayat migrasi yang perlu diselaraskan
+### Riwayat migrasi (rekonsiliasi 10 November 2026)
 
 | Nama logis | File lokal | Versi yang dilaporkan Supabase |
 |---|---|---|
-| `student_profiles` | `20261030080318_student_profiles.sql` | `20261030080557` |
-| `session_rpc_boundaries` | `20261031082459_session_rpc_boundaries.sql` | `20261031082535` |
-| `student_biodata_sections` | `20261101015234_student_biodata_sections.sql` | `20261101020002` |
-| `password_reset_otp` | `20261102065453_password_reset_otp.sql` | `20261102071019` |
+| `student_profiles` | `20261030080557_student_profiles.sql` | `20261030080557` |
+| `session_rpc_boundaries` | `20261031082535_session_rpc_boundaries.sql` | `20261031082535` |
+| `student_biodata_sections` | `20261101020002_student_biodata_sections.sql` | `20261101020002` |
+| `password_reset_otp` | `20261102071019_password_reset_otp.sql` | `20261102071019` |
 
-Nama migrasi berpadanan, tetapi timestamp berbeda. Ledger diperiksa kembali pada 2 November; migrasi OTP diterapkan melalui plugin dan tidak perlu diterapkan ulang. Kesetaraan seluruh migrasi lama secara lengkap belum dibandingkan. **Jangan langsung menjalankan db push atau repair history** sebelum mencocokkan schema, isi migrasi, dan ledger remote. Pengerjaan OTP tidak memperbaiki ledger historis.
+Tabel ini kini memakai filename final yang cocok ledger cloud. Sebelumnya timestamp lokal berbeda; pemetaan awal dipertahankan di laporan M1. Pada 10 November hash empat SQL cocok setelah normalisasi akhir baris, lalu filename lokal diselaraskan tanpa menjalankan DDL lama atau menulis ulang ledger remote. Tiga migrasi M1 tambahan juga cocok ledger; lihat laporan M1. Backend baru tetap perlu provisioning terpisah, bukan db reset/push ke development yang sudah terisi.
 
 ### Backend pemulihan OTP — 2 November 2026
 
@@ -766,6 +772,20 @@ Tidak ada log pemeriksaan `dart format` terbaru yang cukup untuk mengklaim selur
 
 Checklist manual terbaru berada di `docs/profile_test_checklist.md`. Prioritas verifikasi: simpan–muat ulang–logout/login tiap bagian, foto nyata, dua jendela mengedit versi yang sama, jaringan terputus, dokumen, sesi 30 menit, akun kedua, password recovery, serta HP/emulator.
 
+### M1 November 2026 — implementasi lokal 9–10 November 2026
+
+- Fondasi profil, unggahan, password, sesi, dan startup tanpa AI diperbaiki. RPC transaksi profil/Biodata ditambahkan setelah probe membuktikan konflik telepon lintas editor dan pengguna mengotorisasi migrasi lokal.
+- **247 tes Flutter lulus**, `dart analyze --fatal-infos` bersih; **15 tes Deno OTP lulus**, check/lint Edge bersih. **24 assertion SQL lokal lulus** pada PostgreSQL PGlite dengan migrasi aplikasi aktual; tes hook autostart/tanpa AI lulus. Detail build/penerimaan dan batas ada pada [laporan M1](docs/m1_account_foundation.md); angka subset tidak dijumlahkan.
+- Build web final dan APK debug final lulus. Smoke Chrome login → Lupa password → login lulus tanpa console error atau pengiriman email. APK memakai JBR 25.0.3 proses build dan cache Gradle yang tersedia; `adb devices` tidak menemukan perangkat aktif, sehingga smoke Android belum dijalankan.
+- Tahap awal hanya membaca cloud. Pada 10 November pengguna mengotorisasi penyelesaian development: tiga migrasi M1 + `private-file` versi 1 diterapkan, empat nama migrasi lama diselaraskan tanpa mengubah SQL atau ledger remote. Probe menemukan retry 40001 dan cache Storage sesudah expiry; diperbaiki dengan PT409 dan gateway POST + RLS operasi delete saja untuk SELECT Storage. **95 assertion cloud, 33 assertion SQL lokal, 248 tes Flutter, 22 tes Deno lulus**. Dua akun fixture per percobaan dan objek uji dibersihkan; pemeriksaan akhir 0 fixture/0 objek. Analyzer bersih; build web/APK gateway terbaru lulus. Akun pengguna tidak diubah. Penerimaan manual tetap terbuka.
+
+### M1 November 2026 — salinan bersih dan serah terima final 15 November 2026
+
+- Eksekusi awal 11 November lulus (248 tes, web/APK). Pemeriksaan 15 November menemukan perubahan lockfile working tree, sehingga validasi diulang memakai snapshot terbaru 270 file di `build/m1-clean-final`, tanpa cache/output build/model AI atau konfigurasi Android lokal. Cache `build/m1-final-pub-cache` dan `build/m1-final-gradle-cache` baru/kosong; SDK Flutter 3.47.5/Dart 3.13.4, Android SDK, dan JBR 25 sudah terpasang.
+- Hasil final 15 November: `pub get --enforce-lockfile` berhasil, lockfile tetap SHA-256 `3ff0a6e48ff0f69fdbad9f7ca8bc6d89f67282daf478b0341e541b1a64548a45`; analyzer bersih, **248 tes lulus** (74 detik), web berhasil (227 detik), APK debug berhasil (Gradle 758,5 detik). Semua pemeriksaan exit 0. Warning native-access Java, SDK XML, dan Java 8 dependency bukan kegagalan build. Log lokal `build/m1-final-*.log`; hasil historis tetap di laporan M1.
+- Paket `build/review/campus_app_M1_20261115.zip`: 270 file source + `MANIFEST.sha256` + `REVIEW_METADATA.json`; CRC dan hash diverifikasi. APK terpisah `build/review/campus_app_M1_20261115-debug.apk`, checksum pada `build/review/campus_app_M1_20261115.sha256`. Source aplikasi/config/test sama dengan snapshot teruji; pembaruan akhir hanya dokumentasi. SDK/JDK/OS masih prasyarat host, bukan provisioning mesin kosong.
+- Uji runtime HP/emulator, tunggu TTL OTP 10 menit/sesi 30 menit, dan jam perangkat fisik diterima pengguna dengan pengecualian; tidak diklaim PASS. Ringkasan akhir **56 PASS + 4 ACCEPTED EXCEPTION**. Pengujian browser simulasinya tetap dicatat dengan batas bukti. Tidak ada commit/push/deploy atau perubahan database pada tahap serah terima.
+
 ## K. Development History & Technical Decisions
 
 ### Pemulihan OTP dan Resend — 2 November 2026
@@ -776,7 +796,7 @@ Resend dipilih karena pengguna belum memiliki layanan email. Migrasi dan Edge Fu
 
 Build APK terbaru sempat terhalang lock Gradle milik proses lain dan JDK 26. Build akhirnya berhasil dengan cache proyek terpisah serta JBR 25.0.3 Android Studio yang dipilih hanya pada proses build. Proses IDE pengguna tidak dihentikan dan pengaturan Java global tidak diubah. Karena itu keberhasilan build terisolasi belum menjamin terminal tim dengan JDK berbeda langsung berhasil.
 
-### Riwayat yang didukung Git
+### Milestones Oktober 2026 — riwayat yang didukung Git
 
 | Tanggal | Commit | Catatan yang dapat diverifikasi dari riwayat |
 |---|---|---|
@@ -857,15 +877,15 @@ Prioritas merupakan penilaian kebutuhan pengembangan, bukan klaim semua risiko s
 
 | ID/Prioritas | Masalah dan komponen | Penyebab/status bukti | Risiko | Solusi yang disarankan | Status penyelesaian |
 |---|---|---|---|---|---|
-| L01 CRITICAL untuk handover | Integrasi terbaru belum berada dalam commit | Terverifikasi dari status Git: banyak M/D/untracked | Anggota tim meng-clone versi yang belum memuat fitur/dokumen baru | Tinjau dan simpan perubahan yang disetujui secara lengkap; jangan commit rahasia | Terbuka; tidak dimutasi audit |
-| L02 HIGH | Timestamp migrasi lokal/cloud berbeda | Terverifikasi dari file vs metadata Supabase | Penerapan ulang/urutan migrasi salah atau kegagalan db push | Bandingkan isi/schema/ledger dan selaraskan secara terencana sebelum migrasi berikutnya | Terbuka |
+| L01 CRITICAL untuk handover | Patch M1 belum berada dalam commit | Awal M1 HEAD 733f6bf hanya dua dokumen berubah; patch M1 kini lokal | Clone belum memperoleh perbaikan M1/RPC | Tinjau paket dan commit/push hanya setelah instruksi pengguna | Terbuka; source OTP lama sudah tracked |
+| L02 HIGH (ditutup 10 November) | Timestamp migrasi lokal/cloud dahulu berbeda | Tujuh filename dan hash kini cocok ledger cloud; mapping historis di laporan M1 | Hindari mengulang empat DDL lama | Filename lokal diselaraskan; tiga migrasi M1 diterapkan tanpa menulis ulang ledger remote | Selesai pada development |
 | L03 HIGH | Data akademik belum terhubung | `EmptyDashboardRepository` aktif | Dashboard/chat tidak dapat memberikan informasi kuliah nyata | Kontrak data resmi dan repository berotorisasi | Belum diimplementasikan |
 | L04 HIGH | Izin hanya memori dan penerima contoh | `LeaveRepository`, `demoLecturers`; logout akun nyata membersihkan data sesi | Pengajuan hilang; tidak sampai kepada BAP/dosen perangkat lain | Backend izin, transaksi review, Storage bukti dan inbox | Simulasi terimplementasi; backend belum |
 | L05 HIGH | Login staf belum tersedia | RPC hanya `student`; profil mengharapkan `students` | UI BAP/dosen tidak dapat digunakan sebagai layanan nyata melalui login sekarang | Provisioning staf, pemetaan identitas dan akses role server | Belum diimplementasikan |
 | L06 HIGH | Reset OTP dan persistensi belum uji nyata lengkap | Backend OTP deployed; satu email nyata delivered 3 November; checklist tersedia | Delivery tidak membuktikan reset/login/pencabutan sesi pada perangkat | Jalankan checklist OTP/profil tanpa membagikan rahasia; verifikasi domain untuk pemakaian umum | NEEDS VERIFICATION |
 | L07 HIGH sebelum produksi | Leaked password protection nonaktif | WARN security advisor saat audit | Password yang bocor tidak memperoleh perlindungan tambahan tersebut | Aktifkan bila tersedia; verifikasi kebijakan password backend | Terbuka |
 | L08 HIGH sebelum deployment | AI LAN HTTP tanpa Auth aplikasi; cleartext Android luas | Terverifikasi konfigurasi; eksploitasi tidak diuji | Akses jaringan tidak diinginkan/mixed content dan kegagalan pada web publik | Rancang gateway terautentikasi/TLS atau batasi mode development; uji platform | Rekomendasi belum diterapkan |
-| L09 MEDIUM | Hook AI menghalangi Flutter ketika unduhan gagal | Source hook; gangguan DNS pernah dilaporkan | Pengembang tidak bisa menjalankan UI melalui hook saat model belum siap | Putuskan mode gagal yang jelas; opsi bantuan terpandu/offline tanpa mengaku AI aktif | Perilaku sekarang terverifikasi |
+| L09 MEDIUM | Hook AI menghalangi Flutter ketika unduhan gagal | M1 menambahkan CAMPUS_SKIP_AI=1; tes hook lulus | Autostart normal tetap memerlukan AI, jalur tanpa persiapan tersedia | Gunakan opsi terminal yang didokumentasikan saat AI belum siap | Jalur tanpa AI terselesaikan lokal |
 | L10 MEDIUM | Auto-start terbatas terminal Windows yang memuat hook | `.vscode`, workspace, PowerShell | Klaim “semua flutter run di semua komputer” menyesatkan | Panduan bootstrap lintas shell/OS dan tes clone baru | Sebagian; perlu validasi |
 | L11 MEDIUM | Mutex menunggu tanpa timeout total | Loop `start.ps1`; abandoned mutex ditangani | Proses hidup yang macet membuat terminal lain menunggu lama | Tambahkan diagnosis pemilik/progres dan strategi batas waktu terukur | Terbuka; bukan bukti deadlock sekarang |
 | L12 MEDIUM | Storage dan metadata tidak atomik | Cleanup best effort pada repository | Objek orphan atau status operasi tidak pasti saat jaringan putus | Rekonsiliasi/pembersihan server, idempotensi, pengujian kegagalan | Mitigasi sebagian |
@@ -888,7 +908,7 @@ Roadmap berikut adalah rencana dari kondisi audit, bukan instruksi otomatis meng
 
 | Fase | Tujuan | Pekerjaan utama | Dependensi | Kriteria selesai | Status aktual |
 |---|---|---|---|---|---|
-| PHASE 1 — Foundation & Stabilization | Fondasi dapat diteruskan tim secara konsisten | Handover perubahan belum commit, selaraskan history migrasi, bersihkan dokumentasi basi, validasi lingkungan/hook | Working tree lengkap dan akses repo/backend yang sah | Clone baru mendapat source yang benar; setup terdokumentasi; tidak ada ketidakjelasan sumber aktif; regresi inti lulus | PARTIALLY COMPLETED: struktur/tema/tes ada; handover dan sinkronisasi tersisa |
+| PHASE 1 — Foundation & Stabilization | Fondasi dapat diteruskan tim secara konsisten | Handover perubahan belum commit, selaraskan history migrasi, bersihkan dokumentasi basi, validasi lingkungan/hook | Working tree lengkap dan akses repo/backend yang sah | Clone baru mendapat source yang benar; setup terdokumentasi; tidak ada ketidakjelasan sumber aktif; regresi inti lulus | M1 November 2026 ACCEPTED WITH TEST EXCEPTIONS: salinan bersih dan paket handover selesai; commit/push serta sinkronisasi clone tim menunggu otorisasi |
 | PHASE 2 — Core Academic Features | Jadwal, KRS, hasil studi, presensi dan informasi benar-benar berfungsi | Definisikan model/layanan akademik, halaman nyata, empty/error/loading states, aturan studi resmi | Sumber data dan backend fase 3; keputusan kampus | Mahasiswa hanya melihat catatannya; alur akademik disetujui; data dan perhitungan teruji | PARTIALLY COMPLETED: UI/model/menu tersedia; data/workflow belum |
 | PHASE 3 — Database & Backend Integration | Penyimpanan dan hak akses semua modul | Pertahankan Auth/profil; lanjutkan schema akademik, staf, izin, keuangan, provisioning dan audit | Rekonsiliasi migrasi, model domain dan otorisasi | RLS/akses negatif lulus; persistensi lintas sesi/perangkat; migrasi dapat diulang pada lingkungan baru | IN PROGRESS: profil nyata sudah terintegrasi, domain lain belum |
 | PHASE 4 — AI Chatbot Integration | Bantuan berbasis sumber yang akurat dan terbatas hak akses | Pertahankan routing/glosarium; tambah API baca resmi, evaluasi, provenance, gateway sesuai deployment; RAG jika sumber tersedia | Backend akademik, dokumen resmi, kontrak privasi | Jawaban dapat ditelusuri; tidak membocorkan lintas akun; fallback jujur; skenario pendek dan adversarial lulus | PARTIALLY COMPLETED: AI lokal/routing/profil tersedia; akademik/RAG belum |
@@ -898,6 +918,8 @@ Roadmap berikut adalah rencana dari kondisi audit, bukan instruksi otomatis meng
 
 ## N. Priority Tasks & Next Development Steps
 
+**Status dan prioritas (15 November 2026):** M1 November 2026 selesai untuk lingkup yang diterima pengguna, dengan pengecualian pengujian tercatat (56 PASS + 4 ACCEPTED EXCEPTION). Laporan: [M1 November 2026 — Penutupan Fondasi Akun](docs/m1_account_foundation.md). Salinan source bersih, dependensi cache baru, analyze/248 tes/build web/APK, serta paket serah terima telah diverifikasi. Profil kembali ke nama awal Dante, avatar Pria tanpa foto, lima slot dokumen kosong; telepon tidak diedit. Source belum di-commit/push: gunakan paket 15 November, bukan clone HEAD lama. Prioritas berikutnya adalah sinkronisasi source dengan otorisasi pengguna, lalu tugas M2 Jadwal Nyata/M3 Chatbot Jadwal sesuai roadmap. Jangan menganggap pengecualian sebagai tes lulus; jangan mulai implementasi milestone berikutnya tanpa tugas pengguna.
+
 ### CRITICAL
 
 1. **Amankan kesinambungan source sebelum pindah akun/komputer.** Periksa `git status`, seluruh file untracked, perubahan penghapusan demo, konfigurasi publik vs rahasia, dan diff. Lakukan commit/push hanya pada tugas yang diotorisasi pengguna; jangan mengira master sudah memuat working tree ini. Bukti utama: root, `lib/core/config/`, `lib/features/profile/`, `supabase/`, `test/support/`.
@@ -906,14 +928,14 @@ Roadmap berikut adalah rencana dari kondisi audit, bukan instruksi otomatis meng
 ### HIGH
 
 1. Rekonsiliasi isi/versi migrasi lokal dengan ledger remote **sebelum DDL berikutnya**: `supabase/migrations/`, metadata Supabase, `supabase/config.toml`.
-2. Selesaikan uji penerimaan profil terbaru memakai `docs/profile_test_checklist.md`: simpan/relogin, foto, berkas, konflik, email recovery dan sesi. Catat hasil per perangkat, bukan klaim umum.
+2. Pertahankan bukti penerimaan M1 dan empat pengecualiannya di `docs/m1_account_foundation.md`. Tambah pengujian relevan saat source/lingkup berubah; jangan mengulang tes lulus atau mengklaim runtime perangkat yang dikecualikan.
 3. Putuskan domain pertama yang dihubungkan berikutnya; rekomendasi teknis adalah jadwal/read-only akademik setelah kontrak sumber resmi disepakati. Periksa `dashboard_models.dart`, `dashboard_repository.dart`, `profile_answers.dart`.
 4. Jika prioritas layanan adalah izin, selesaikan akun/peran staf dan backend izin sebelum notifikasi/PDF resmi: `supabase/functions/login-with-nim/index.ts`, `student_profile.dart`, seluruh `features/leave/`.
 5. Tindak lanjuti keamanan sebelum rilis: leaked-password protection, pemulihan akun, akses dua pengguna, retensi/backup, dan arsitektur AI jaringan. Periksa migrasi, config platform dan `tool/local_ai/firewall.ps1`.
 
 ### MEDIUM
 
-1. Validasi clone baru dan auto-start pada terminal yang benar; tentukan perilaku ketika AI/download gagal. Periksa `flutter_hook.ps1`, `runtime.ps1`, `start.ps1`, `.vscode/settings.json`, workspace.
+1. Salinan source bersih M1 sudah terverifikasi. Setelah commit/push diotorisasi, sinkronkan clone tim dengan paket tersebut; konfigurasi SDK/AI per host tetap mengikuti README dan panduan startup.
 2. Sediakan katalog wilayah dan template dokumen resmi setelah sumber disetujui: `biodata_fields.dart`, `biodata_form.dart`, `profile_records.dart`.
 3. Perbarui dokumentasi/komentar yang tertinggal dan label simulasi; pertahankan fakta bahwa profil nyata dan akademik kosong adalah dua kondisi berbeda.
 4. Tambah CI serta tes integrasi yang relevan, matriks platform, error upload dan cleanup Storage. Periksa `.github/`, `test/`, `supabase/tests/`.
@@ -930,7 +952,7 @@ Urutan langsung yang direkomendasikan: **handover source → rekonsiliasi migras
 
 ## O. Project Handover — New Codex Account
 
-> AI/Codex yang baru wajib membaca file project_progress.md dan memeriksa source code aktual sebelum melanjutkan pengembangan. Jangan mengulang implementasi yang sudah selesai, jangan mengubah arsitektur tanpa alasan teknis yang jelas, dan jangan membuat asumsi mengenai fitur yang belum diverifikasi.
+> Pada setiap chat Codex baru, patuhi `AGENTS.md` dan gunakan bagian relevan dari `project_progress.md` sebagai referensi. Periksa source aktual secara terarah sebelum implementasi. Jangan mengulang fitur selesai, mengubah arsitektur tanpa alasan teknis, atau menganggap rencana sebagai implementasi yang sudah terverifikasi.
 
 ### O.1 Ringkasan mandiri untuk penerus
 
@@ -944,10 +966,10 @@ Per 2 November, penamaan teknis sudah seragam menjadi `campus_app`; ID Apple `co
 
 ### O.2 Pemeriksaan awal sebelum mengubah kode
 
-1. Baca dokumen ini, `README.md`, `docs/student_profile.md`, `docs/profile_test_checklist.md`, dan `docs/android_emulator.md`. Perlakukan dokumen chatbot/izin lama sebagai konteks yang harus dicocokkan dengan source.
+1. Baca Ringkasan eksekutif, prioritas aktif (N), dan keputusan kritis (O.6) terlebih dahulu. Buka bagian D/E/F/J/K/M serta dokumentasi tambahan hanya sesuai kebutuhan tugas. Jangan membaca seluruh `project_progress.md`, `README.md`, atau folder `docs/` secara otomatis.
 2. Jalankan pemeriksaan baca `git status --short`, `git branch --show-current`, `git rev-parse HEAD`. Jangan menimpa perubahan pengguna, menghidupkan kembali file yang sengaja dihapus, atau berpindah branch otomatis.
-3. Baca instruksi `AGENTS.md`/skill yang tersedia pada lingkungan baru. Pada audit ini tidak ditemukan AGENTS yang menambah aturan proyek. Caveman, Supabase, dan Resend (`resend-cli` skill serta connector) tersedia pada sesi 3 November. Ketersediaan plugin/skill tidak dijamin melekat selamanya antar akun: verifikasi, lalu beri tahu pengguna jika tidak tersedia.
-4. Mulai alur code dari `main.dart` dan kontrak `data/`; periksa pemanggil sebelum mengubah widget. Jangan mengganti backend/state management hanya demi merapikan struktur.
+3. `AGENTS.md` sudah tersedia pada root proyek sebagai aturan kerja permanen. Gunakan skill/plugin Caveman, Supabase, dan Resend hanya ketika relevan. Catatan ketersediaan plugin pada 3 November bersifat historis; periksa status aktual sebelum menggunakan koneksi eksternal.
+4. Temukan file, class, fungsi, dan pemanggil yang relevan menggunakan pencarian terarah seperti `rg`. Buka `main.dart` atau seluruh lapisan aplikasi hanya jika perubahan memang melibatkan startup, navigasi global, atau integrasi antarmodul. Jangan mengganti arsitektur atau state management tanpa kebutuhan teknis.
 5. Jika menyentuh database, pastikan proyek/lingkungan yang benar, tinjau schema/RLS, dan selesaikan selisih versi migrasi. Jangan menjalankan seed development pada akun/lingkungan lain tanpa kebutuhan jelas.
 6. Gunakan akun uji yang dibuat pemilik. Jangan meminta password di chat, membaca token untuk dilaporkan, atau memasukkan service-role key ke Flutter.
 
@@ -1007,20 +1029,24 @@ HP nyata perlu berada pada jaringan yang dapat menjangkau host, host tetap hidup
 
 ### O.5 Memeriksa kualitas dan penerimaan
 
-1. Jalankan tes yang berhubungan dengan perubahan, lalu `flutter analyze` dan `flutter test` untuk penerimaan. Bukti terbaru 218 tes pada revisi OTP tidak otomatis berlaku setelah source berikutnya berubah.
+1. Jalankan tes yang berhubungan dengan perubahan, lalu `flutter analyze` dan `flutter test` untuk penerimaan. Bukti terbaru 248 tes pada salinan bersih M1 tidak otomatis berlaku setelah source berikutnya berubah.
 2. Gunakan `dart format --output=none --set-exit-if-changed lib test` untuk pemeriksaan tanpa penulisan; formatter penulisan hanya pada tugas perubahan kode yang diizinkan.
 3. Periksa Edge dengan `deno check` dan konfigurasi Deno yang benar. Satu lint pemindahan deklarasi fungsi tidak sama dengan error runtime.
 4. Uji SQL `supabase/tests/profile_access.sql` hanya pada development dengan pemahaman bahwa script membuat fixture dan rollback; jangan menjalankannya secara otomatis pada produksi.
 5. Jalankan `tool/local_ai/smoke.dart`/`evaluate.dart` hanya saat perlu memverifikasi model nyata. Bedakan keberhasilan routing aplikasi dari ketepatan jawaban LLM.
 6. Untuk profil, jalankan checklist manual. Penerimaan minimal: simpan data/foto/berkas, muat ulang, login ulang, batal edit, konflik dua jendela, gagal jaringan, akses akun lain ditolak, dan sesi habis benar.
-7. Resend sudah mengirim satu OTP nyata berstatus delivered pada 3 November. Lanjutkan `docs/password_reset_otp.md` untuk reset melalui UI, login ulang, dan sesi lama. Ekspor HP, format foto tambahan, layout perangkat, dan kesesuaian visual referensi masih memerlukan hasil tertulis. Callback Auth lama diuji terpisah bila tetap digunakan.
+7. Reset/login OTP, revocation, batas percobaan, cooldown/resend/replay sudah diuji 10–11 November; lihat laporan M1. TTL terisolasi dan runtime perangkat termasuk pengecualian pengguna, bukan hasil lulus. Callback Auth lama diuji terpisah bila tetap digunakan.
 8. Saat mengubah startup/platform, gunakan enam tes terarah `flutter test test/app_startup_test.dart test/widget_test.dart` dan build target yang relevan. Periksa juga tampilan nyata; build Windows berhasil tidak membuktikan login atau callback desktop berjalan.
 9. Bukti lama di `build/` dapat hilang saat pembersihan. Tiga log audit 1 November sudah tidak tersedia pada pembaruan ini. Catat tanggal, perintah, hasil dan batas verifikasi baru tanpa mengubah hasil historis menjadi klaim pengujian ulang.
 
 ### O.6 Keputusan yang tidak boleh hilang
 
+- Penamaan periode milestone: pekerjaan sebelum M1 masuk **Milestones Oktober 2026**; Penutupan Fondasi Akun adalah **M1 November 2026**. Pertahankan tanggal historis aktual dan jangan menggabungkan kedua periode.
+- M1 November 2026 berstatus ACCEPTED WITH TEST EXCEPTIONS sejak serah terima 15 November: 56 PASS dan 4 pengecualian AT-006/008/044/057. Jangan mengubah pengecualian waktu/perangkat menjadi PASS tanpa bukti baru. Snapshot paket 15 November memuat patch lokal yang belum di-commit/push; salinan bersih diuji dengan dependency cache baru, tetapi SDK/JDK host sudah tersedia.
+
 - Pertahankan Supabase/PostgreSQL sebagai backend aktual sampai ada keputusan perubahan yang eksplisit; MySQL Workbench bukan komponen aktif.
 - Pertahankan sesi absolut, RLS pemilik+sesi, privilege kolom, private Storage, dan pemisahan identitas resmi dari preferensi.
+- M1 memakai versi mentah asal editor dan RPC transaksi profil/Biodata; jangan fallback ke penulisan lama atau menghapus unggahan ketika hasil metadata tidak pasti. RPC dan koreksi PT409 sudah aktif di development. Foto/dokumen harus melalui `private-file` (Auth.getUser + metadata RLS + cek sesi sesudah fetch); jangan fallback ke URL Storage/signed URL. Cloud lain perlu seluruh migrasi dan fungsi sebelum klien ini dipakai.
 - Jangan mengembalikan login dummy atau menanam contoh nilai/jadwal untuk menyamarkan data kosong. Fixture tes boleh tetap ada; penerima izin contoh harus dikenali sebagai simulasi.
 - Jangan kirim seluruh profil/dokumen ke model; akses akademik berikutnya harus melalui API yang membatasi pemilik dan peran.
 - Jangan menyatakan AI menyetujui surat atau mengirim layanan jika hanya menghasilkan draf/objek lokal.
@@ -1048,10 +1074,10 @@ Dokumen ini harus diperbarui ketika ada implementasi atau bukti pengujian baru, 
 
 ### 2. Manajemen Konteks dan Sesi
 
-- Pada sesi baru, baca ringkasan eksekutif, keputusan teknis, dan tugas aktif dari dokumen ini; gunakan bagian K, N, dan O sesuai kebutuhan. Periksa apakah status tersebut masih cocok dengan keadaan proyek sebelum melanjutkan.
+- Pada chat baru, baca Ringkasan eksekutif, prioritas aktif (N), dan keputusan penting (O.6). Baca bagian lain secara selektif sesuai fitur. Jangan membaca ulang dokumentasi yang tidak berubah dan masih tersedia dalam konteks. Verifikasi kondisi penting terhadap repository terbaru.
 - Baca bagian dokumentasi tambahan dan source code hanya jika berhubungan dengan tugas. Hindari membaca ulang file yang tidak berubah dan masih tersedia dalam konteks.
 - Setelah satu fitur atau milestone selesai, perbarui bagian progres yang terdampak, termasuk hasil validasi dan pekerjaan yang belum selesai.
-- Setelah pekerjaan selesai dan dokumentasi tersimpan, pengguna dapat memulai sesi baru melalui **New Chat** atau `/clear` apabila tersedia pada antarmuka yang digunakan. Pastikan ringkasan serah terima sudah tersimpan terlebih dahulu.
+- Setelah milestone selesai, terverifikasi, dan progres terdokumentasi, pertimbangkan New Chat jika percakapan sudah panjang atau cakupan pekerjaan berubah. Jangan otomatis memulai chat baru setelah setiap perubahan kecil. Gunakan `/clear` hanya jika antarmuka mendukungnya.
 - Untuk sesi panjang yang masih memerlukan konteks sebelumnya, gunakan `/compact` apabila tersedia. Ketersediaan perintah harus diperiksa pada antarmuka yang digunakan, bukan diasumsikan sama di semua akun.
 - Jangan menghapus konteks ketika tugas masih berjalan atau pekerjaan belum diverifikasi. Catat status sementara bila sesi harus terputus.
 

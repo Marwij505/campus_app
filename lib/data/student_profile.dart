@@ -40,6 +40,7 @@ class StudentProfile {
     this.avatarPath,
     this.avatarBytes,
     this.updatedAt,
+    this.version,
     this.avatarVariant = 'neutral',
     this.verificationStatus = 'unverified',
   });
@@ -65,6 +66,7 @@ class StudentProfile {
       admissionStatus;
   final String avatarVariant, verificationStatus;
   final DateTime? updatedAt;
+  final String? version;
   // Foto privat hanya berada di memori sesi, bukan URL publik atau cache disk.
   final Uint8List? avatarBytes;
   String get greetingName => preferredName ?? name ?? 'Mahasiswa';
@@ -110,6 +112,7 @@ class StudentProfile {
           : 'neutral',
       verificationStatus: p['verification_status'] as String,
       updatedAt: DateTime.tryParse(p['updated_at'] as String? ?? ''),
+      version: p['updated_at'] as String?,
     );
   }
 }

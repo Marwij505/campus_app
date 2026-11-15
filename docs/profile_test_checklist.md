@@ -2,6 +2,14 @@
 
 Gunakan backend development. Password tidak perlu dikirim kepada siapa pun. Saat mengetes edit, gunakan nama panggilan/nomor/foto milik sendiri; kembalikan perubahan percobaan setelah selesai.
 
+## Penerimaan M1
+
+Gunakan [matriks 60 kriteria M1](m1_account_foundation.md). PASS otomatis bukan PASS perangkat/akun nyata. Pengiriman email, perubahan password, pencabutan sesi, dan perubahan data memerlukan akun serta lingkungan yang diotorisasi pemilik.
+
+- Buka dua editor pada versi sama; simpan A lalu B. B ditolak, input tetap tersedia, hasil A tetap tersimpan. Konfirmasi muat ulang sebelum meninjau dan menyimpan B kembali.
+- Respons unggahan/metadata hilang: hasil belum pasti, bukan otomatis gagal. Muat ulang dan periksa referensi; jangan hapus objek atau mengunggah ulang secara membabi buta. Fault injection dilakukan dalam tes terisolasi.
+- Catat simpan/relogin, foto, ekspor berkas, teks besar, dan logout/resume per platform. Uji backend dua pengguna sudah lulus dengan fixture terkontrol (10 November). Gunakan build terbaru dengan gateway `private-file` untuk uji manual.
+
 ## Mulai
 
 1. Hentikan aplikasi lama dengan `q` di terminal Flutter.
@@ -23,7 +31,7 @@ Gunakan backend development. Password tidak perlu dikirim kepada siapa pun. Saat
 | Telepon valid | Isi nomor sendiri dengan 08..., 62..., atau +kode negara, lalu simpan | Tersimpan sebagai format internasional +62... untuk nomor lokal; kosong juga diterima |
 | Telepon invalid | Isi huruf atau nomor terlalu pendek | Ditolak dengan pesan, profil lama tidak berubah |
 | Batal edit | Ubah panggilan tanpa simpan, tekan Batal | Data tersimpan tetap seperti sebelumnya |
-| Jaringan putus | Buka editor, matikan internet, simpan | Tidak mengaku berhasil; input tetap ada. Jaringan/SDK mungkin membutuhkan waktu sebelum melaporkan gagal. Aktifkan internet lalu coba kembali |
+| Jaringan putus | Buka editor, matikan internet, simpan | Tidak mengaku berhasil; input tetap ada. Jaringan/SDK mungkin membutuhkan waktu sebelum melaporkan gagal. Aktifkan internet, muat ulang dan periksa hasil sebelum mencoba kembali |
 | Muat ulang gagal | Putuskan internet lalu tekan Muat ulang | Data terakhir tetap tampil dengan pesan kesalahan |
 
 ## Avatar dan foto

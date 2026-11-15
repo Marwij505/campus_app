@@ -46,7 +46,8 @@ void main() {
   });
   test('Panggilan opsional dan telepon/varian divalidasi', () {
     expect(
-      const ProfileChanges(
+      ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: '',
         phone: '',
         avatarVariant: 'male',
@@ -55,6 +56,7 @@ void main() {
     );
     expect(
       ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: 'a' * 51,
         phone: '',
         avatarVariant: 'male',
@@ -62,7 +64,8 @@ void main() {
       isNotNull,
     );
     expect(
-      const ProfileChanges(
+      ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: 'Dante',
         phone: '08invalid',
         avatarVariant: 'female',
@@ -70,7 +73,8 @@ void main() {
       isNotNull,
     );
     expect(
-      const ProfileChanges(
+      ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: 'Dante',
         phone: '+6281234567890',
         avatarVariant: 'admin',
@@ -82,7 +86,8 @@ void main() {
     await server.client.auth.setSession('test-refresh');
     final repo = SupabaseProfileRepository(server.client);
     final p = await repo.save(
-      const ProfileChanges(
+      ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: ' Dante Baru ',
         phone: '',
         avatarVariant: 'female',
@@ -100,7 +105,8 @@ void main() {
     });
     server.profile['avatar_path'] = '${SupabaseFixture.id}/existing.png';
     await repo.save(
-      const ProfileChanges(
+      ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: '',
         phone: '',
         avatarVariant: 'neutral',
@@ -114,7 +120,8 @@ void main() {
     server.failSave = true;
     await expectLater(
       SupabaseProfileRepository(server.client).save(
-        const ProfileChanges(
+        ProfileChanges(
+          expectedVersion: server.profile['updated_at'] as String,
           preferredName: 'Gagal',
           phone: '',
           avatarVariant: 'female',
@@ -147,6 +154,7 @@ void main() {
     final repo = SupabaseProfileRepository(server.client);
     final saved = await repo.save(
       ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: 'Dante',
         phone: '',
         avatarVariant: 'male',
@@ -160,7 +168,8 @@ void main() {
     expect(deletion, greaterThan(patch));
     expect(server.requests[deletion].body, contains('old.png'));
     final removed = await repo.save(
-      const ProfileChanges(
+      ProfileChanges(
+        expectedVersion: server.profile['updated_at'] as String,
         preferredName: 'Dante',
         phone: '',
         avatarVariant: 'female',
@@ -181,6 +190,7 @@ void main() {
       await expectLater(
         SupabaseProfileRepository(server.client).save(
           ProfileChanges(
+            expectedVersion: server.profile['updated_at'] as String,
             preferredName: 'Dante',
             phone: '',
             avatarVariant: 'female',

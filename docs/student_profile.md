@@ -1,5 +1,17 @@
 # Profil mahasiswa dan Supabase
 
+## Perubahan M1 — 9 November 2026
+
+Editor preferensi membawa `StudentProfile.version` sebagai string `updated_at` mentah server. UPDATE memeriksa versi saat editor dibuka; snapshot lama ditolak, termasuk pada web tanpa kehilangan presisi mikrodetik. Konflik mempertahankan input dan meminta konfirmasi sebelum memuat ulang seluruh editor.
+
+Unggahan memakai ID acak. Cleanup objek baru hanya dilakukan setelah penolakan metadata yang pasti. Timeout/koneksi putus dapat terjadi sesudah commit: objek privat dipertahankan, hasil ditandai belum pasti, dan pengguna memuat ulang sebelum mengulang. Sisa objek privat memerlukan cleanup terkontrol; tidak ada layanan cleanup otomatis baru. Gagal membuang objek lama tidak membatalkan metadata baru. Generasi sesi membatasi kelanjutan operasi sesudah logout.
+
+Tab Biodata memakai RPC snapshot bersama dan transaksi yang memeriksa versi profil serta biodata. Migrasi `20261109204541_m1_biodata_profile_transaction.sql` dan koreksi `20261110032150_m1_biodata_conflict_http409.sql` sudah aktif pada development. Konflik memakai PT409; layanan tanpa RPC tetap menolak tanpa fallback.
+
+Foto dan dokumen diunduh melalui Edge Function `private-file`: JWT diperiksa server, metadata dibatasi RLS pemilik+sesi, sesi diperiksa kembali sebelum byte dikirim. Migrasi `20261110033954_m1_private_file_gateway.sql` menutup download/signing langsung di Storage untuk mencegah cache CDN melewati expiry/revocation. Upload/delete owner tetap tersedia. Klien lama harus diperbarui; tidak ada fallback ke URL Storage.
+
+Lihat [laporan M1](m1_account_foundation.md) untuk bukti otomatis dan penerimaan nyata yang belum dijalankan.
+
 ## Ruang lingkup
 
 Profil memakai Supabase Auth, Postgres, dan Storage privat. Halaman mengikuti susunan referensi: ringkasan biru/foto di kiri, tujuh tab, kartu isian terang, dan tombol Edit atau Simpan/Batal di atas. Header merah dan tipografi SIAKAD tetap digunakan. Pada layar kecil, panel disusun ke bawah; pembesaran teks tidak memaksa dua kolom.
@@ -104,7 +116,7 @@ Backend development saat ini: `campus-app`, ref `taqmosufhapstehgeonz`, organisa
 
 1. Buat proyek Supabase; simpan kredensial pengelola di luar repository.
 2. Jalankan `supabase login`, lalu `supabase link --project-ref REF`.
-3. Tinjau migrasi kemudian `supabase db push`. Jangan menjalankan ulang isi migrasi pada database yang sudah menerapkannya.
+3. Dengan otorisasi perubahan database, cocokkan isi dan ledger migrasi sebelum `supabase db push`. Pada 10 November filename lokal sudah diselaraskan dengan ledger development; isi cocok setelah normalisasi CRLF/LF dan newline ujung saja. Jangan menjalankan ulang isi migrasi pada database yang sudah menerapkannya.
 4. Jalankan `supabase functions deploy login-with-nim --no-verify-jwt`. Fungsi login menerima permintaan sebelum pengguna punya JWT dan memverifikasi password lewat Auth; ini bukan endpoint provisioning admin. Untuk pemulihan OTP, deploy juga `supabase functions deploy password-reset --no-verify-jwt` setelah migrasinya diterapkan, lalu isi secrets sesuai [panduan Resend](password_reset_otp.md).
 5. Buat Auth user melalui Authentication → Users. Auto Confirm hanya untuk akun development yang disetujui pemilik; pengguna nyata memerlukan verifikasi email yang sesuai.
 6. Ganti placeholder email di `supabase/seed_profile.sql`, periksa identitas/NIM, lalu jalankan sebagai administrator. Skrip tidak membuat password atau akun staf.
@@ -156,3 +168,5 @@ Pembaruan 2 November 2026: seluruh **218 tes Flutter lulus**, analisis bersih, b
 Pembaruan 3 November 2026: seluruh 218 tes Flutter dan 15 tes Deno kembali lulus, analisis/check/lint bersih, tes SQL OTP kembali lulus dengan rollback, serta satu email OTP nyata berstatus delivered. Password pengguna tidak diubah. Rincian dan batas bukti ada di `project_progress.md`.
 
 Penerimaan manual: login → Biodata → edit/simpan → periksa beranda/chat → logout → login ulang → periksa persistensi; unggah/ganti/hapus foto; coba jaringan putus; uji reset OTP dan login ulang pada perangkat target; tunggu 30 menit; uji perangkat target. Login Dante di browser sudah dikonfirmasi pengguna. Tes SQL/HTTP tidak menggantikan seluruh pemeriksaan manual ini.
+
+Gateway berkas: deploy `private-file` bersama migrasi kebijakan Storage dan klien terbaru. `verify_jwt=false` pada konfigurasi gateway karena Auth.getUser di handler memvalidasi JWT, diikuti RLS dan pemeriksaan sesi. Tidak perlu secret baru; memakai env Supabase bawaan Edge.

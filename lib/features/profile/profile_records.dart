@@ -33,7 +33,7 @@ class _ProfileRecordsState extends State<ProfileRecords> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool afterAction = false}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -44,26 +44,29 @@ class _ProfileRecordsState extends State<ProfileRecords> {
           : await widget.repository.finance();
       if (mounted) _rows = rows;
     } catch (_) {
-      if (mounted) _error = 'Data belum dapat dimuat. Periksa koneksi atau masuk ulang bila sesi habis.';
+      if (mounted) {
+        _error = afterAction
+            ? 'Operasi selesai, tetapi daftar belum dapat dimuat ulang. Muat ulang sebelum mengulangi perubahan.'
+            : 'Data belum dapat dimuat. Periksa koneksi atau masuk ulang bila sesi habis.';
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _action(Future<void> Function() action) async {
+    if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       await action();
-      if (mounted) await _load();
+      if (mounted) await _load(afterAction: true);
     } catch (e) {
       if (mounted) {
         setState(
-          () => _error = e is ProfileException
-              ? e.message
-              : 'Operasi gagal. Periksa koneksi lalu coba lagi.',
+          () => _error = e is ProfileException ? e.message : 'Hasil operasi belum dapat dipastikan. Periksa koneksi dan muat ulang sebelum mencoba lagi.',
         );
       }
     } finally {

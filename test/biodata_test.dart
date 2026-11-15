@@ -113,18 +113,29 @@ void main() {
       await server.client.auth.setSession('test-refresh');
       final repo = BiodataRepository(server.client);
       for (final section in biodataSections) {
-        expect(await repo.loadSection(section), isEmpty);
+        final initial = await repo.loadSection(section);
+        expect(initial['updated_at'], isNull);
         final values = <String, String>{
           'role': 'admin',
           'phone': '081234567890',
         };
-        final row = await repo.saveSection(section, values, null);
+        final row = await repo.saveSection(
+          section,
+          values,
+          null,
+          profileVersion: initial['_profile_version'] as String?,
+        );
         expect(row['role'], isNull);
         expect(row['user_id'], SupabaseFixture.id);
         expect(await repo.loadSection(section), row);
         server.conflict = true;
         await expectLater(
-          repo.saveSection(section, values, row['updated_at'] as String),
+          repo.saveSection(
+            section,
+            values,
+            row['updated_at'] as String,
+            profileVersion: row['_profile_version'] as String?,
+          ),
           throwsA(isA<ProfileException>()),
         );
         server.conflict = false;

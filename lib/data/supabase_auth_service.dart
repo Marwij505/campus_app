@@ -33,7 +33,10 @@ class SupabaseAuthService extends AuthService {
   final sb.SupabaseClient client;
   late final StreamSubscription<sb.AuthState> _subscription;
   @override
-  late final ProfileRepository profiles = SupabaseProfileRepository(client);
+  late final ProfileRepository profiles = SupabaseProfileRepository(
+    client,
+    sessionGeneration: () => _generation,
+  );
   StudentProfile? _user;
   bool _recovering = false, _loggingIn = false;
   bool _disposed = false;
@@ -236,10 +239,35 @@ class SupabaseAuthService extends AuthService {
     if (!_recovering && !hasSession) {
       throw const AuthException('Sesi tidak tersedia.');
     }
-    if (password.length < 12) {
-      throw const AuthException('Password baru minimal 12 karakter.');
+    final error = PasswordResetValidation.passwordError(password);
+    if (error != null) throw AuthException(error);
+    final request = _generation;
+    try {
+      await client.auth
+          .updateUser(sb.UserAttributes(password: password))
+          .timeout(const Duration(seconds: 30));
+    } on sb.AuthException catch (e) {
+      final status = int.tryParse(e.statusCode ?? '');
+      if (status != null && status >= 400 && status < 500 && status != 408) {
+        throw AuthException(
+          status == 401 || status == 403
+              ? 'Sesi tidak sah. Masuk kembali atau gunakan pemulihan akun.'
+              : 'Perubahan password ditolak. Periksa kebijakan password atau coba lagi nanti.',
+        );
+      }
+      throw const AuthException(
+        'Hasil perubahan password belum dapat dipastikan. Coba masuk dengan password baru atau gunakan pemulihan akun.',
+      );
+    } catch (_) {
+      throw const AuthException(
+        'Hasil perubahan password belum dapat dipastikan. Coba masuk dengan password baru atau gunakan pemulihan akun.',
+      );
     }
-    await client.auth.updateUser(sb.UserAttributes(password: password));
+    if (request != _generation || _disposed) {
+      throw const AuthException(
+        'Sesi berubah. Periksa hasil dengan masuk kembali.',
+      );
+    }
     await logout();
   }
 

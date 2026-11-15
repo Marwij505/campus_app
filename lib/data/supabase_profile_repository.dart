@@ -2,6 +2,7 @@
 import 'dart:typed_data';
 
 import 'profile_photo.dart';
+import 'account_operation.dart';
 import 'profile_phone.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,18 +12,24 @@ import 'student_profile.dart';
 import 'biodata_repository.dart';
 
 class SupabaseProfileRepository implements ProfileRepository {
-  SupabaseProfileRepository(this.client);
+  SupabaseProfileRepository(this.client, {this.sessionGeneration});
   final SupabaseClient client;
+  final int Function()? sessionGeneration;
   @override
-  late final BiodataRepository biodata = BiodataRepository(client);
+  late final BiodataRepository biodata = BiodataRepository(
+    client,
+    sessionGeneration: sessionGeneration,
+  );
   static const bucket = 'student-avatars';
   String get _id =>
       client.auth.currentUser?.id ??
       (throw const ProfileException('Sesi berakhir. Silakan masuk kembali.'));
   @override
   Future<StudentProfile> load() async {
+    final operation = AccountOperation(client, sessionGeneration);
     final id = _id;
     final p = await client.from('profiles').select().eq('id', id).maybeSingle();
+    operation.check();
     final s = await client
         .from('students')
         .select()
@@ -36,16 +43,12 @@ class SupabaseProfileRepository implements ProfileRepository {
     Uint8List? photo;
     if (p['avatar_path'] != null) {
       try {
-        photo = await client.storage
-            .from(bucket)
-            .download(p['avatar_path'] as String);
+        photo = await operation.download(bucket, p['avatar_path'] as String);
       } catch (_) {
         /* Foto gagal tidak menghilangkan identitas atau referensi server. */
       }
     }
-    if (_id != id) {
-      throw const ProfileException('Sesi berubah. Muat ulang profil.');
-    }
+    operation.check();
     return StudentProfile.fromRows(
       p,
       s,
@@ -64,20 +67,28 @@ class SupabaseProfileRepository implements ProfileRepository {
   Future<StudentProfile> save(ProfileChanges changes) async {
     final validation = changes.validate();
     if (validation != null) throw ProfileException(validation);
+    final operation = AccountOperation(client, sessionGeneration);
     final id = _id;
     final previous = await client
         .from('profiles')
         .select('avatar_path,updated_at')
         .eq('id', id)
         .single();
+    operation.check();
+    if (changes.expectedVersion == null ||
+        previous['updated_at'] != changes.expectedVersion) {
+      throw const ProfileConflict();
+    }
     final oldPath = previous['avatar_path'] as String?;
     String? newPath;
     var committed = false;
+    var metadataStarted = false;
     try {
       if (changes.photo != null) {
         final photo = await ProfilePhoto.prepare(changes.photo!);
         const extension = 'jpg';
-        newPath = '$id/${DateTime.now().microsecondsSinceEpoch}.$extension';
+        operation.check();
+        newPath = '$id/${AccountOperation.newId()}.$extension';
         await client.storage
             .from(bucket)
             .uploadBinary(
@@ -89,7 +100,9 @@ class SupabaseProfileRepository implements ProfileRepository {
               ),
             );
       }
-      // Versi mencegah dua penyimpanan bersamaan menimpa hasil tanpa diketahui.
+      operation.check();
+      metadataStarted = true;
+      // Bandingkan versi editor, bukan snapshot yang baru dibaca saat Simpan.
       final saved = await client
           .from('profiles')
           .update({
@@ -103,35 +116,35 @@ class SupabaseProfileRepository implements ProfileRepository {
             'avatar_path': changes.removePhoto ? null : newPath ?? oldPath,
           })
           .eq('id', id)
-          .eq('updated_at', previous['updated_at'])
+          .eq('updated_at', changes.expectedVersion!)
           .select('id');
       if (saved.isEmpty) {
-        throw const ProfileException(
-          'Profil berubah atau sesi habis. Muat ulang sebelum menyimpan.',
-        );
+        throw const ProfileConflict();
       }
       committed = true;
       // Foto lama baru dibersihkan sesudah referensi baru tersimpan.
       if (oldPath != null && (newPath != null || changes.removePhoto)) {
-        try {
-          await client.storage.from(bucket).remove([oldPath]);
-        } catch (_) {
-          /* Sisa berkas tetap privat; admin dapat membersihkannya. */
-        }
+        await operation.cleanup(bucket, oldPath);
       }
+      operation.check();
       return await load();
-    } catch (_) {
-      if (!committed && newPath != null) {
-        try {
-          await client.storage.from(bucket).remove([newPath]);
-        } catch (_) {
-          /* Pertahankan kesalahan utama. */
-        }
+    } catch (error) {
+      if (!committed &&
+          newPath != null &&
+          metadataStarted &&
+          AccountOperation.rejected(error)) {
+        await operation.cleanup(bucket, newPath);
       }
       if (committed) {
         throw const ProfileException(
           'Perubahan sudah tersimpan, tetapi pembacaan ulang gagal. Tutup editor lalu tekan Muat ulang; jangan unggah ulang fotonya.',
         );
+      }
+      if (!AccountOperation.rejected(error) &&
+          (metadataStarted || newPath != null)) {
+        // Referensi bisa sudah tersimpan meskipun respons hilang. Pertahankan
+        // objek privat sampai pengguna memuat ulang; jangan mencoba ulang otomatis.
+        throw const ProfileUncertain();
       }
       rethrow;
     }

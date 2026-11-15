@@ -7,3 +7,7 @@ verify_jwt = false
 [functions.password-reset]
 # Pengguna belum login; autentikasi penggantian password dilakukan dengan OTP sekali pakai.
 verify_jwt = false
+
+[functions.private-file]
+# Handler memvalidasi JWT lewat Auth.getUser, RLS pemilik, dan sesi aplikasi.
+verify_jwt = false

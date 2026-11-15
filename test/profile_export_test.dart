@@ -20,6 +20,15 @@ class TestSharePlatform extends SharePlatform {
   }
 }
 
+// Gateway/SDK coverage lives in m1_account_test; this test isolates native share.
+class ExportFixtureRepository extends BiodataRepository {
+  ExportFixtureRepository(this.fixture) : super(fixture.client);
+  final SupabaseFixture fixture;
+  @override
+  Future<Uint8List> downloadDocument(Map<String, dynamic> row) async =>
+      fixture.photoBytes!;
+}
+
 void main() {
   final platform = TestSharePlatform();
   SharePlatform.instance = platform;
@@ -47,7 +56,7 @@ void main() {
             home: Scaffold(
               body: SingleChildScrollView(
                 child: ProfileRecords(
-                  repository: BiodataRepository(server.client),
+                  repository: ExportFixtureRepository(server),
                   documents: true,
                 ),
               ),
@@ -66,12 +75,18 @@ void main() {
           server.photoBytes,
         );
         expect(platform.received!.sharePositionOrigin!.width, greaterThan(0));
-        expect(find.textContaining('Operasi gagal'), findsNothing);
+        expect(
+          find.textContaining('Hasil operasi belum dapat dipastikan'),
+          findsNothing,
+        );
         expect(server.requests.where((r) => r.method == 'DELETE'), isEmpty);
         platform.fail = true;
         await tester.tap(find.text('KTP.pdf'));
         await tester.pumpAndSettle();
-        expect(find.textContaining('Operasi gagal'), findsOneWidget);
+        expect(
+          find.textContaining('Hasil operasi belum dapat dipastikan'),
+          findsOneWidget,
+        );
         expect(server.documentRows, hasLength(1));
         await tester.pumpWidget(const SizedBox());
         await tester.runAsync(server.dispose);

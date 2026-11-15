@@ -138,6 +138,38 @@ void main() {
       await tester.pumpAndSettle();
       expect(auth.currentUser!.preferredName, 'Panggilan Baru');
       expect(tester.takeException(), isNull);
+      if (size.width == 800) {
+        await tester.ensureVisible(find.text('Edit foto / nama panggilan'));
+        await tester.tap(find.text('Edit foto / nama panggilan'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).first, 'Isian lama');
+        server.profile['preferred_name'] = 'Pemenang editor lain';
+        server.profile['updated_at'] = '2026-11-09T10:00:00.123456Z';
+        await tester.ensureVisible(find.text('Simpan profil'));
+        await tester.tap(find.text('Simpan profil'));
+        await tester.pumpAndSettle();
+        expect(find.text('Isian lama'), findsOneWidget);
+        expect(server.profile['preferred_name'], 'Pemenang editor lain');
+        await tester.ensureVisible(find.text('Muat ulang data terbaru'));
+        await tester.tap(find.text('Muat ulang data terbaru'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Tetap mengedit'));
+        await tester.pumpAndSettle();
+        expect(find.text('Isian lama'), findsOneWidget);
+        await tester.tap(find.text('Muat ulang data terbaru'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Muat ulang'));
+        await tester.pumpAndSettle();
+        expect(find.text('Pemenang editor lain'), findsOneWidget);
+        await tester.enterText(
+          find.byType(TextField).first,
+          'Sesudah tinjau ulang',
+        );
+        await tester.ensureVisible(find.text('Simpan profil'));
+        await tester.tap(find.text('Simpan profil'));
+        await tester.pumpAndSettle();
+        expect(auth.currentUser!.preferredName, 'Sesudah tinjau ulang');
+      }
       await tester.pumpWidget(const SizedBox());
       auth.dispose();
       await tester.runAsync(server.dispose);

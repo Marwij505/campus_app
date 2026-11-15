@@ -2,7 +2,7 @@
 
 1. Pertahankan pilihan pengguna **GPT-6 Astra High**; jangan mengganti model tanpa instruksi. File ini tidak mengatur model secara otomatis.
 2. Hemat token pada pembacaan, tools, dan respons tanpa mengurangi kualitas, keamanan, kelengkapan fitur, atau validasi penting. Komunikasikan hasil secara ringkas (gaya Caveman); detail yang diminta tetap lengkap.
-3. Pada sesi pertama setelah migrasi, baca ringkasan eksekutif, keputusan teknis (K), roadmap (M), tugas aktif (N), dan serah terima (O) di `project_progress.md`.
+3. Pada awal chat Codex baru, baca Ringkasan eksekutif, prioritas aktif (N), dan keputusan kritis (O.6) dari `project_progress.md`. Baca bagian D/M atau bagian lain hanya bila relevan dengan tugas. Jangan memuat seluruh dokumentasi secara otomatis. Cocokkan informasi penting dengan source aktual sebelum implementasi.
 4. Untuk tugas berikutnya, baca hanya bagian dokumentasi dan source yang relevan. Cari file/simbol dengan `rg` sebelum membuka isinya.
 5. Hindari pemindaian seluruh repository, pembacaan ulang file yang tidak berubah, operasi berulang, dan keluaran kode/log lengkap tanpa kebutuhan. Kecualikan cache, build, dependensi, serta model AI besar dari pencarian rutin.
 6. Gunakan patch minimal; pertahankan perilaku dan arsitektur yang tidak terkait. Jangan melakukan refactoring atau membuat file tambahan tanpa kebutuhan.

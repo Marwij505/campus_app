@@ -49,12 +49,10 @@ class _BiodataFormState extends State<BiodataForm> {
 
   void _restore() {
     for (final f in widget.section.fields) {
-      final value = widget.section.key == 'biodata' && f.key == 'phone'
-          ? widget.student.phone
-          : _row[f.key];
+      final value = _row[f.key];
       _controllers[f.key]!.text =
           value?.toString() ??
-          (f.key == 'private_email' && _row.isEmpty
+          (f.key == 'private_email' && !_row.containsKey('updated_at')
               ? widget.student.email ?? ''
               : '');
     }
@@ -71,9 +69,11 @@ class _BiodataFormState extends State<BiodataForm> {
       _row = row;
       _loaded = true;
       _restore();
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        _error = 'Data belum dapat dimuat. Periksa koneksi, lalu coba lagi.';
+        _error = e is ProfileException
+            ? e.message
+            : 'Data belum dapat dimuat. Periksa koneksi, lalu coba lagi.';
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -92,6 +92,7 @@ class _BiodataFormState extends State<BiodataForm> {
         widget.section,
         _controllers.map((key, value) => MapEntry(key, value.text)),
         _row['updated_at'] as String?,
+        profileVersion: _row['_profile_version'] as String?,
       );
       if (!mounted) return;
       _row = row;

@@ -51,7 +51,7 @@ Pengait terpasang per pengguna Windows, bukan ikut tersimpan pada akun kampus. I
 
 ## Jika belum tersambung
 
-Saat `flutter run`, terminal seharusnya menampilkan **[campus_app] Menyiapkan Ollama...**, lalu **Ollama campus_app siap...** sebelum Flutter berjalan. Jika persiapan gagal, Flutter belum diluncurkan dan pesan penyebab ditampilkan. Konflik port dengan proses lain tidak ditangani dengan mematikan proses tersebut.
+Saat `flutter run`, terminal seharusnya menampilkan **[campus_app] Menyiapkan Ollama...**, lalu **Ollama campus_app siap...** sebelum Flutter berjalan. Jika persiapan gagal, Flutter belum diluncurkan dan pesan penyebab ditampilkan. Jalur tanpa persiapan AI: atur `$env:CAMPUS_SKIP_AI = '1'`, lalu ulangi `flutter run`. Hapus variabel dengan `Remove-Item Env:CAMPUS_SKIP_AI` untuk kembali ke autostart. Opsi ini berlaku hanya pada terminal tersebut; tidak mengubah profil shell atau mematikan server AI yang sudah berjalan. Konflik port dengan proses lain tidak ditangani dengan mematikan proses tersebut.
 
 Pengait kini menjalankan `start.ps1 -RequireModel -Repair`. Runtime yang hilang atau belum selesai diekstrak dipulihkan dari ZIP yang lolos SHA-256, atau diunduh kembali jika cache tidak tersedia. Model yang belum terdaftar di server proyek diunduh melalui Ollama. Instalasi lengkap digunakan kembali tanpa unduhan. Internet diperlukan hanya untuk unduhan awal/pemulihan; runtime sekitar 1,5 GB dan model sekitar 1 GB. Proses pertama dapat lama sesuai koneksi. Jangan menghapus folder `.local-ai` jika ingin tetap dapat bekerja offline.
 

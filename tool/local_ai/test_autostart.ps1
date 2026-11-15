@@ -5,8 +5,10 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 # Folder biasa dan file workspace harus memuat profil terminal yang sama.
 $folderSettings = Get-Content (Join-Path $projectRoot '.vscode/settings.json') -Raw | ConvertFrom-Json
 $workspaceSettings = (Get-Content (Join-Path $projectRoot 'campus_app.code-workspace') -Raw | ConvertFrom-Json).settings
-if (($folderSettings | ConvertTo-Json -Depth 10 -Compress) -ne ($workspaceSettings | ConvertTo-Json -Depth 10 -Compress)) {
-    throw 'Konfigurasi terminal folder dan workspace berbeda.'
+foreach ($key in @('terminal.integrated.profiles.windows', 'terminal.integrated.defaultProfile.windows', 'terminal.integrated.cwd')) {
+    if (($folderSettings.$key | ConvertTo-Json -Depth 10 -Compress) -ne ($workspaceSettings.$key | ConvertTo-Json -Depth 10 -Compress)) {
+        throw ('Konfigurasi terminal folder dan workspace berbeda: ' + $key)
+    }
 }
 $terminal = $folderSettings.'terminal.integrated.profiles.windows'.'Campus App (AI otomatis)'
 if ($terminal.args[-1] -ne '${workspaceFolder}\tool\local_ai\flutter_hook.ps1' -or
@@ -98,10 +100,25 @@ try {
     flutter run -d chrome 2>$null
     Assert-True ($LASTEXITCODE -eq 1) 'exit code gagal penyiapan'
     Assert-Calls 'ai'
-    Write-Output 'LULUS: Chrome, emulator, pilihan perangkat, subfolder, proyek lain, help/test, muat ulang, kegagalan, argumen, dan exit code.'
+    # Pilihan eksplisit tanpa AI tetap bekerja saat runtime/download gagal.
+    $env:CAMPUS_SKIP_AI = '1'
+    foreach ($device in @('chrome', 'emulator-5554')) {
+        Reset-Calls
+        flutter run -d $device '--dart-define=LABEL=dua kata'
+        Assert-Calls 'flutter'
+        Assert-True ($LASTEXITCODE -eq 7) 'mode tanpa AI meneruskan exit code SDK'
+        $forwarded = Get-Content -LiteralPath $env:CAMPUS_TEST_ARGUMENTS -Raw | ConvertFrom-Json
+        Assert-True ($forwarded[3] -eq '--dart-define=LABEL=dua kata') 'mode tanpa AI mempertahankan argumen'
+    }
+    Push-Location (Join-Path $fixture 'lib')
+    try { Reset-Calls; flutter run; Assert-Calls 'flutter' }
+    finally { Pop-Location }
+    Remove-Item Env:CAMPUS_SKIP_AI
+    Write-Output 'LULUS: Chrome, emulator, pilihan perangkat, subfolder, proyek lain, help/test, muat ulang, kegagalan, mode tanpa AI, argumen, dan exit code.'
 } finally {
     Pop-Location
     Remove-Item Env:CAMPUS_TEST_FAIL -ErrorAction SilentlyContinue
+    Remove-Item Env:CAMPUS_SKIP_AI -ErrorAction SilentlyContinue
     Remove-Item Env:CAMPUS_TEST_EVENTS, Env:CAMPUS_TEST_ARGUMENTS
     Remove-Item Function:\global:Get-Command, Function:\global:flutter
     Remove-Variable campusTestSdk -Scope Global

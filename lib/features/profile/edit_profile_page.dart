@@ -31,8 +31,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final _name = TextEditingController(text: widget.student.preferredName);
   late final _phone = TextEditingController(text: widget.student.phone);
   late String _variant = widget.student.avatarVariant;
+  late StudentProfile _snapshot = widget.student;
   Uint8List? _photo;
   bool _remove = false, _busy = false;
+  bool _requiresReload = false;
   String? _error;
   @override
   void dispose() {
@@ -94,7 +96,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _save() async {
+    if (_busy || _requiresReload) return;
     final changes = ProfileChanges(
+      expectedVersion: _snapshot.version,
       preferredName: _name.text,
       phone: _phone.text,
       avatarVariant: _variant,
@@ -118,8 +122,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (e) {
       // Isian tetap ada bila server gagal; jangan mengaku sukses sebelum konfirmasi.
       if (mounted) {
+        setState(() {
+          _requiresReload =
+              e is ProfileConflict ||
+              e is ProfileUncertain ||
+              e is ProfileException &&
+                  e.message.startsWith('Perubahan sudah tersimpan');
+          _error = e is ProfileException ? e.message : 'Profil belum berhasil disimpan. Periksa koneksi lalu coba lagi.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _reload() async {
+    if (_busy) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Muat ulang data terbaru?'),
+        content: const Text(
+          'Isian dan pilihan foto di editor akan diganti data server. Salin isian yang masih diperlukan terlebih dahulu.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Tetap mengedit'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Muat ulang'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final current = await widget.repository.load();
+      if (!mounted) return;
+      widget.onSaved(current);
+      setState(() {
+        _snapshot = current;
+        _name.text = current.preferredName ?? '';
+        _phone.text = current.phone ?? '';
+        _variant = current.avatarVariant;
+        _photo = null;
+        _remove = false;
+        _requiresReload = false;
+        _error = null;
+      });
+    } catch (_) {
+      if (mounted) {
         setState(
-          () => _error = e is ProfileException ? e.message : 'Profil belum berhasil disimpan. Periksa koneksi lalu coba lagi.',
+          () => _error = 'Muat ulang gagal. Isian tetap tersedia. Periksa koneksi atau masuk ulang.',
         );
       }
     } finally {
@@ -143,7 +200,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Center(
             child: StudentProfileAvatar(
               variant: _variant,
-              photo: _remove ? null : _photo ?? widget.student.avatarBytes,
+              photo: _remove ? null : _photo ?? _snapshot.avatarBytes,
               size: 128,
             ),
           ),
@@ -193,7 +250,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 icon: const Icon(Icons.upload),
                 label: const Text('Pilih foto · berbagai format ≤ 20 MB'),
               ),
-              if (widget.student.avatarPath != null || _photo != null)
+              if (_snapshot.avatarPath != null || _photo != null)
                 TextButton(
                   onPressed: _busy
                       ? null
@@ -237,8 +294,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
           const SizedBox(height: 20),
+          if (_requiresReload)
+            OutlinedButton(
+              onPressed: _busy ? null : _reload,
+              child: const Text('Muat ulang data terbaru'),
+            ),
           FilledButton(
-            onPressed: _busy ? null : _save,
+            onPressed: _busy || _requiresReload ? null : _save,
             child: Text(_busy ? 'Menyimpan…' : 'Simpan profil'),
           ),
           TextButton(

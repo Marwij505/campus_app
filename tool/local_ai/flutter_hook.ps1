@@ -38,7 +38,11 @@
         }
         $isRun = $flutterArguments.Count -gt 0 -and $flutterArguments[0] -eq 'run'
         $isHelp = $flutterArguments -contains '--help' -or $flutterArguments -contains '-h'
-        if ($project -eq $campusProjectRoot -and $isRun -and !$isHelp) {
+        $skipAi = $env:CAMPUS_SKIP_AI -eq '1'
+        if ($project -eq $campusProjectRoot -and $isRun -and !$isHelp -and $skipAi) {
+            Write-Host '[campus_app] Persiapan AI dilewati. Fondasi akun dan bantuan terpandu tetap tersedia.'
+        }
+        if ($project -eq $campusProjectRoot -and $isRun -and !$isHelp -and !$skipAi) {
             Write-Host '[campus_app] Menyiapkan Ollama sebelum Flutter berjalan...'
             # Proses anak membuat exit pada start.ps1 tidak menutup terminal pengguna.
             $shell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
@@ -46,7 +50,7 @@
                 Join-Path $campusProjectRoot 'tool/local_ai/start.ps1'
             ) -RequireModel -Repair
             if ($LASTEXITCODE -ne 0) {
-                Write-Error 'AI belum siap; Flutter belum dijalankan. Periksa pesan di atas lalu coba lagi.' -ErrorAction Continue
+                Write-Error 'AI belum siap; Flutter belum dijalankan. Untuk menjalankan fondasi tanpa persiapan AI, atur $env:CAMPUS_SKIP_AI="1" lalu ulangi perintah.' -ErrorAction Continue
                 $global:LASTEXITCODE = 1
                 return
             }

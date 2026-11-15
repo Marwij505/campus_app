@@ -10,15 +10,32 @@ class ProfileException implements Exception {
   final String message;
 }
 
+class ProfileConflict extends ProfileException {
+  const ProfileConflict()
+    : super(
+        'Data berubah atau sesi habis. Isian tetap tersedia; salin yang diperlukan lalu muat ulang data terbaru.',
+      );
+}
+
+class ProfileUncertain extends ProfileException {
+  const ProfileUncertain()
+    : super(
+        'Hasil penyimpanan belum dapat dipastikan. Muat ulang untuk memeriksa data sebelum mencoba lagi.',
+      );
+}
+
 class ProfileChanges {
   const ProfileChanges({
     required this.preferredName,
     required this.phone,
     required this.avatarVariant,
+    required this.expectedVersion,
     this.photo,
     this.removePhoto = false,
   });
   final String preferredName, phone, avatarVariant;
+  // Timestamp mentah server dipertahankan, termasuk mikrodetik pada Flutter web.
+  final String? expectedVersion;
   final Uint8List? photo;
   final bool removePhoto;
   String? validate() {

@@ -94,7 +94,7 @@ Setelah pemulihan, sesi aplikasi dicabut melalui `private.app_sessions`; kebijak
 | `supabase/functions/password-reset/handler.ts` | Validasi HTTP, pembatasan, penerbitan/verifikasi kode |
 | `supabase/functions/password-reset/otp.ts` | Acak kriptografis dan HMAC |
 | `supabase/functions/password-reset/services.ts` | Adapter Supabase Auth, RPC database, dan Resend |
-| `supabase/migrations/20261102065453_password_reset_otp.sql` | Tabel private dan empat RPC pemulihan |
+| `supabase/migrations/20261102071019_password_reset_otp.sql` | Tabel private dan empat RPC pemulihan |
 | `supabase/tests/password_reset.sql` | Uji akses dan siklus OTP; transaksi diakhiri rollback |
 
 `verify_jwt=false` hanya untuk endpoint pemulihan sebelum login. Aksi mengganti password tetap memerlukan OTP sah; request kode dibatasi dan tidak mengungkap keberadaan akun.
@@ -128,6 +128,12 @@ flutter build web --no-pub --no-web-resources-cdn
 - **218 tes Flutter lulus**, analisis bersih; Deno check/lint bersih dan **15 tes Deno lulus**. Tes SQL OTP pada Supabase kembali lulus dengan rollback; fixture tidak dipertahankan.
 - Bukti lokal: `build/otp-nov3-remote-probe.json`, `build/otp-nov3-analyze.log`, dan `build/otp-nov3-flutter-test.log`. Folder build tidak ikut Git dan bisa terhapus oleh `flutter clean`.
 - Delivered membuktikan server email penerima menerima pesan, bukan posisi inbox/spam, pembacaan pesan, atau keberhasilan reset. Password nyata tidak diubah; uji UI, reset, login ulang, dan pencabutan sesi nyata masih menunggu checklist berikut. Tidak ada build atau uji emulator interaktif baru pada sesi ini.
+
+## Perubahan M1 — 9 November 2026
+
+Perubahan password saat login memakai validasi bersama 12–256 karakter tanpa trim. Penolakan Auth eksplisit dibedakan dari timeout/respons hilang; hasil tidak pasti mengarahkan login ulang dengan password baru atau pemulihan akun. Respons sesi lama tidak boleh mengeluarkan sesi login berikutnya.
+
+Tes M1 memakai fake transport SDK; tidak mengirim email, mengganti password nyata, atau mencabut sesi nyata. Delivery 3 November tetap bukti historis saja. Reset UI nyata, login password baru, penolakan password lama, replay, dan akses sesi lama masih menunggu akun/lingkungan/tindakan yang diotorisasi. Jangan menempelkan password atau OTP ke chat. Catat bukti tersanitasi pada [laporan M1](m1_account_foundation.md).
 
 ## Checklist manual setelah secrets diisi
 

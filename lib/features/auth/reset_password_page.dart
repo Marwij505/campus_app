@@ -1,6 +1,8 @@
 // Halaman dipakai oleh sesi pemulihan valid atau pengguna yang sedang login.
 import 'package:flutter/material.dart';
 
+import '../../data/password_reset_validation.dart';
+
 import '../../data/auth_service.dart';
 import '../chatbot/chat_controller.dart';
 import '../dashboard/dashboard_detail_page.dart';
@@ -26,10 +28,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   }
 
   Future<void> _save() async {
-    if (_password.text.length < 12 || _password.text != _confirmation.text) {
-      setState(
-        () => _error = 'Gunakan minimal 12 karakter dan konfirmasi yang sama.',
-      );
+    if (_busy) return;
+    final error = PasswordResetValidation.passwordError(_password.text);
+    if (error != null || _password.text != _confirmation.text) {
+      setState(() => _error = error ?? 'Konfirmasi password harus sama.');
       return;
     }
     setState(() {
@@ -39,16 +41,18 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     try {
       await widget.service.changePassword(_password.text);
       if (mounted) {
+        _password.clear();
+        _confirmation.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Password diperbarui. Silakan masuk kembali.'),
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(
-          () => _error = 'Password belum berubah. Sesi/tautan mungkin kedaluwarsa atau password belum memenuhi kebijakan.',
+          () => _error = e is AuthException ? e.message : 'Hasil perubahan password belum dapat dipastikan. Coba masuk dengan password baru atau gunakan pemulihan akun.',
         );
       }
     } finally {
@@ -64,7 +68,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Gunakan password unik minimal 12 karakter. Setelah berhasil, masuk kembali dengan password baru.',
+          'Gunakan password unik 12–256 karakter. Setelah berhasil, masuk kembali dengan password baru.',
         ),
         const SizedBox(height: 20),
         TextField(

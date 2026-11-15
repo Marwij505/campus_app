@@ -2,12 +2,14 @@
 
 Aplikasi Flutter SIAKAD dengan tema retro/pixel. **Login dan profil mahasiswa memakai Supabase Auth, Postgres, serta Storage privat.** Data akademik, keuangan, dan administrasi kampus masih dikembangkan; data yang belum tersedia tidak dibuat-buat.
 
+**Periode milestone:** pekerjaan sebelum Penutupan Fondasi Akun termasuk **Milestones Oktober 2026**. Penutupan Fondasi Akun adalah **M1 November 2026**, berstatus **ACCEPTED WITH TEST EXCEPTIONS** (56 PASS sesuai bukti dan 4 pengecualian pengujian). Semua sebutan M1 di README ini merujuk pada M1 November 2026. Tanggal pelaksanaan/pengujian historis tetap mengikuti kejadian sebenarnya; rincian ada di [project_progress.md](project_progress.md).
+
 ## Fitur dan status
 
 - **Login nyata:** NIM/password melalui Edge Function, pembatasan percobaan, pesan kesalahan umum, logout, dan sesi absolut 30 menit yang ditegakkan server.
 - **Biodata:** tujuh tab untuk biodata, pendidikan, keluarga, pekerjaan, disabilitas, riwayat keuangan, dan berkas privat. Formulir pribadi tersimpan di Supabase; data resmi/keuangan hanya dibaca. Foto lintas format dikonversi ke JPEG, nomor `08…` diterima, email kampus/pribadi/login dipisahkan.
 - **Profil bersama:** dashboard, Biodata, chatbot, draf surat, dan form izin menggunakan identitas yang sama. Logout membersihkan state privat.
-- **Pemulihan password:** kode OTP enam karakter campuran huruf besar dan angka melalui Resend, diverifikasi server sebelum Supabase Auth mengganti password. Satu email uji berstatus delivered pada 3 November 2026; reset dan login ulang nyata melalui aplikasi masih perlu diuji. Lihat [aktivasi dan checklist OTP](docs/password_reset_otp.md).
+- **Pemulihan password:** kode OTP enam karakter campuran huruf besar dan angka melalui Resend, diverifikasi server sebelum Supabase Auth mengganti password. Penerimaan 10–11 November membuktikan reset/login nyata, pencabutan akses sesi lama, batas lima percobaan, cooldown server, invalidasi setelah kirim ulang, dan penolakan kode bekas. Uji tunggu kedaluwarsa terisolasi dikecualikan oleh pengguna; rincian bukti ada pada [laporan M1 November 2026](docs/m1_account_foundation.md).
 - **Dashboard:** akses cepat, menu Akademik/Tugas Akhir/Layanan, tampilan responsif, halaman layanan, serta keadaan kosong untuk data akademik yang belum terintegrasi.
 - **Chatbot:** bantuan terpandu dan Ollama lokal. Identitas dijawab langsung dari profil tanpa dikirim ke model AI.
 - **Izin Online:** alur pengajuan → BAP → PDF → dosen masih simulasi lokal. Backend Auth saat ini melayani mahasiswa; akun staf dummy hanya dipakai dalam pengujian.
@@ -25,11 +27,22 @@ flutter run -d chrome
 
 Target lain: `flutter run -d <device-id>` atau `flutter run`. Internet diperlukan untuk login dan menyimpan/membaca profil. Ollama tidak menggantikan backend profil.
 
+Untuk menjalankan fondasi tanpa menyiapkan/mengunduh Ollama pada terminal PowerShell proyek:
+
+```powershell
+$env:CAMPUS_SKIP_AI = '1'
+flutter run -d chrome
+# Aktifkan kembali persiapan AI otomatis:
+Remove-Item Env:CAMPUS_SKIP_AI
+```
+
+Pilihan ini hanya melewati persiapan AI pada proses terminal. Login/profil tetap membutuhkan Supabase; bantuan terpandu tersedia. AI yang sudah berjalan tetap dapat tersambung. Laporan dan batas penerimaan M1 November 2026: [docs/m1_account_foundation.md](docs/m1_account_foundation.md).
+
 Jika Android Emulator menampilkan layar hitam setelah Quick Boot, lihat [panduan pemulihan emulator](docs/android_emulator.md). Script `tool/android/configure_emulator.ps1` mengatur cold boot pada AVD yang dipilih tanpa menghapus data.
 
 URL dan **publishable key** proyek development sudah tersedia di `lib/core/config/supabase_config.dart`. Kunci klien tersebut boleh dibagikan; hak akses tetap dijaga server. **Secret/service-role key, password database, dan password pengguna tidak boleh masuk source code.**
 
-Backend terpisah harus menerapkan migrasi, Edge Function, dan provisioning akun. Ganti konfigurasi saat build:
+Backend terpisah harus menerapkan seluruh migrasi, Edge Function (`login-with-nim`, `password-reset`, `private-file`), dan provisioning akun. Klien ini mengambil foto/dokumen lewat `private-file`; kebijakan Storage M1 menutup unduhan langsung. Ganti konfigurasi saat build:
 
 ```sh
 flutter run -d chrome --dart-define=SUPABASE_URL=https://PROJECT.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
@@ -80,6 +93,25 @@ flutter build web
 Tes mencakup Auth produksi dengan SDK asli dan HTTP terkendali, isolasi sesi, profil/foto, kegagalan simpan, chatbot, izin lokal, dan layout HP/tablet/desktop. Uji database dijalankan terpisah sesuai panduan profil. Tes buatan tidak menggantikan pengujian email/perangkat nyata.
 
 Build Android: `flutter build apk --release`; hasil di `build/app/outputs/flutter-apk/app-release.apk`. Hasil web: `build/web/`. Folder platform tersedia bukan berarti seluruh platform telah diuji.
+
+### Memeriksa salinan bersih dan serah terima M1 November 2026
+
+Patch M1 November 2026 masih berada di working tree, belum di-commit/push. Clone dari HEAD lama belum memuat patch tersebut. Gunakan paket source terbaru yang dirujuk [laporan M1 November 2026](docs/m1_account_foundation.md), verifikasi `MANIFEST.sha256`, lalu ekstrak ke folder kosong. Jangan salin `.dart_tool`, hasil build, cache, `android/local.properties`, `.env`, atau model AI dari komputer pengembang.
+
+Lingkungan verifikasi: Flutter 3.47.5 / Dart 3.13.4, Android SDK, dan JBR bawaan Android Studio. SDK/JDK tetap prasyarat host; ini bukan installer mesin kosong. Untuk pemeriksaan dependensi yang tidak memakai cache pengguna, tentukan dua folder cache kosong di luar folder ekstraksi:
+
+```powershell
+$env:CAMPUS_SKIP_AI = '1'
+$env:PUB_CACHE = 'C:\path\to\empty-pub-cache'
+$env:GRADLE_USER_HOME = 'C:\path\to\empty-gradle-cache'
+flutter --no-version-check --suppress-analytics pub get --enforce-lockfile
+dart --suppress-analytics analyze --fatal-infos
+flutter --no-version-check --suppress-analytics test --no-pub
+flutter --no-version-check --suppress-analytics build web --no-pub
+flutter --no-version-check --suppress-analytics build apk --debug --no-pub
+```
+
+Ganti path contoh sesuai mesin. Variabel tersebut hanya berlaku pada proses terminal; jangan commit path lokal atau kredensial. Flutter membuat ulang konfigurasi platform yang diabaikan Git. APK debug bukan rilis produksi; pengujian HP/emulator dan pengujian waktu yang dikecualikan harus tetap dibedakan dari hasil build. Backend development sudah diprovisikan; salinan source tidak otomatis menerapkan migrasi/Edge Function ke proyek lain.
 
 ## Aset dan lisensi
 
