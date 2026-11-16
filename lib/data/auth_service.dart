@@ -90,15 +90,65 @@ class AuthService {
     // Aktivitas pengguna tidak memperpanjang batas ini.
     _expiresAt = _now().add(sessionDuration);
 
-    // Hanya NIM yang diketahui; data akademik tetap kosong.
-    _user = StudentProfile(
-      nim: identity,
-      role: switch (identity) {
-        'BAP001' => UserRole.bap,
-        'DOS001' || 'DOS002' => UserRole.lecturer,
-        _ => UserRole.student,
-      },
-    );
+    // Buat profil pengguna dengan data demo terintegrasi.
+    _user = switch (identity) {
+      'DOS001' => const StudentProfile(
+        nim: 'DOS001',
+        role: UserRole.lecturer,
+        name: 'Dr. Ir. Hendra Gunawan, S.Kom., M.T.',
+        faculty: 'Fakultas Ilmu Komputer',
+        major: 'Teknik Informatika',
+        status: 'Aktif Mengajar (Dosen Akademik)',
+      ),
+      'DOS002' => const StudentProfile(
+        nim: 'DOS002',
+        role: UserRole.lecturer,
+        name: 'Prof. Dr. Sri Wahyuni, M.Kom., Ph.D.',
+        faculty: 'Fakultas Ilmu Komputer',
+        major: 'Teknik Informatika & Sistem Informasi',
+        status: 'Aktif Mengajar & DPA (Dosen Pembimbing)',
+      ),
+      'BAP001' => const StudentProfile(
+        nim: 'BAP001',
+        role: UserRole.bap,
+        name: 'Staff BAP FASILKOM',
+        faculty: 'Fakultas Ilmu Komputer',
+        major: 'Biro Administrasi Perkuliahan',
+        status: 'Aktif Verifikasi',
+      ),
+      '20240801001' => const StudentProfile(
+        nim: '20240801001',
+        role: UserRole.student,
+        name: 'Reifan Ardissa',
+        faculty: 'Fakultas Ilmu Komputer',
+        major: 'Teknik Informatika',
+        status: 'Aktif',
+        entryYear: 2024,
+        semester: 5,
+        advisor: 'Prof. Dr. Sri Wahyuni, M.Kom., Ph.D.',
+        gpa: 3.73,
+        latestGpa: 3.85,
+        passedCredits: 86,
+      ),
+      '20240801002' => const StudentProfile(
+        nim: '20240801002',
+        role: UserRole.student,
+        name: 'Siti Rahmawati',
+        faculty: 'Fakultas Ilmu Komputer',
+        major: 'Teknik Informatika',
+        status: 'Aktif',
+        entryYear: 2024,
+        semester: 5,
+        advisor: 'Prof. Dr. Sri Wahyuni, M.Kom., Ph.D.',
+        gpa: 3.82,
+        latestGpa: 3.90,
+        passedCredits: 88,
+      ),
+      _ => StudentProfile(
+        nim: identity,
+        role: UserRole.student,
+      ),
+    };
     return _user!;
   }
 

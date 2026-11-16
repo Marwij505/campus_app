@@ -16,6 +16,7 @@ import 'data/dashboard_repository.dart';
 import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
 import 'features/dashboard/dashboard_page.dart';
+import 'features/lecturer_dashboard/lecturer_dashboard_page.dart';
 import 'features/leave/leave_repository.dart';
 import 'features/leave/leave_page.dart';
 
@@ -213,14 +214,23 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     ),
 
     // Tanpa profil: tampilkan login.
-    // Dengan profil: tampilkan dashboard.
+    // Dosen: tampilkan Dashboard Dosen Akademik & Pembimbing.
+    // BAP: tampilkan pemeriksaan izin BAP.
+    // Mahasiswa: tampilkan Dashboard Mahasiswa.
     child: _student == null
         ? LoginPage(
             key: const ValueKey('login'),
             service: _service,
             onLogin: _onLogin,
           )
-        : _student!.role != UserRole.student
+        : _student!.role == UserRole.lecturer
+        ? LecturerDashboardPage(
+            key: ValueKey('lecturer-${_student!.nim}'),
+            lecturerProfile: _student!,
+            leaveRepository: _leaves,
+            onLogout: _logout,
+          )
+        : _student!.role == UserRole.bap
         ? LeavePage(
             key: ValueKey('staff-${_student!.nim}'),
             repository: _leaves,
