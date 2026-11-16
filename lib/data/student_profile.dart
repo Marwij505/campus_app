@@ -8,11 +8,15 @@
 // Satu objek mewakili identitas dan ringkasan nilai seorang mahasiswa.
 enum UserRole { student, bap, lecturer }
 
+/// Jenis peran dosen untuk menentukan tampilan dashboard khusus dosen.
+enum LecturerType { academic, academicAndThesis }
+
 class StudentProfile {
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
   const StudentProfile({
     required this.nim,
     this.role = UserRole.student,
+    this.lecturerType,
     this.name,
     this.faculty,
     this.major,
@@ -30,6 +34,8 @@ class StudentProfile {
   final String nim;
   // Identitas login tetap stabil; untuk staf nilainya berupa kode akun demo.
   final UserRole role;
+  // Khusus akun dosen: membedakan dosen akademik saja vs pembimbing TA.
+  final LecturerType? lecturerType;
   // Nama, fakultas, program studi, status mahasiswa, dan dosen pembimbing akademik.
   final String? name, faculty, major, status, advisor;
   // Tahun masuk, semester saat ini, dan jumlah SKS yang sudah lulus.

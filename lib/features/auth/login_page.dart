@@ -260,9 +260,59 @@ class _LoginPageState extends State<LoginPage> {
                           },
                   ),
                 ),
+
+                const SizedBox(height: 18),
+                const Divider(height: 1, color: Color(0xFFD5E0ED)),
+                const SizedBox(height: 12),
+                const Text(
+                  'AKSES DEMO CEPAT (Isi otomatis NIM/NIP & password)',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.muted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _demoChip('Mahasiswa', '20240801001'),
+                    _demoChip('Dosen Akademik', 'DOS001'),
+                    _demoChip('Dosen + Pembimbing TA', 'DOS002'),
+                    _demoChip('BAP', 'BAP001'),
+                  ],
+                ),
               ],
             ),
           ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _demoChip(String label, String id) => InkWell(
+    onTap: _loading
+        ? null
+        : () {
+            setState(() {
+              _identity.text = id;
+              _password.text = '123456';
+              _error = null;
+            });
+          },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F8FF),
+        border: Border.all(color: AppTheme.blue.withValues(alpha: .4)),
+      ),
+      child: Text(
+        '$label ($id)',
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: AppTheme.blue,
         ),
       ),
     ),

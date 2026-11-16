@@ -98,6 +98,11 @@ class AuthService {
         'DOS001' || 'DOS002' => UserRole.lecturer,
         _ => UserRole.student,
       },
+      lecturerType: switch (identity) {
+        'DOS001' => LecturerType.academic,
+        'DOS002' => LecturerType.academicAndThesis,
+        _ => null,
+      },
     );
     return _user!;
   }

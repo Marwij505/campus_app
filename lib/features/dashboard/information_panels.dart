@@ -274,6 +274,7 @@ class SchedulePanel extends StatelessWidget {
     required this.onAll,
     required this.onOpen,
     this.next,
+    this.title = 'JADWAL KULIAH HARI INI',
   });
   // Jadwal hari ini; sudah disaring oleh halaman beranda sebelum dikirim ke panel.
   final List<ClassSchedule> items;
@@ -285,10 +286,12 @@ class SchedulePanel extends StatelessWidget {
   final VoidCallback onAll;
   // Buka rincian jadwal yang dipilih pengguna.
   final void Function(ClassSchedule) onOpen;
+  // Judul panel agar dapat dipakai mahasiswa maupun dosen.
+  final String title;
   @override
   // build menyusun tampilan ketika Flutter memintanya.
   Widget build(BuildContext context) => DashboardPanel(
-    title: 'JADWAL KULIAH HARI INI',
+    title: title,
     icon: Icons.calendar_month_outlined,
     action: DashboardAction('Semua', onAll),
     child: Column(
