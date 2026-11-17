@@ -7,6 +7,7 @@ import '../../core/app_motion.dart';
 import '../../core/app_theme.dart';
 import '../../data/dashboard_models.dart';
 import '../../data/lecturer_models.dart';
+import '../../shared/pixel_widgets.dart';
 import 'dashboard_widgets.dart';
 
 /// Kartu profil dosen di bagian atas beranda, mengikuti gaya ProfilePanel mahasiswa.
@@ -416,63 +417,63 @@ class _CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ratio = safeRatio(course.completedMeetings, course.totalMeetings) ?? 0;
-    return InkWell(
+    return _InteractivePixelCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FBFF),
-          border: Border.all(color: const Color(0xFFD5E0ED), width: 2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${course.code} · ${course.title} (Kelas ${course.classCode})',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${course.code} · ${course.title} (Kelas ${course.classCode})',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 8),
-                InfoChip(
-                  course.gradeSubmitted ? 'Nilai Terisi' : 'Belum Input Nilai',
-                  color: course.gradeSubmitted
-                      ? const Color(0xFF198754)
-                      : const Color(0xFFED7D21),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${course.scheduleText} · ${course.room} · ${course.method}',
-              style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                InfoChip('${course.credits} SKS'),
-                InfoChip('${course.studentCount} Mahasiswa'),
-                InfoChip(
-                  'Pertemuan ${course.completedMeetings}/${course.totalMeetings}',
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: ratio,
+              ),
+              const SizedBox(width: 8),
+              InfoChip(
+                course.gradeSubmitted ? 'Nilai Terisi' : 'Belum Input Nilai',
+                color: course.gradeSubmitted
+                    ? const Color(0xFF198754)
+                    : const Color(0xFFED7D21),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 18, color: AppTheme.muted),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${course.scheduleText} · ${course.room} · ${course.method}',
+            style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              InfoChip('${course.credits} SKS'),
+              InfoChip('${course.studentCount} Mahasiswa'),
+              InfoChip(
+                'Pertemuan ${course.completedMeetings}/${course.totalMeetings}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: ratio),
+            duration: AppMotion.duration(context, 420),
+            curve: Curves.easeOutCubic,
+            builder: (context, val, _) => LinearProgressIndicator(
+              value: val,
               minHeight: 6,
               backgroundColor: const Color(0xFFE1E9EC),
               color: AppTheme.blue,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -495,15 +496,40 @@ class AcademicAdviseesPanel extends StatefulWidget {
 
 class _AcademicAdviseesPanelState extends State<AcademicAdviseesPanel> {
   KrsApprovalStatus? _filter;
+  String _query = '';
+  bool _sortByName = false;
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filter == null
-        ? widget.advisees
-        : widget.advisees.where((a) => a.krsStatus == _filter).toList();
+    final q = _query.trim().toLowerCase();
+    final filtered = widget.advisees.where((a) {
+      if (_filter != null && a.krsStatus != _filter) return false;
+      if (q.isEmpty) return true;
+      return a.name.toLowerCase().contains(q) ||
+          a.nim.toLowerCase().contains(q);
+    }).toList();
+
+    if (_sortByName) {
+      filtered.sort((a, b) => a.name.compareTo(b.name));
+    } else {
+      filtered.sort((a, b) => b.krsStatus.index.compareTo(a.krsStatus.index));
+    }
+
     return DashboardPanel(
       title: 'MAHASISWA BIMBINGAN AKADEMIK (PA)',
       icon: Icons.supervisor_account_outlined,
+      action: DashboardAction(
+        _sortByName ? 'Urut: Nama' : 'Urut: Prioritas',
+        () => setState(() => _sortByName = !_sortByName),
+        icon: Icons.swap_vert,
+      ),
       child: widget.advisees.isEmpty
           ? const DashboardEmpty(
               title: 'Belum ada mahasiswa bimbingan PA',
@@ -512,6 +538,12 @@ class _AcademicAdviseesPanelState extends State<AcademicAdviseesPanel> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _PanelSearchField(
+                  controller: _searchCtrl,
+                  hint: 'Cari nama atau NIM mahasiswa PA...',
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -548,19 +580,33 @@ class _AcademicAdviseesPanelState extends State<AcademicAdviseesPanel> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                if (filtered.isEmpty)
-                  const DashboardEmpty(
-                    title: 'Tidak ada mahasiswa pada filter ini',
-                    message: 'Pilih filter lain untuk melihat daftar PA.',
-                  )
-                else
-                  for (var i = 0; i < filtered.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 10),
-                    _PaCard(
-                      advisee: filtered[i],
-                      onTap: () => widget.onOpen(filtered[i]),
-                    ),
-                  ],
+                AnimatedSize(
+                  duration: AppMotion.duration(context, 240),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.duration(context, 220),
+                    child: filtered.isEmpty
+                        ? const DashboardEmpty(
+                            key: ValueKey('pa-empty'),
+                            title: 'Tidak ada mahasiswa yang cocok',
+                            message:
+                                'Ubah kata kunci pencarian atau pilih filter lain.',
+                          )
+                        : Column(
+                            key: ValueKey('pa-${_filter?.name}-$_query-$_sortByName'),
+                            children: [
+                              for (var i = 0; i < filtered.length; i++) ...[
+                                if (i > 0) const SizedBox(height: 10),
+                                _PaCard(
+                                  advisee: filtered[i],
+                                  onTap: () => widget.onOpen(filtered[i]),
+                                ),
+                              ],
+                            ],
+                          ),
+                  ),
+                ),
               ],
             ),
     );
@@ -580,41 +626,36 @@ class _PaCard extends StatelessWidget {
       KrsApprovalStatus.pending => ('Menunggu ACC', const Color(0xFFED7D21)),
       KrsApprovalStatus.revision => ('Perlu Revisi', AppTheme.red),
     };
-    return InkWell(
+    return _InteractivePixelCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FBFF),
-          border: Border.all(color: const Color(0xFFD5E0ED), width: 2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${advisee.name} (${advisee.nim})',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${advisee.name} (${advisee.nim})',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 8),
-                InfoChip(statusLabel, color: statusColor),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Semester ${advisee.semester} · IPK ${advisee.gpa.toStringAsFixed(2)} · ${advisee.takenCredits} SKS',
-              style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-            ),
-            const SizedBox(height: 4),
-            Text(advisee.note, style: const TextStyle(fontSize: 11)),
-          ],
-        ),
+              ),
+              const SizedBox(width: 8),
+              InfoChip(statusLabel, color: statusColor),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 18, color: AppTheme.muted),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Semester ${advisee.semester} · IPK ${advisee.gpa.toStringAsFixed(2)} · ${advisee.takenCredits} SKS',
+            style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+          ),
+          const SizedBox(height: 4),
+          Text(advisee.note, style: const TextStyle(fontSize: 11)),
+        ],
       ),
     );
   }
@@ -637,22 +678,46 @@ class ThesisAdviseesPanel extends StatefulWidget {
 
 class _ThesisAdviseesPanelState extends State<ThesisAdviseesPanel> {
   String _filter = 'all';
+  String _query = '';
+  bool _sortByProgressDesc = true;
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = switch (_filter) {
-      'ready' => widget.advisees
-          .where((a) => a.stage == ThesisStage.readyDefense)
-          .toList(),
-      'progress' => widget.advisees
-          .where((a) => a.stage != ThesisStage.readyDefense)
-          .toList(),
-      _ => widget.advisees,
-    };
+    final q = _query.trim().toLowerCase();
+    final filtered = widget.advisees.where((a) {
+      if (_filter == 'ready' && a.stage != ThesisStage.readyDefense) {
+        return false;
+      }
+      if (_filter == 'progress' && a.stage == ThesisStage.readyDefense) {
+        return false;
+      }
+      if (q.isEmpty) return true;
+      return a.name.toLowerCase().contains(q) ||
+          a.nim.toLowerCase().contains(q) ||
+          a.title.toLowerCase().contains(q);
+    }).toList();
+
+    if (_sortByProgressDesc) {
+      filtered.sort((a, b) => b.progress.compareTo(a.progress));
+    } else {
+      filtered.sort((a, b) => a.name.compareTo(b.name));
+    }
 
     return DashboardPanel(
       title: 'MAHASISWA BIMBINGAN TUGAS AKHIR (TA)',
       icon: Icons.school_outlined,
+      action: DashboardAction(
+        _sortByProgressDesc ? 'Urut: Progres' : 'Urut: Nama',
+        () => setState(() => _sortByProgressDesc = !_sortByProgressDesc),
+        icon: Icons.swap_vert,
+      ),
       child: widget.advisees.isEmpty
           ? const DashboardEmpty(
               title: 'Belum ada mahasiswa bimbingan TA',
@@ -661,6 +726,12 @@ class _ThesisAdviseesPanelState extends State<ThesisAdviseesPanel> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _PanelSearchField(
+                  controller: _searchCtrl,
+                  hint: 'Cari nama, NIM, atau judul TA...',
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -687,23 +758,72 @@ class _ThesisAdviseesPanelState extends State<ThesisAdviseesPanel> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                if (filtered.isEmpty)
-                  const DashboardEmpty(
-                    title: 'Tidak ada mahasiswa pada filter ini',
-                    message: 'Pilih filter lain untuk melihat bimbingan TA.',
-                  )
-                else
-                  for (var i = 0; i < filtered.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 12),
-                    _ThesisCard(
-                      advisee: filtered[i],
-                      onTap: () => widget.onOpen(filtered[i]),
-                    ),
-                  ],
+                AnimatedSize(
+                  duration: AppMotion.duration(context, 240),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.duration(context, 220),
+                    child: filtered.isEmpty
+                        ? const DashboardEmpty(
+                            key: ValueKey('ta-empty'),
+                            title: 'Tidak ada mahasiswa TA yang cocok',
+                            message:
+                                'Ubah kata kunci pencarian atau pilih filter lain.',
+                          )
+                        : Column(
+                            key: ValueKey(
+                              'ta-$_filter-$_query-$_sortByProgressDesc',
+                            ),
+                            children: [
+                              for (var i = 0; i < filtered.length; i++) ...[
+                                if (i > 0) const SizedBox(height: 12),
+                                _ThesisCard(
+                                  advisee: filtered[i],
+                                  onTap: () => widget.onOpen(filtered[i]),
+                                ),
+                              ],
+                            ],
+                          ),
+                  ),
+                ),
               ],
             ),
     );
   }
+}
+
+class _PanelSearchField extends StatelessWidget {
+  const _PanelSearchField({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    onChanged: onChanged,
+    style: const TextStyle(fontSize: 11),
+    decoration: InputDecoration(
+      hintText: hint,
+      prefixIcon: const Icon(Icons.search, size: 18, color: AppTheme.blue),
+      suffixIcon: controller.text.isEmpty
+          ? null
+          : IconButton(
+              tooltip: 'Hapus pencarian',
+              icon: const Icon(Icons.close, size: 16),
+              onPressed: () {
+                controller.clear();
+                onChanged('');
+              },
+            ),
+    ),
+  );
 }
 
 class _FilterChipButton extends StatelessWidget {
@@ -722,7 +842,9 @@ class _FilterChipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    child: Container(
+    child: AnimatedContainer(
+      duration: AppMotion.duration(context, 180),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: selected ? color : Colors.white,
@@ -730,6 +852,9 @@ class _FilterChipButton extends StatelessWidget {
           color: selected ? AppTheme.ink : color.withValues(alpha: .35),
           width: 2,
         ),
+        boxShadow: selected
+            ? const [BoxShadow(color: AppTheme.ink, offset: Offset(2, 2))]
+            : const [],
       ),
       child: Text(
         label,
@@ -741,6 +866,74 @@ class _FilterChipButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _InteractivePixelCard extends StatefulWidget {
+  const _InteractivePixelCard({
+    required this.onTap,
+    required this.child,
+    this.background = const Color(0xFFF8FBFF),
+    this.border = const Color(0xFFD5E0ED),
+  });
+
+  final VoidCallback onTap;
+  final Widget child;
+  final Color background;
+  final Color border;
+
+  @override
+  State<_InteractivePixelCard> createState() => _InteractivePixelCardState();
+}
+
+class _InteractivePixelCardState extends State<_InteractivePixelCard> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hovered && !_pressed;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.99 : 1.0,
+          duration: AppMotion.duration(context, 120),
+          child: AnimatedContainer(
+            duration: AppMotion.duration(context, 160),
+            curve: Curves.easeOutCubic,
+            transform: Matrix4.translationValues(
+              0,
+              active ? -2 : (_pressed ? 1 : 0),
+              0,
+            ),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _hovered ? Colors.white : widget.background,
+              border: Border.all(
+                color: _hovered ? AppTheme.blue : widget.border,
+                width: 2,
+              ),
+              boxShadow: active
+                  ? const [
+                      BoxShadow(
+                        color: Color(0xFFB9C8D9),
+                        offset: Offset(3, 3),
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ThesisCard extends StatelessWidget {
@@ -759,53 +952,55 @@ class _ThesisCard extends StatelessWidget {
       ThesisStage.readyDefense => ('Siap Sidang', const Color(0xFF198754)),
     };
 
-    return InkWell(
+    return _InteractivePixelCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFBF9FF),
-          border: Border.all(color: const Color(0xFFD9CFEF), width: 2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${advisee.name} (${advisee.nim})',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+      background: const Color(0xFFFBF9FF),
+      border: const Color(0xFFD9CFEF),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${advisee.name} (${advisee.nim})',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 8),
-                InfoChip(stageLabel, color: stageColor),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              advisee.title,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                InfoChip(advisee.roleInThesis),
-                InfoChip('Terakhir: ${advisee.lastGuidanceDate}'),
-                InfoChip(advisee.pendingAction, color: const Color(0xFFED7D21)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
+              ),
+              const SizedBox(width: 8),
+              InfoChip(stageLabel, color: stageColor),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 18, color: AppTheme.muted),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            advisee.title,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              InfoChip(advisee.roleInThesis),
+              InfoChip('Terakhir: ${advisee.lastGuidanceDate}'),
+              InfoChip(advisee.pendingAction, color: const Color(0xFFED7D21)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: advisee.progress.clamp(0.0, 1.0)),
+            duration: AppMotion.duration(context, 420),
+            curve: Curves.easeOutCubic,
+            builder: (context, val, _) => Row(
               children: [
                 Expanded(
                   child: LinearProgressIndicator(
-                    value: advisee.progress.clamp(0.0, 1.0),
+                    value: val,
                     minHeight: 7,
                     backgroundColor: const Color(0xFFE6E0F0),
                     color: stageColor,
@@ -813,7 +1008,7 @@ class _ThesisCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  '${(advisee.progress * 100).round()}%',
+                  '${(val * 100).round()}%',
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -821,8 +1016,8 @@ class _ThesisCard extends StatelessWidget {
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -834,16 +1029,26 @@ class ThesisSchedulePanel extends StatelessWidget {
     super.key,
     required this.items,
     required this.onAll,
+    this.onAdd,
   });
 
   final List<ThesisScheduleItem> items;
   final VoidCallback onAll;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) => DashboardPanel(
     title: 'JADWAL BIMBINGAN & SIDANG TA',
     icon: Icons.event_available_outlined,
-    action: DashboardAction('Semua', onAll),
+    action: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        if (onAdd != null)
+          DashboardAction('Tambah', onAdd, icon: Icons.add),
+        DashboardAction('Semua', onAll),
+      ],
+    ),
     child: items.isEmpty
         ? const DashboardEmpty(
             title: 'Belum ada jadwal TA',
@@ -903,5 +1108,90 @@ class ThesisSchedulePanel extends StatelessWidget {
               ],
             ],
           ),
+  );
+}
+
+/// Skeleton loading bergaya retro pixel dengan animasi denyut halus.
+class LecturerSkeletonLoader extends StatefulWidget {
+  const LecturerSkeletonLoader({super.key});
+
+  @override
+  State<LecturerSkeletonLoader> createState() => _LecturerSkeletonLoaderState();
+}
+
+class _LecturerSkeletonLoaderState extends State<LecturerSkeletonLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+      lowerBound: 0.45,
+      upperBound: 1.0,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse.stop();
+      _pulse.value = 0.8;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _pulse,
+    builder: (context, _) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const LinearProgressIndicator(minHeight: 3),
+        const SizedBox(height: 12),
+        PixelPanel(
+          color: const Color(0xFFF5F8FA),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _bar(width: 200, height: 14),
+              const SizedBox(height: 10),
+              _bar(width: double.infinity, height: 11),
+              const SizedBox(height: 8),
+              _bar(width: 260, height: 11),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        PixelPanel(
+          color: const Color(0xFFF5F8FA),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _bar(width: 140, height: 28),
+              _bar(width: 160, height: 28),
+              _bar(width: 130, height: 28),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _bar({required double width, required double height}) => Container(
+    width: width,
+    height: height,
+    color: const Color(0xFFDCE5EC).withValues(alpha: _pulse.value),
   );
 }

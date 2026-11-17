@@ -56,7 +56,11 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
   final _scroll = ScrollController();
 
   LecturerDashboardData _data = const LecturerDashboardData();
+  final Map<String, List<String>> _guidanceLogs = {};
+  final Map<String, List<String>> _courseLogs = {};
   bool _loading = true;
+  bool _priorityExpanded = true;
+  bool _showScrollTop = false;
   String? _error;
   int _navIndex = 0;
   int _requestId = 0;
@@ -75,6 +79,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
         LeaveRepository(session: () => widget.lecturer);
     _chat.openLeave = _openLeave;
     _now = (widget.clock ?? DateTime.now)().toLocal();
+    _scroll.addListener(_onScroll);
     _load();
     _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) {
@@ -117,11 +122,20 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     }
   }
 
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final show = _scroll.offset > 280;
+    if (show != _showScrollTop) {
+      setState(() => _showScrollTop = show);
+    }
+  }
+
   @override
   void dispose() {
     _chat.dispose();
     if (widget.leaveRepository == null) _leaves.dispose();
     _clockTimer?.cancel();
+    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
   }
@@ -237,274 +251,548 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     ),
   );
 
-  void _courseDetails(LecturerCourseClass course) => _details(
-    '${course.code} · Kelas ${course.classCode}',
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          course.title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+  void _courseDetails(LecturerCourseClass initialCourse) => _details(
+    '${initialCourse.code} · Kelas ${initialCourse.classCode}',
+    StatefulBuilder(
+      builder: (context, setDetailState) {
+        final course = _data.courses.firstWhere(
+          (c) =>
+              c.code == initialCourse.code &&
+              c.classCode == initialCourse.classCode,
+          orElse: () => initialCourse,
+        );
+        final key = '${course.code}-${course.classCode}';
+        final logs = _courseLogs[key] ?? const [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InfoChip('${course.credits} SKS'),
-            InfoChip('${course.studentCount} Mahasiswa'),
-            InfoChip(
-              'Pertemuan ${course.completedMeetings}/${course.totalMeetings}',
+            Text(
+              course.title,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
-            InfoChip(
-              course.gradeSubmitted ? 'Nilai Terisi' : 'Belum Input Nilai',
-              color: course.gradeSubmitted
-                  ? const Color(0xFF198754)
-                  : const Color(0xFFED7D21),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                InfoChip('${course.credits} SKS'),
+                InfoChip('${course.studentCount} Mahasiswa'),
+                InfoChip(
+                  'Pertemuan ${course.completedMeetings}/${course.totalMeetings}',
+                ),
+                InfoChip(
+                  course.gradeSubmitted ? 'Nilai Terisi' : 'Belum Input Nilai',
+                  color: course.gradeSubmitted
+                      ? const Color(0xFF198754)
+                      : const Color(0xFFED7D21),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            Text('Jadwal: ${course.scheduleText}'),
+            const SizedBox(height: 6),
+            Text('Ruang: ${course.room} (${course.method})'),
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                DashboardAction(
+                  'Catat Presensi Pertemuan',
+                  () async {
+                    final note = await _promptNote(
+                      title: 'Berita Acara Pertemuan',
+                      hint: 'Contoh: Pembahasan materi & kuis singkat.',
+                    );
+                    if (!mounted || note == null) return;
+                    setState(() {
+                      final nextMeetings = (course.completedMeetings + 1)
+                          .clamp(0, course.totalMeetings);
+                      final delta = nextMeetings - course.completedMeetings;
+                      final updatedCourses = [
+                        for (final c in _data.courses)
+                          if (c.code == course.code &&
+                              c.classCode == course.classCode)
+                            LecturerCourseClass(
+                              code: c.code,
+                              title: c.title,
+                              classCode: c.classCode,
+                              credits: c.credits,
+                              studentCount: c.studentCount,
+                              scheduleText: c.scheduleText,
+                              room: c.room,
+                              method: c.method,
+                              completedMeetings: nextMeetings,
+                              totalMeetings: c.totalMeetings,
+                              gradeSubmitted: c.gradeSubmitted,
+                            )
+                          else
+                            c,
+                      ];
+                      _courseLogs.putIfAbsent(key, () => []).insert(
+                        0,
+                        'Pertemuan $nextMeetings: ${note.isEmpty ? 'Presensi & materi tercatat' : note}',
+                      );
+                      _data = _copyData(
+                        courses: updatedCourses,
+                        workload: _copyWorkload(
+                          completedMeetings:
+                              _data.workload.completedMeetings + delta,
+                        ),
+                      );
+                    });
+                    setDetailState(() {});
+                    _message(
+                      'Presensi pertemuan ${course.code} Kelas ${course.classCode} tercatat.',
+                    );
+                  },
+                  icon: Icons.how_to_reg_outlined,
+                ),
+                DashboardAction(
+                  course.gradeSubmitted
+                      ? 'Nilai Sudah Terisi'
+                      : 'Tandai Nilai Terisi',
+                  course.gradeSubmitted
+                      ? null
+                      : () async {
+                          final ok = await _confirmAction(
+                            title: 'Simpan Status Nilai?',
+                            message:
+                                'Tandai nilai ${course.code} Kelas ${course.classCode} sudah lengkap?',
+                          );
+                          if (!mounted || !ok) return;
+                          setState(() {
+                            final updatedCourses = [
+                              for (final c in _data.courses)
+                                if (c.code == course.code &&
+                                    c.classCode == course.classCode)
+                                  LecturerCourseClass(
+                                    code: c.code,
+                                    title: c.title,
+                                    classCode: c.classCode,
+                                    credits: c.credits,
+                                    studentCount: c.studentCount,
+                                    scheduleText: c.scheduleText,
+                                    room: c.room,
+                                    method: c.method,
+                                    completedMeetings: c.completedMeetings,
+                                    totalMeetings: c.totalMeetings,
+                                    gradeSubmitted: true,
+                                  )
+                                else
+                                  c,
+                            ];
+                            _courseLogs.putIfAbsent(key, () => []).insert(
+                              0,
+                              'Komponen nilai kelas ditandai lengkap.',
+                            );
+                            _data = _copyData(
+                              courses: updatedCourses,
+                              workload: _copyWorkload(
+                                gradedClasses:
+                                    _data.workload.gradedClasses + 1,
+                              ),
+                            );
+                          });
+                          setDetailState(() {});
+                          _message(
+                            'Nilai ${course.code} Kelas ${course.classCode} berhasil disimpan.',
+                          );
+                        },
+                  icon: Icons.grading_outlined,
+                ),
+              ],
+            ),
+            if (logs.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 10),
+              const Text(
+                'RIWAYAT AKTIVITAS KELAS',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              for (final log in logs)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('• $log', style: const TextStyle(fontSize: 11)),
+                ),
+            ],
           ],
-        ),
-        const SizedBox(height: 16),
-        Text('Jadwal: ${course.scheduleText}'),
-        const SizedBox(height: 6),
-        Text('Ruang: ${course.room} (${course.method})'),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            DashboardAction(
-              'Catat Presensi Pertemuan',
-              () {
-                setState(() {
-                  final nextMeetings =
-                      (course.completedMeetings + 1).clamp(0, course.totalMeetings);
-                  final delta = nextMeetings - course.completedMeetings;
-                  final updatedCourses = [
-                    for (final c in _data.courses)
-                      if (c.code == course.code && c.classCode == course.classCode)
-                        LecturerCourseClass(
-                          code: c.code,
-                          title: c.title,
-                          classCode: c.classCode,
-                          credits: c.credits,
-                          studentCount: c.studentCount,
-                          scheduleText: c.scheduleText,
-                          room: c.room,
-                          method: c.method,
-                          completedMeetings: nextMeetings,
-                          totalMeetings: c.totalMeetings,
-                          gradeSubmitted: c.gradeSubmitted,
-                        )
-                      else
-                        c,
-                  ];
-                  _data = _copyData(
-                    courses: updatedCourses,
-                    workload: _copyWorkload(
-                      completedMeetings: _data.workload.completedMeetings + delta,
-                    ),
-                  );
-                });
-                Navigator.of(context).pop();
-                _message(
-                  'Presensi pertemuan ${course.code} Kelas ${course.classCode} tercatat.',
-                );
-              },
-              icon: Icons.how_to_reg_outlined,
-            ),
-            DashboardAction(
-              course.gradeSubmitted ? 'Perbarui Nilai' : 'Tandai Nilai Terisi',
-              () {
-                setState(() {
-                  final wasSubmitted = course.gradeSubmitted;
-                  final updatedCourses = [
-                    for (final c in _data.courses)
-                      if (c.code == course.code && c.classCode == course.classCode)
-                        LecturerCourseClass(
-                          code: c.code,
-                          title: c.title,
-                          classCode: c.classCode,
-                          credits: c.credits,
-                          studentCount: c.studentCount,
-                          scheduleText: c.scheduleText,
-                          room: c.room,
-                          method: c.method,
-                          completedMeetings: c.completedMeetings,
-                          totalMeetings: c.totalMeetings,
-                          gradeSubmitted: true,
-                        )
-                      else
-                        c,
-                  ];
-                  _data = _copyData(
-                    courses: updatedCourses,
-                    workload: _copyWorkload(
-                      gradedClasses: _data.workload.gradedClasses +
-                          (wasSubmitted ? 0 : 1),
-                    ),
-                  );
-                });
-                Navigator.of(context).pop();
-                _message(
-                  'Nilai ${course.code} Kelas ${course.classCode} berhasil disimpan.',
-                );
-              },
-              icon: Icons.grading_outlined,
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     ),
   );
 
-  void _paDetails(AcademicAdvisee advisee) => _details(
-    'Perwalian PA · ${advisee.name}',
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${advisee.name} (${advisee.nim})',
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+  void _paDetails(AcademicAdvisee initialAdvisee) => _details(
+    'Perwalian PA · ${initialAdvisee.name}',
+    StatefulBuilder(
+      builder: (context, setDetailState) {
+        final advisee = _data.paAdvisees.firstWhere(
+          (a) => a.nim == initialAdvisee.nim,
+          orElse: () => initialAdvisee,
+        );
+        final (statusLabel, statusColor) = switch (advisee.krsStatus) {
+          KrsApprovalStatus.approved => ('Disetujui', const Color(0xFF198754)),
+          KrsApprovalStatus.pending => (
+            'Menunggu ACC',
+            const Color(0xFFED7D21),
+          ),
+          KrsApprovalStatus.revision => ('Perlu Revisi', AppTheme.red),
+        };
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InfoChip('Semester ${advisee.semester}'),
-            InfoChip('IPK ${advisee.gpa.toStringAsFixed(2)}'),
-            InfoChip('${advisee.takenCredits} SKS'),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Text('Catatan Perwalian: ${advisee.note}'),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            DashboardAction(
-              'Setujui KRS',
-              () {
-                _updatePaStatus(
-                  advisee,
-                  KrsApprovalStatus.approved,
-                  'KRS disetujui oleh Dosen PA.',
-                );
-                Navigator.of(context).pop();
-                _message('KRS ${advisee.name} (${advisee.nim}) disetujui.');
-              },
-              icon: Icons.check_circle_outline,
+            Text(
+              '${advisee.name} (${advisee.nim})',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            DashboardAction(
-              'Minta Revisi',
-              () async {
-                final note = await _promptNote(
-                  title: 'Catatan Revisi KRS',
-                  hint: 'Contoh: Jadwal praktikum masih bentrok.',
-                );
-                if (!mounted || note == null) return;
-                _updatePaStatus(
-                  advisee,
-                  KrsApprovalStatus.revision,
-                  note.isEmpty ? 'Diminta revisi oleh Dosen PA.' : note,
-                );
-                Navigator.of(context).pop();
-                _message('Permintaan revisi KRS dikirim ke ${advisee.name}.');
-              },
-              icon: Icons.edit_note,
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                InfoChip(statusLabel, color: statusColor),
+                InfoChip('Semester ${advisee.semester}'),
+                InfoChip('IPK ${advisee.gpa.toStringAsFixed(2)}'),
+                InfoChip('${advisee.takenCredits} SKS'),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text('Catatan Perwalian: ${advisee.note}'),
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                DashboardAction(
+                  advisee.krsStatus == KrsApprovalStatus.approved
+                      ? 'KRS Sudah Disetujui'
+                      : 'Setujui KRS',
+                  advisee.krsStatus == KrsApprovalStatus.approved
+                      ? null
+                      : () async {
+                          final ok = await _confirmAction(
+                            title: 'Setujui KRS Mahasiswa?',
+                            message:
+                                'Setujui pengajuan KRS ${advisee.name} (${advisee.nim}) sebanyak ${advisee.takenCredits} SKS?',
+                          );
+                          if (!mounted || !ok) return;
+                          _updatePaStatus(
+                            advisee,
+                            KrsApprovalStatus.approved,
+                            'KRS disetujui oleh Dosen PA.',
+                          );
+                          setDetailState(() {});
+                          _message(
+                            'KRS ${advisee.name} (${advisee.nim}) disetujui.',
+                          );
+                        },
+                  icon: Icons.check_circle_outline,
+                ),
+                DashboardAction(
+                  'Minta Revisi',
+                  () async {
+                    final note = await _promptNote(
+                      title: 'Catatan Revisi KRS',
+                      hint: 'Contoh: Jadwal praktikum masih bentrok.',
+                    );
+                    if (!mounted || note == null) return;
+                    _updatePaStatus(
+                      advisee,
+                      KrsApprovalStatus.revision,
+                      note.isEmpty ? 'Diminta revisi oleh Dosen PA.' : note,
+                    );
+                    setDetailState(() {});
+                    _message('Permintaan revisi KRS dikirim ke ${advisee.name}.');
+                  },
+                  icon: Icons.edit_note,
+                ),
+              ],
             ),
           ],
-        ),
-      ],
+        );
+      },
     ),
   );
 
-  void _thesisDetails(ThesisAdvisee advisee) => _details(
-    'Bimbingan TA · ${advisee.name}',
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${advisee.name} (${advisee.nim})',
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+  void _thesisDetails(ThesisAdvisee initialAdvisee) => _details(
+    'Bimbingan TA · ${initialAdvisee.name}',
+    StatefulBuilder(
+      builder: (context, setDetailState) {
+        final advisee = _data.thesisAdvisees.firstWhere(
+          (a) => a.nim == initialAdvisee.nim,
+          orElse: () => initialAdvisee,
+        );
+        final logs = _guidanceLogs[advisee.nim] ?? const [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InfoChip(advisee.roleInThesis),
-            InfoChip('Progres ${(advisee.progress * 100).round()}%'),
-            InfoChip(advisee.pendingAction, color: const Color(0xFFED7D21)),
-          ],
-        ),
-        const SizedBox(height: 14),
-        const Text(
-          'Judul Tugas Akhir:',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 6),
-        SelectableText(advisee.title),
-        const SizedBox(height: 10),
-        Text(
-          'Bimbingan terakhir: ${advisee.lastGuidanceDate}',
-          style: const TextStyle(color: AppTheme.muted),
-        ),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            DashboardAction(
-              'Catat Log Bimbingan',
-              () async {
-                final note = await _promptNote(
-                  title: 'Log Bimbingan TA',
-                  hint: 'Contoh: Perbaiki metodologi pada Bab 3.',
-                );
-                if (!mounted || note == null) return;
-                _updateThesisAdvisee(
-                  advisee,
-                  lastGuidanceDate: 'Baru saja',
-                  pendingAction: note.isEmpty ? advisee.pendingAction : note,
-                );
-                Navigator.of(context).pop();
-                _message('Log bimbingan TA ${advisee.name} tersimpan.');
-              },
-              icon: Icons.note_add_outlined,
+            Text(
+              '${advisee.name} (${advisee.nim})',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            DashboardAction(
-              'ACC Tahap Berikutnya',
-              () {
-                final nextStage = switch (advisee.stage) {
-                  ThesisStage.proposal => ThesisStage.chapter1To3,
-                  ThesisStage.chapter1To3 => ThesisStage.research,
-                  ThesisStage.research => ThesisStage.finalDraft,
-                  ThesisStage.finalDraft => ThesisStage.readyDefense,
-                  ThesisStage.readyDefense => ThesisStage.readyDefense,
-                };
-                final nextProgress = (advisee.progress + 0.15).clamp(0.0, 1.0);
-                _updateThesisAdvisee(
-                  advisee,
-                  stage: nextStage,
-                  progress: nextProgress,
-                  lastGuidanceDate: 'Baru saja',
-                  pendingAction: nextStage == ThesisStage.readyDefense
-                      ? 'Terjadwal Sidang'
-                      : 'Lanjut Tahap Berikutnya',
-                );
-                Navigator.of(context).pop();
-                _message('Tahap TA ${advisee.name} berhasil di-ACC.');
-              },
-              icon: Icons.verified_outlined,
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                InfoChip(advisee.roleInThesis),
+                InfoChip('Progres ${(advisee.progress * 100).round()}%'),
+                InfoChip(advisee.pendingAction, color: const Color(0xFFED7D21)),
+              ],
             ),
+            const SizedBox(height: 14),
+            const Text(
+              'Judul Tugas Akhir:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            SelectableText(advisee.title),
+            const SizedBox(height: 10),
+            Text(
+              'Bimbingan terakhir: ${advisee.lastGuidanceDate}',
+              style: const TextStyle(color: AppTheme.muted),
+            ),
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                DashboardAction(
+                  'Catat Log Bimbingan',
+                  () async {
+                    final note = await _promptNote(
+                      title: 'Log Bimbingan TA',
+                      hint: 'Contoh: Perbaiki metodologi pada Bab 3.',
+                    );
+                    if (!mounted || note == null) return;
+                    _guidanceLogs.putIfAbsent(advisee.nim, () => []).insert(
+                      0,
+                      note.isEmpty ? 'Sesi bimbingan rutin tercatat.' : note,
+                    );
+                    _updateThesisAdvisee(
+                      advisee,
+                      lastGuidanceDate: 'Baru saja',
+                      pendingAction: note.isEmpty ? advisee.pendingAction : note,
+                    );
+                    setDetailState(() {});
+                    _message('Log bimbingan TA ${advisee.name} tersimpan.');
+                  },
+                  icon: Icons.note_add_outlined,
+                ),
+                DashboardAction(
+                  advisee.stage == ThesisStage.readyDefense
+                      ? 'Sudah Siap Sidang'
+                      : 'ACC Tahap Berikutnya',
+                  advisee.stage == ThesisStage.readyDefense
+                      ? null
+                      : () async {
+                          final ok = await _confirmAction(
+                            title: 'ACC Tahap Tugas Akhir?',
+                            message:
+                                'Naikkan tahap bimbingan TA ${advisee.name} ke tahap berikutnya?',
+                          );
+                          if (!mounted || !ok) return;
+                          final nextStage = switch (advisee.stage) {
+                            ThesisStage.proposal => ThesisStage.chapter1To3,
+                            ThesisStage.chapter1To3 => ThesisStage.research,
+                            ThesisStage.research => ThesisStage.finalDraft,
+                            ThesisStage.finalDraft => ThesisStage.readyDefense,
+                            ThesisStage.readyDefense => ThesisStage.readyDefense,
+                          };
+                          final nextProgress = (advisee.progress + 0.15).clamp(
+                            0.0,
+                            1.0,
+                          );
+                          _guidanceLogs
+                              .putIfAbsent(advisee.nim, () => [])
+                              .insert(0, 'ACC tahap berikutnya oleh pembimbing.');
+                          _updateThesisAdvisee(
+                            advisee,
+                            stage: nextStage,
+                            progress: nextProgress,
+                            lastGuidanceDate: 'Baru saja',
+                            pendingAction: nextStage == ThesisStage.readyDefense
+                                ? 'Terjadwal Sidang'
+                                : 'Lanjut Tahap Berikutnya',
+                          );
+                          setDetailState(() {});
+                          _message('Tahap TA ${advisee.name} berhasil di-ACC.');
+                        },
+                  icon: Icons.verified_outlined,
+                ),
+              ],
+            ),
+            if (logs.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 10),
+              const Text(
+                'RIWAYAT LOG BIMBINGAN',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              for (final log in logs)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('• $log', style: const TextStyle(fontSize: 11)),
+                ),
+            ],
           ],
-        ),
-      ],
+        );
+      },
     ),
   );
+
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya, Lanjutkan'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _addThesisSchedule() async {
+    if (_data.thesisAdvisees.isEmpty) return;
+    var selected = _data.thesisAdvisees.first;
+    var type = 'Bimbingan TA';
+    final topicCtrl = TextEditingController();
+    final dateCtrl = TextEditingController(text: 'Kamis');
+    final timeCtrl = TextEditingController(text: '10:00 - 11:00');
+    final locCtrl = TextEditingController(text: 'Ruang Dosen R-208');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Tambah Jadwal Bimbingan / Sidang'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<ThesisAdvisee>(
+                  initialValue: selected,
+                  decoration: const InputDecoration(labelText: 'Mahasiswa'),
+                  items: [
+                    for (final m in _data.thesisAdvisees)
+                      DropdownMenuItem(
+                        value: m,
+                        child: Text('${m.name} (${m.nim})'),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => selected = v);
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Jenis'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Bimbingan TA',
+                      child: Text('Bimbingan TA'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Seminar Proposal',
+                      child: Text('Seminar Proposal'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Sidang Skripsi',
+                      child: Text('Sidang Skripsi'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => type = v);
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: topicCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Topik / Agenda',
+                    hintText: 'Contoh: Review Bab 3 & uji coba',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: dateCtrl,
+                  decoration: const InputDecoration(labelText: 'Hari / Tanggal'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: timeCtrl,
+                  decoration: const InputDecoration(labelText: 'Jam'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: locCtrl,
+                  decoration: const InputDecoration(labelText: 'Lokasi / Tautan'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Tambah Jadwal'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true && mounted) {
+      final item = ThesisScheduleItem(
+        studentName: selected.name,
+        nim: selected.nim,
+        type: type,
+        topic: topicCtrl.text.trim().isEmpty
+            ? 'Sesi bimbingan lanjutan'
+            : topicCtrl.text.trim(),
+        dateLabel: dateCtrl.text.trim().isEmpty ? 'Kamis' : dateCtrl.text.trim(),
+        timeLabel: timeCtrl.text.trim().isEmpty
+            ? '10:00 - 11:00'
+            : timeCtrl.text.trim(),
+        location: locCtrl.text.trim().isEmpty
+            ? 'Ruang Dosen'
+            : locCtrl.text.trim(),
+      );
+      setState(() {
+        _data = _copyData(
+          thesisSchedules: [item, ..._data.thesisSchedules],
+        );
+      });
+      _message('Jadwal $type untuk ${selected.name} ditambahkan.');
+    }
+
+    topicCtrl.dispose();
+    dateCtrl.dispose();
+    timeCtrl.dispose();
+    locCtrl.dispose();
+  }
 
   Future<String?> _promptNote({
     required String title,
@@ -633,6 +921,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     List<LecturerCourseClass>? courses,
     List<AcademicAdvisee>? paAdvisees,
     List<ThesisAdvisee>? thesisAdvisees,
+    List<ThesisScheduleItem>? thesisSchedules,
   }) => LecturerDashboardData(
     profile: _data.profile,
     workload: workload ?? _data.workload,
@@ -640,7 +929,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     courses: courses ?? _data.courses,
     paAdvisees: paAdvisees ?? _data.paAdvisees,
     thesisAdvisees: thesisAdvisees ?? _data.thesisAdvisees,
-    thesisSchedules: _data.thesisSchedules,
+    thesisSchedules: thesisSchedules ?? _data.thesisSchedules,
     announcements: _data.announcements,
     news: _data.news,
     guides: _data.guides,
@@ -723,48 +1012,72 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     }
   }
 
-  List<_LecturerMenuEntry> get _quickEntries => [
-    const _LecturerMenuEntry(
-      'Smart Chatbot',
-      Icons.smart_toy_outlined,
-      Color(0xFF873DD1),
-    ),
-    const _LecturerMenuEntry(
-      'Jadwal Mengajar',
-      Icons.calendar_month_outlined,
-    ),
-    const _LecturerMenuEntry(
-      'Input Nilai',
-      Icons.grading_outlined,
-      Color(0xFFED7D21),
-    ),
-    const _LecturerMenuEntry(
-      'Presensi Kelas',
-      Icons.how_to_reg_outlined,
-      Color(0xFF198754),
-    ),
-    const _LecturerMenuEntry(
-      'Perwalian PA',
-      Icons.supervisor_account_outlined,
-    ),
-    if (_isThesisAdvisor) ...[
+  int get _leaveInboxCount {
+    try {
+      return _leaves.inbox.length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  List<_LecturerMenuEntry> get _quickEntries {
+    final pendingGrades =
+        _data.courses.where((c) => !c.gradeSubmitted).length;
+    final pendingPa = _data.paAdvisees
+        .where((a) => a.krsStatus != KrsApprovalStatus.approved)
+        .length;
+    final readyDefense = _data.thesisAdvisees
+        .where((a) => a.stage == ThesisStage.readyDefense)
+        .length;
+    final leaveCount = _leaveInboxCount;
+    return [
       const _LecturerMenuEntry(
-        'Bimbingan TA',
-        Icons.school_outlined,
-        Color(0xFF873DD1),
+        'Smart Chatbot',
+        Icons.smart_toy_outlined,
+        color: Color(0xFF873DD1),
       ),
       const _LecturerMenuEntry(
-        'Jadwal Sidang',
-        Icons.event_available_outlined,
-        Color(0xFFBD2134),
+        'Jadwal Mengajar',
+        Icons.calendar_month_outlined,
       ),
-    ],
-    const _LecturerMenuEntry(
-      'Hasil Izin',
-      Icons.description_outlined,
-      Color(0xFF198754),
-    ),
-  ];
+      _LecturerMenuEntry(
+        'Input Nilai',
+        Icons.grading_outlined,
+        color: const Color(0xFFED7D21),
+        badgeCount: pendingGrades,
+      ),
+      const _LecturerMenuEntry(
+        'Presensi Kelas',
+        Icons.how_to_reg_outlined,
+        color: Color(0xFF198754),
+      ),
+      _LecturerMenuEntry(
+        'Perwalian PA',
+        Icons.supervisor_account_outlined,
+        badgeCount: pendingPa,
+      ),
+      if (_isThesisAdvisor) ...[
+        _LecturerMenuEntry(
+          'Bimbingan TA',
+          Icons.school_outlined,
+          color: const Color(0xFF873DD1),
+          badgeCount: _data.workload.thesisPendingReviews,
+        ),
+        _LecturerMenuEntry(
+          'Jadwal Sidang',
+          Icons.event_available_outlined,
+          color: const Color(0xFFBD2134),
+          badgeCount: readyDefense,
+        ),
+      ],
+      _LecturerMenuEntry(
+        'Hasil Izin',
+        Icons.description_outlined,
+        color: const Color(0xFF198754),
+        badgeCount: leaveCount,
+      ),
+    ];
+  }
 
   List<_LecturerMenuEntry> get _destinations => [
     const _LecturerMenuEntry('Beranda', Icons.home_outlined),
@@ -786,7 +1099,36 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       final pagePadding = (bounds.maxWidth * .025).clamp(16.0, 24.0);
       final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
       return Scaffold(
-        floatingActionButton: ChatLauncher(controller: _chat),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            AnimatedScale(
+              scale: _showScrollTop ? 1.0 : 0.0,
+              duration: AppMotion.duration(context, 200),
+              curve: Curves.easeOutBack,
+              child: AnimatedOpacity(
+                opacity: _showScrollTop ? 1.0 : 0.0,
+                duration: AppMotion.duration(context, 180),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: FloatingActionButton.small(
+                    heroTag: 'lecturer-scroll-top',
+                    tooltip: 'Kembali ke atas',
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppTheme.blue,
+                    shape: const RoundedRectangleBorder(
+                      side: BorderSide(color: AppTheme.ink, width: 3),
+                    ),
+                    onPressed: _showScrollTop ? () => _navigate(0) : null,
+                    child: const Icon(Icons.arrow_upward),
+                  ),
+                ),
+              ),
+            ),
+            ChatLauncher(controller: _chat),
+          ],
+        ),
         appBar: AppBar(
           backgroundColor: AppTheme.red,
           foregroundColor: Colors.white,
@@ -1105,16 +1447,49 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'PRIORITAS HARI INI · Ketuk untuk tindak lanjut cepat',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.muted,
+          InkWell(
+            onTap: () => setState(() => _priorityExpanded = !_priorityExpanded),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.bolt_outlined,
+                  size: 16,
+                  color: Color(0xFFED7D21),
+                ),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'PRIORITAS HARI INI · Ketuk untuk tindak lanjut cepat',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.muted,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _priorityExpanded ? 0.5 : 0.0,
+                  duration: AppMotion.duration(context, 220),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: AppTheme.muted,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: chips),
+          AnimatedSize(
+            duration: AppMotion.duration(context, 240),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _priorityExpanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Wrap(spacing: 8, runSpacing: 8, children: chips),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -1143,11 +1518,8 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       ),
       const SizedBox(height: 20),
       if (_loading) ...[
-        const LinearProgressIndicator(minHeight: 3),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          child: Text('Memuat beranda dosen…'),
-        ),
+        const LecturerSkeletonLoader(),
+        const SizedBox(height: 16),
       ],
       if (_error != null) ...[
         PixelPanel(
@@ -1164,12 +1536,13 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
         const SizedBox(height: 20),
       ],
       if (!_loading && _error == null) ...[
-        _agendaBanner(),
+        Entrance(child: _agendaBanner()),
         const SizedBox(height: 14),
-        _priorityBar(),
+        Entrance(delay: 50, child: _priorityBar()),
         const SizedBox(height: 20),
       ],
       Entrance(
+        delay: 80,
         child: LecturerProfilePanel(
           key: _profileKey,
           profile: _data.profile,
@@ -1180,9 +1553,10 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       const SizedBox(height: 24),
       Text('AKSES CEPAT', style: AppTheme.pixel(9, color: AppTheme.blue)),
       const SizedBox(height: 14),
-      Entrance(delay: 60, child: _quickGrid()),
+      Entrance(delay: 110, child: _quickGrid()),
       const SizedBox(height: 24),
-      if (!_loading && _error == null) _responsivePanels(),
+      if (!_loading && _error == null)
+        Entrance(delay: 140, child: _responsivePanels()),
       const SizedBox(height: 28),
       const Text(
         'CAMPUS APP · SIAKAD FASILKOM',
@@ -1242,52 +1616,89 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     );
   }
 
-  Widget _quickGrid() => LayoutBuilder(
-    builder: (context, bounds) {
-      final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
-      final columns = scale >= 1.8 && bounds.maxWidth < 430
-          ? 1
-          : ResponsiveLayout.quickColumns(bounds.maxWidth / scale);
-      final width = (bounds.maxWidth - (columns - 1) * 12) / columns;
-      final entries = _quickEntries;
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          for (final entry in entries)
-            SizedBox(
-              width: width,
-              child: PixelTapSurface(
-                label: entry.label,
-                onTap: () => _quickAction(entry.label),
-                borderColor: AppTheme.ink,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 16,
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      color: entry.color.withValues(alpha: .1),
-                      child: Icon(entry.icon, color: entry.color, size: 26),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      entry.label,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+  Widget _quickGrid() => ListenableBuilder(
+    listenable: _leaves,
+    builder: (context, _) => LayoutBuilder(
+      builder: (context, bounds) {
+        final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+        final columns = scale >= 1.8 && bounds.maxWidth < 430
+            ? 1
+            : ResponsiveLayout.quickColumns(bounds.maxWidth / scale);
+        final width = (bounds.maxWidth - (columns - 1) * 12) / columns;
+        final entries = _quickEntries;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final entry in entries)
+              SizedBox(
+                width: width,
+                child: PixelTapSurface(
+                  label: entry.label,
+                  onTap: () => _quickAction(entry.label),
+                  borderColor: AppTheme.ink,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 16,
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              color: entry.color.withValues(alpha: .1),
+                              child: Icon(
+                                entry.icon,
+                                color: entry.color,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              entry.label,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      if (entry.badgeCount > 0)
+                        Positioned(
+                          top: -6,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: entry.color,
+                              border: Border.all(color: AppTheme.ink, width: 2),
+                            ),
+                            child: Text(
+                              '${entry.badgeCount}',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
-      );
-    },
+          ],
+        );
+      },
+    ),
   );
 
   Widget _responsivePanels() => LayoutBuilder(
@@ -1322,6 +1733,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       final thesisSchedules = ThesisSchedulePanel(
         items: _data.thesisSchedules,
         onAll: _allThesisSchedules,
+        onAdd: _addThesisSchedule,
       );
       final announcements = NoticePanel(
         title: 'PENGUMUMAN',
@@ -1395,13 +1807,19 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
 }
 
 class _LecturerMenuEntry {
-  const _LecturerMenuEntry(this.label, this.icon, [this.color = AppTheme.blue]);
+  const _LecturerMenuEntry(
+    this.label,
+    this.icon, {
+    this.color = AppTheme.blue,
+    this.badgeCount = 0,
+  });
   final String label;
   final IconData icon;
   final Color color;
+  final int badgeCount;
 }
 
-class _PriorityChip extends StatelessWidget {
+class _PriorityChip extends StatefulWidget {
   const _PriorityChip({
     required this.label,
     required this.icon,
@@ -1415,29 +1833,62 @@ class _PriorityChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: color, width: 2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: color,
+  State<_PriorityChip> createState() => _PriorityChipState();
+}
+
+class _PriorityChipState extends State<_PriorityChip> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hovered && !_pressed;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1.0,
+          duration: AppMotion.duration(context, 120),
+          child: AnimatedContainer(
+            duration: AppMotion.duration(context, 160),
+            curve: Curves.easeOutCubic,
+            transform: Matrix4.translationValues(0, active ? -1.5 : 0, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? widget.color.withValues(alpha: .08)
+                  : Colors.white,
+              border: Border.all(color: widget.color, width: 2),
+              boxShadow: active
+                  ? [BoxShadow(color: widget.color, offset: const Offset(2, 2))]
+                  : const [],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, size: 15, color: widget.color),
+                const SizedBox(width: 6),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: widget.color,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward_ios, size: 10, color: widget.color),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
