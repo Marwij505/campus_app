@@ -374,9 +374,9 @@ abstract final class LecturerDemoData {
       ),
       KrsApprovalRequest(
         id: 'KRS-002',
-        studentNim: '20240801002',
-        studentName: 'Siti Rahmawati',
-        major: 'Teknik Informatika',
+        studentNim: '20240803067',
+        studentName: 'Salsabila Hamka',
+        major: 'Sistem Informasi',
         entryYear: 2024,
         semester: 5,
         gpa: 3.82,
@@ -582,7 +582,7 @@ abstract final class LecturerDemoData {
   static List<AdvisedStudent> getAdvisedStudents(String nip) {
     return const [
       AdvisedStudent(
-        nim: '20240801001',
+        nim: '20240801002',
         name: 'Reifan Ardissa',
         major: 'Teknik Informatika',
         entryYear: 2024,
@@ -600,9 +600,9 @@ abstract final class LecturerDemoData {
         notes: 'Mahasiswa sangat aktif. Berencana mengambil skripsi di semester 7 dengan topik Mobile AI.',
       ),
       AdvisedStudent(
-        nim: '20240801002',
-        name: 'Siti Rahmawati',
-        major: 'Teknik Informatika',
+        nim: '20240803067',
+        name: 'Salsabila Hamka',
+        major: 'Sistem Informasi',
         entryYear: 2024,
         currentSemester: 5,
         gpa: 3.82,
@@ -614,8 +614,8 @@ abstract final class LecturerDemoData {
         hasWarning: false,
         lastConsultation: '14 Agu 2026',
         phone: '0813-9876-5432',
-        email: 'siti.rahmawati@student.esaunggul.ac.id',
-        notes: 'Penerima beasiswa unggulan. Laju kelulusan sangat cepat dan konsisten.',
+        email: 'salsabila.hamka@student.esaunggul.ac.id',
+        notes: 'Mahasiswa sangat aktif. Berencana mengambil skripsi di semester 7 dengan topik Manajemen Proyek.',
       ),
       AdvisedStudent(
         nim: '20230801041',

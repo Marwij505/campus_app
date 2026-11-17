@@ -24,95 +24,246 @@ void main() {
   });
 
   group('Lecturer Dashboard Tests', () {
-    test('AuthService generates proper lecturer profile for DOS001 and DOS002', () async {
-      final service = AuthService();
+    testWidgets('lecturer dashboards render every tab on a narrow phone', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 720);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-      final dos1 = await service.login(identity: 'DOS001', password: '123456');
-      expect(dos1.role, UserRole.lecturer);
-      expect(dos1.name?.contains('Hendra Gunawan'), true);
-      expect(dos1.faculty, 'Fakultas Ilmu Komputer');
+      for (final nip in ['DOS001', 'DOS002']) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LecturerDashboardPage(
+              key: ValueKey(nip),
+              lecturerProfile: StudentProfile(
+                nim: nip,
+                role: UserRole.lecturer,
+              ),
+              onLogout: () {},
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: '$nip initial dashboard',
+        );
+        expect(
+          find.byKey(const ValueKey('lecturer-nav-Perkuliahan & Jadwal')),
+          findsNothing,
+          reason: 'compact dashboard has no always-visible horizontal menu',
+        );
+        if (nip == 'DOS002') {
+          expect(find.text('Bimbingan Skripsi'), findsOneWidget);
+        }
 
-      service.logout();
+        for (final label in [
+          'Perkuliahan & Jadwal',
+          'Perwalian Mahasiswa',
+          if (nip == 'DOS002') 'Bimbingan Skripsi',
+          'Rekap Nilai & Kelas',
+        ]) {
+          await tester.tap(find.byTooltip('Buka menu navigasi'));
+          await tester.pumpAndSettle();
+          final tab = find.text(label).first;
+          expect(
+            find.text(label),
+            findsWidgets,
+            reason: '$nip exposes tab $label',
+          );
+          final menuItem = find.byKey(ValueKey('lecturer-nav-$label'));
+          await tester.ensureVisible(menuItem);
+          await tester.tap(menuItem);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: '$nip tab $label');
+          expect(find.byTooltip('Buka menu navigasi'), findsOneWidget);
+          expect(find.byTooltip('Tutup menu navigasi'), findsNothing);
+        }
 
-      final dos2 = await service.login(identity: 'DOS002', password: '123456');
-      expect(dos2.role, UserRole.lecturer);
-      expect(dos2.name?.contains('Sri Wahyuni'), true);
-      expect(dos2.major?.contains('Teknik Informatika'), true);
+        if (nip == 'DOS002') {
+          await tester.tap(find.byTooltip('Buka menu navigasi'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Perwalian Mahasiswa').first);
+          await tester.pumpAndSettle();
+
+          final studentTab = find.text('Daftar Mahasiswa Wali').first;
+          await tester.ensureVisible(studentTab);
+          await tester.tap(studentTab);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: '$nip advisee subtab');
+
+          final thesisTab = find.text('Bimbingan Skripsi').last;
+          await tester.ensureVisible(thesisTab);
+          await tester.tap(thesisTab);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: '$nip thesis subtab');
+        }
+      }
     });
 
-    testWidgets('DOS001 can login and sees Lecturer Dashboard with Teaching Panel', (tester) async {
+    testWidgets('desktop lecturer sidebar can collapse and expand', (
+      tester,
+    ) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(1024, 768);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(const CampusApp());
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LecturerDashboardPage(
+            lecturerProfile: const StudentProfile(
+              nim: 'DOS001',
+              role: UserRole.lecturer,
+            ),
+            onLogout: () {},
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'initial desktop layout');
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'DOS001');
-      await tester.enterText(find.byType(TextFormField).at(1), '123456');
-
-      final button = find.widgetWithText(PixelButton, 'MASUK');
-      await tester.tap(button);
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Perwalian Mahasiswa'), findsOneWidget);
+      await tester.tap(find.byTooltip('Sembunyikan menu navigasi'));
       await tester.pumpAndSettle();
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'collapsed sidebar layout',
+      );
+      expect(find.text('Perwalian Mahasiswa'), findsNothing);
 
-      // Check Lecturer Dashboard is mounted
-      expect(find.byType(LecturerDashboardPage), findsOneWidget);
-      expect(find.text('SIAKAD · PORTAL DOSEN FASILKOM'), findsOneWidget);
-      expect(find.textContaining('Dr. Ir. Hendra Gunawan'), findsOneWidget);
-      expect(find.byType(TeachingPanel), findsOneWidget);
-      expect(find.text('JADWAL MENGAJAR & KELAS KULIAH'), findsOneWidget);
-
-      // Verify switching to Advisor role (for DOS001, label is DPA without skripsi)
-      await tester.tap(find.text('DOSEN PEMBIMBING (DPA)'));
+      await tester.tap(find.byTooltip('Tampilkan menu navigasi'));
       await tester.pumpAndSettle();
-
-      expect(find.byType(AdvisorPanel), findsOneWidget);
-      expect(find.text('VALIDASI & APPROVAL KRS:'), findsOneWidget);
-      // Dosen Akademik does NOT have bimbingan skripsi
-      expect(find.text('Bimbingan Skripsi'), findsNothing);
+      final expandedError = tester.takeException();
+      expect(
+        expandedError,
+        isNull,
+        reason: 'expanded sidebar layout: $expandedError',
+      );
+      expect(find.text('Perwalian Mahasiswa'), findsOneWidget);
     });
 
-    testWidgets('DOS002 opens Advisor Panel by default and can approve KRS and view Thesis', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1024, 768);
+    test(
+      'AuthService generates proper lecturer profile for DOS001 and DOS002',
+      () async {
+        final service = AuthService();
 
-      await tester.pumpWidget(const CampusApp());
-      await tester.pumpAndSettle();
+        final dos1 = await service.login(
+          identity: 'DOS001',
+          password: '123456',
+        );
+        expect(dos1.role, UserRole.lecturer);
+        expect(dos1.name?.contains('Hendra Gunawan'), true);
+        expect(dos1.faculty, 'Fakultas Ilmu Komputer');
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'DOS002');
-      await tester.enterText(find.byType(TextFormField).at(1), '123456');
+        service.logout();
 
-      final button = find.widgetWithText(PixelButton, 'MASUK');
-      await tester.tap(button);
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
-      await tester.pumpAndSettle();
+        final dos2 = await service.login(
+          identity: 'DOS002',
+          password: '123456',
+        );
+        expect(dos2.role, UserRole.lecturer);
+        expect(dos2.name?.contains('Sri Wahyuni'), true);
+        expect(dos2.major?.contains('Teknik Informatika'), true);
+      },
+    );
 
-      expect(find.byType(LecturerDashboardPage), findsOneWidget);
-      expect(find.textContaining('Prof. Dr. Sri Wahyuni'), findsOneWidget);
-      expect(find.byType(AdvisorPanel), findsOneWidget);
+    testWidgets(
+      'DOS001 can login and sees Lecturer Dashboard with Teaching Panel',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(1024, 768);
 
-      // Dosen Pembimbing DOS002 HAS bimbingan skripsi
-      expect(find.text('Bimbingan Skripsi'), findsOneWidget);
+        await tester.pumpWidget(const CampusApp());
+        await tester.pumpAndSettle();
 
-      // Check pending KRS approval exists (e.g. Reifan Ardissa)
-      expect(find.text('Reifan Ardissa'), findsWidgets);
-      expect(find.text('ACC KRS'), findsWidgets);
+        await tester.enterText(find.byType(TextFormField).at(0), 'DOS001');
+        await tester.enterText(find.byType(TextFormField).at(1), '123456');
 
-      // Tap ACC KRS for first request
-      await tester.tap(find.text('ACC KRS').first);
-      await tester.pumpAndSettle();
+        final button = find.widgetWithText(PixelButton, 'MASUK');
+        await tester.tap(button);
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
 
-      expect(find.textContaining('Telah Disetujui'), findsWidgets);
+        // Check Lecturer Dashboard is mounted
+        expect(find.byType(LecturerDashboardPage), findsOneWidget);
+        expect(find.text('SIAKAD · PORTAL DOSEN FASILKOM'), findsOneWidget);
+        expect(find.textContaining('Dr. Ir. Hendra Gunawan'), findsOneWidget);
+        expect(find.byType(TeachingPanel), findsOneWidget);
+        expect(
+          find.text('TIMELINE PERKULIAHAN SEMESTER AKTIF'),
+          findsOneWidget,
+        );
 
-      // Switch to Bimbingan Skripsi subtab and verify it renders cleanly
-      await tester.tap(find.text('Bimbingan Skripsi'));
-      await tester.pumpAndSettle();
+        // Verify switching to Perwalian tab (for DOS001, dosen akademik pengampu without skripsi)
+        await tester.tap(find.text('Perwalian Mahasiswa'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('MAHASISWA BIMBINGAN TUGAS AKHIR / SKRIPSI'), findsOneWidget);
-      expect(find.textContaining('Dimas Wahyu Pratama'), findsOneWidget);
-      expect(find.textContaining('Logbook'), findsWidgets);
-    });
+        expect(find.byType(AdvisorPanel), findsOneWidget);
+        expect(
+          find.text('ANTREAN VALIDASI RENCANA STUDI (KRS)'),
+          findsOneWidget,
+        );
+        // Dosen Akademik DOS001 does NOT have bimbingan skripsi
+        expect(find.text('Bimbingan Skripsi'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'DOS002 opens Advisor Panel by default and can approve KRS and view Thesis',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(1024, 768);
+
+        await tester.pumpWidget(const CampusApp());
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField).at(0), 'DOS002');
+        await tester.enterText(find.byType(TextFormField).at(1), '123456');
+
+        final button = find.widgetWithText(PixelButton, 'MASUK');
+        await tester.tap(button);
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LecturerDashboardPage), findsOneWidget);
+        expect(find.textContaining('Prof. Dr. Sri Wahyuni'), findsOneWidget);
+        expect(find.byType(AdvisorPanel), findsOneWidget);
+
+        // Dosen Pembimbing DOS002 HAS bimbingan skripsi tab
+        expect(find.text('Bimbingan Skripsi'), findsWidgets);
+
+        // Check pending KRS approval exists (e.g. Reifan Ardissa)
+        expect(find.text('Reifan Ardissa'), findsWidgets);
+        expect(find.text('Setujui (ACC)'), findsWidgets);
+
+        // Approve the first pending KRS request.
+        final approveButton = find.text('Setujui (ACC)').first;
+        await tester.ensureVisible(approveButton);
+        await tester.tap(approveButton);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('Disetujui'), findsWidgets);
+
+        // Switch to Bimbingan Skripsi subtab and verify it renders cleanly
+        final thesisTab = find.text('Bimbingan Skripsi').first;
+        await tester.ensureVisible(thesisTab);
+        await tester.tap(thesisTab);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('PORTAL PEMBIMBINGAN SKRIPSI & TUGAS AKHIR'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Dimas Wahyu Pratama'), findsOneWidget);
+        expect(find.textContaining('Logbook'), findsWidgets);
+      },
+    );
   });
 }

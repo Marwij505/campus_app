@@ -1,12 +1,11 @@
-// Panel tridharma pengajaran & perkuliahan untuk Dosen Akademik.
-// Menyediakan jadwal mengajar, pengisian BAP, presensi mahasiswa, rekap nilai kelas,
-// serta akses terpadu ke surat izin mahasiswa yang relevan.
+// Panel Tridharma Pengajaran & Perkuliahan Versi Baru.
+// Menghadirkan timeline kelas modern, presensi interaktif, validasi BAP,
+// dan pemantauan mahasiswa izin.
 
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/lecturer_models.dart';
-import '../../shared/pixel_widgets.dart';
 import '../leave/leave_page.dart';
 import '../leave/leave_repository.dart';
 import 'lecturer_widgets.dart';
@@ -43,13 +42,24 @@ class _TeachingPanelState extends State<TeachingPanel> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
           backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: PixelPanel(
-              color: AppTheme.paper,
-              borderWidth: 4,
-              shadowOffset: 6,
-              padding: EdgeInsets.zero,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.paper,
+                border: Border.all(color: AppTheme.ink, width: 3),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x30000000),
+                    offset: Offset(4, 5),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -59,16 +69,25 @@ class _TeachingPanelState extends State<TeachingPanel> {
                     color: AppTheme.blue,
                     child: Row(
                       children: [
-                        const Icon(Icons.fact_check_outlined, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.fact_check_outlined,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'PRESENSI · ${schedule.courseCode}',
+                            'PRESENSI · ${schedule.courseCode} (${schedule.classSection})',
                             style: AppTheme.pixel(8, color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () => Navigator.of(ctx).pop(),
@@ -81,19 +100,25 @@ class _TeachingPanelState extends State<TeachingPanel> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(schedule.courseName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                        const SizedBox(height: 4),
                         Text(
-                          'Kelas ${schedule.classSection} · Pertemuan ${schedule.currentMeeting} · ${schedule.room}',
-                          style: const TextStyle(color: AppTheme.muted, fontSize: 11),
+                          schedule.courseName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Pertemuan ke-${schedule.currentMeeting} dari ${schedule.totalMeetings} · ${schedule.room}',
+                          style: const TextStyle(
+                            color: AppTheme.muted,
+                            fontSize: 11,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
-                          ),
+                          color: Colors.white,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
@@ -101,25 +126,48 @@ class _TeachingPanelState extends State<TeachingPanel> {
                                 children: [
                                   Text(
                                     '$attended / $total',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.blue),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.blue,
+                                    ),
                                   ),
-                                  const Text('Mahasiswa Hadir', style: TextStyle(fontSize: 10, color: AppTheme.muted)),
+                                  const Text(
+                                    'Mahasiswa Hadir',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.muted,
+                                    ),
+                                  ),
                                 ],
                               ),
                               Column(
                                 children: [
                                   Text(
                                     '${((attended / total) * 100).toStringAsFixed(1)}%',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF16A34A),
+                                    ),
                                   ),
-                                  const Text('Tingkat Kehadiran', style: TextStyle(fontSize: 10, color: AppTheme.muted)),
+                                  const Text(
+                                    'Tingkat Kehadiran',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.muted,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text('SIMULASI JUMLAH KEHADIRAN:', style: AppTheme.pixel(7.5)),
+                        Text(
+                          'SIMULASI JUMLAH KEHADIRAN MAHASISWA:',
+                          style: AppTheme.pixel(7),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -132,14 +180,23 @@ class _TeachingPanelState extends State<TeachingPanel> {
                               color: const Color(0xFFDC2626),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                border: Border.all(color: AppTheme.ink, width: 2),
+                                border: Border.all(
+                                  color: AppTheme.ink,
+                                  width: 2,
+                                ),
                               ),
                               child: Text(
                                 '$attended Mahasiswa',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                             IconButton(
@@ -170,7 +227,9 @@ class _TeachingPanelState extends State<TeachingPanel> {
                             Navigator.of(ctx).pop();
                             _updateScheduleAttendance(schedule.id, attended);
                           },
-                          style: FilledButton.styleFrom(backgroundColor: AppTheme.blue),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.blue,
+                          ),
                           child: const Text('Simpan Presensi'),
                         ),
                       ],
@@ -189,7 +248,7 @@ class _TeachingPanelState extends State<TeachingPanel> {
     final topicController = TextEditingController(text: schedule.bapTopic);
     final notesController = TextEditingController(
       text: schedule.bapSubmitted
-          ? 'Perkuliahan berjalan lancar. Materi tersampaikan 100% dan sesi tanya jawab aktif.'
+          ? 'Perkuliahan berjalan lancar. Materi tersampaikan dan mahasiswa aktif bertanya.'
           : '',
     );
 
@@ -197,13 +256,21 @@ class _TeachingPanelState extends State<TeachingPanel> {
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: PixelPanel(
-            color: AppTheme.paper,
-            borderWidth: 4,
-            shadowOffset: 6,
-            padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.paper,
+              border: Border.all(color: AppTheme.ink, width: 3),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x30000000),
+                  offset: Offset(4, 5),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,16 +280,25 @@ class _TeachingPanelState extends State<TeachingPanel> {
                   color: const Color(0xFF0F766E),
                   child: Row(
                     children: [
-                      const Icon(Icons.edit_document, color: Colors.white, size: 20),
+                      const Icon(
+                        Icons.edit_document,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'BERITA ACARA PERKULIAHAN (BAP)',
+                          'PENGISIAN BAP · ${schedule.courseCode}',
                           style: AppTheme.pixel(8, color: Colors.white),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () => Navigator.of(ctx).pop(),
@@ -235,30 +311,54 @@ class _TeachingPanelState extends State<TeachingPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${schedule.courseCode} · ${schedule.courseName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text('Kelas ${schedule.classSection} · Pertemuan ke-${schedule.currentMeeting} dari ${schedule.totalMeetings}', style: const TextStyle(color: AppTheme.muted, fontSize: 11)),
+                      Text(
+                        '${schedule.courseName} (${schedule.classSection})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        'Pertemuan ke-${schedule.currentMeeting} · ${schedule.room}',
+                        style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 11,
+                        ),
+                      ),
                       const SizedBox(height: 14),
-                      Text('TOPIK / MATERI PERKULIAHAN:', style: AppTheme.pixel(7.5)),
+                      Text(
+                        'TOPIK / MATERI PERKULIAHAN:',
+                        style: AppTheme.pixel(7),
+                      ),
                       const SizedBox(height: 6),
                       TextField(
                         controller: topicController,
                         decoration: const InputDecoration(
-                          hintText: 'Contoh: Analisis Kebutuhan Sistem & Pemodelan UML',
+                          hintText: 'Materi yang disampaikan hari ini...',
                           border: OutlineInputBorder(),
                         ),
-                        style: const TextStyle(fontSize: 12, fontFamily: 'SpaceMono'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'SpaceMono',
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      Text('CATATAN PELAKSANAAN KELAS & TUGAS:', style: AppTheme.pixel(7.5)),
+                      Text(
+                        'CATATAN / TUGAS PERKULIAHAN:',
+                        style: AppTheme.pixel(7),
+                      ),
                       const SizedBox(height: 6),
                       TextField(
                         controller: notesController,
-                        maxLines: 3,
+                        maxLines: 2,
                         decoration: const InputDecoration(
-                          hintText: 'Catatan progres materi, keaktifan mahasiswa, kendala, atau tugas yang diberikan...',
+                          hintText: 'Catatan tambahan evaluasi kelas...',
                           border: OutlineInputBorder(),
                         ),
-                        style: const TextStyle(fontSize: 12, fontFamily: 'SpaceMono'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'SpaceMono',
+                        ),
                       ),
                     ],
                   ),
@@ -282,8 +382,10 @@ class _TeachingPanelState extends State<TeachingPanel> {
                             _updateScheduleBap(schedule.id, topic);
                           }
                         },
-                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0F766E)),
-                        child: const Text('Simpan & Validasi BAP'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F766E),
+                        ),
+                        child: const Text('Validasi & Simpan BAP'),
                       ),
                     ],
                   ),
@@ -306,7 +408,7 @@ class _TeachingPanelState extends State<TeachingPanel> {
     widget.onScheduleUpdated(updated);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Presensi kelas berhasil diperbarui & tersimpan di SIAKAD.'),
+        content: Text('Presensi kelas tersimpan di pangkalan data SIAKAD.'),
         backgroundColor: Color(0xFF16A34A),
       ),
     );
@@ -322,7 +424,9 @@ class _TeachingPanelState extends State<TeachingPanel> {
     widget.onScheduleUpdated(updated);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('BAP Perkuliahan berhasil disimpan & divalidasi ke sistem fakultas.'),
+        content: Text(
+          'Berita Acara Perkuliahan (BAP) telah diverifikasi & tersimpan.',
+        ),
         backgroundColor: Color(0xFF0F766E),
       ),
     );
@@ -330,7 +434,12 @@ class _TeachingPanelState extends State<TeachingPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredSchedules = widget.schedules.where((s) {
+    final liveOrNextSchedule = widget.schedules.firstWhere(
+      (s) => s.status == 'Berlangsung',
+      orElse: () => widget.schedules.first,
+    );
+
+    final filtered = widget.schedules.where((s) {
       if (_selectedFilter == 'Berlangsung') return s.status == 'Berlangsung';
       if (_selectedFilter == 'Akan Datang') return s.status == 'Akan Datang';
       if (_selectedFilter == 'Selesai') return s.status == 'Selesai';
@@ -340,251 +449,394 @@ class _TeachingPanelState extends State<TeachingPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Kartu Ringkasan Pengajaran
+        // 4 Stat Pills Ringkas
         LayoutBuilder(
           builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 600;
+            final isNarrow = constraints.maxWidth < 620;
             return GridView.count(
               crossAxisCount: isNarrow ? 2 : 4,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: isNarrow ? 1.4 : 1.6,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: isNarrow ? 1.25 : 1.6,
               children: [
-                LecturerStatCard(
+                ModernStatPill(
                   label: 'KELAS DIAMPU',
                   value: '${widget.stats.totalClasses}',
                   suffix: 'Kelas',
-                  icon: Icons.menu_book_outlined,
                   color: AppTheme.blue,
-                  subtitle: '${widget.stats.totalCredits} SKS Semester Ini',
+                  icon: Icons.class_outlined,
+                  progress: 1.0,
                 ),
-                LecturerStatCard(
+                ModernStatPill(
                   label: 'TOTAL MAHASISWA',
                   value: '${widget.stats.totalStudentsTaught}',
                   suffix: 'Mhs',
-                  icon: Icons.groups_outlined,
                   color: const Color(0xFF16A34A),
-                  subtitle: 'Aktif terdaftar di kelas',
+                  icon: Icons.groups_outlined,
+                  progress: 0.9,
                 ),
-                LecturerStatCard(
-                  label: 'RATA KEHADIRAN',
+                ModernStatPill(
+                  label: 'RATA PRESENSI',
                   value: '${widget.stats.averageAttendance.toStringAsFixed(1)}',
                   suffix: '%',
-                  icon: Icons.fact_check_outlined,
                   color: const Color(0xFFD97706),
+                  icon: Icons.fact_check_outlined,
                   progress: widget.stats.averageAttendance / 100,
-                  subtitle: 'Presensi mahasiswa',
                 ),
-                LecturerStatCard(
+                ModernStatPill(
                   label: 'PENGISIAN BAP',
                   value: '${widget.stats.bapCompletionRate.toStringAsFixed(0)}',
                   suffix: '%',
-                  icon: Icons.task_alt_outlined,
                   color: const Color(0xFF8B5CF6),
+                  icon: Icons.task_alt_outlined,
                   progress: widget.stats.bapCompletionRate / 100,
-                  subtitle: 'Berita acara perkuliahan',
                 ),
               ],
             );
           },
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
-        // Section Jadwal Mengajar
-        PixelPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.calendar_month_outlined, color: AppTheme.blue, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'JADWAL MENGAJAR & KELAS KULIAH',
-                      style: AppTheme.pixel(8.5, color: AppTheme.blue),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final filter in ['Semua', 'Berlangsung', 'Akan Datang', 'Selesai']) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(filter, style: const TextStyle(fontSize: 11, fontFamily: 'SpaceMono')),
-                          selected: _selectedFilter == filter,
-                          onSelected: (_) => setState(() => _selectedFilter = filter),
-                          selectedColor: AppTheme.blue.withValues(alpha: 0.15),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (filteredSchedules.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  alignment: Alignment.center,
-                  child: const Text('Tidak ada jadwal mengajar pada filter ini.', style: TextStyle(color: AppTheme.muted)),
-                )
-              else
-                for (final item in filteredSchedules) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TeachingScheduleCard(
-                      schedule: item,
-                      onAttendanceTap: () => _openAttendanceDialog(item),
-                      onBapTap: () => _openBapDialog(item),
-                    ),
-                  ),
-                ],
-            ],
-          ),
+        // Spotlight Kelas Terdekat / Aktif
+        SpotlightLectureCard(
+          schedule: liveOrNextSchedule,
+          onAttendanceTap: () => _openAttendanceDialog(liveOrNextSchedule),
+          onBapTap: () => _openBapDialog(liveOrNextSchedule),
         ),
 
         const SizedBox(height: 20),
 
-        // Section Rekap Kelas Kuliah & Input Nilai
-        PixelPanel(
+        // Section Jadwal Mengajar & Timeline Kelas
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x15000000),
+                offset: Offset(2, 3),
+                blurRadius: 0,
+              ),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.table_chart_outlined, color: AppTheme.ink, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'REKAP PERKULIAHAN & STATUS INPUT NILAI',
-                      style: AppTheme.pixel(8, color: AppTheme.ink),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 620;
+                  final chips = SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final filter in [
+                          'Semua',
+                          'Berlangsung',
+                          'Akan Datang',
+                          'Selesai',
+                        ]) ...[
+                          ChoiceChip(
+                            label: Text(
+                              filter,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontFamily: 'SpaceMono',
+                              ),
+                            ),
+                            selected: _selectedFilter == filter,
+                            onSelected: (_) =>
+                                setState(() => _selectedFilter = filter),
+                            selectedColor: AppTheme.blue.withValues(
+                              alpha: 0.15,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              for (final cls in widget.classes) ...[
-                Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${cls.courseCode} - ${cls.courseName} (${cls.classSection})',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            color: const Color(0xFFE0F2FE),
-                            child: Text(
-                              '${cls.credits} SKS',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.people_outline, size: 14, color: AppTheme.muted),
-                          const SizedBox(width: 4),
-                          Text('${cls.totalStudents} Mahasiswa', style: const TextStyle(fontSize: 11, color: AppTheme.muted)),
-                          const SizedBox(width: 14),
-                          const Icon(Icons.percent, size: 14, color: Color(0xFF16A34A)),
-                          const SizedBox(width: 4),
-                          Text('Rata Presensi ${cls.averageAttendance.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 11, color: Color(0xFF16A34A))),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        color: const Color(0xFFFEF9C3),
-                        child: Row(
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            const Icon(Icons.info_outline, size: 13, color: Color(0xFFCA8A04)),
-                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.view_timeline_outlined,
+                              color: AppTheme.blue,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Nilai: ${cls.gradeInputStatus}',
-                                style: const TextStyle(fontSize: 10.5, color: Color(0xFF854D0E), fontWeight: FontWeight.w600),
+                                'TIMELINE PERKULIAHAN SEMESTER AKTIF',
+                                style: AppTheme.pixel(8, color: AppTheme.blue),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 10),
+                        chips,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.view_timeline_outlined,
+                            color: AppTheme.blue,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'TIMELINE PERKULIAHAN SEMESTER AKTIF',
+                            style: AppTheme.pixel(8, color: AppTheme.blue),
+                          ),
+                        ],
                       ),
+                      chips,
                     ],
-                  ),
-                ),
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              for (final item in filtered) ...[
+                _buildTimelineClassItem(item),
+                const SizedBox(height: 10),
               ],
             ],
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
-        // Section Akses Terpadu Izin Kuliah Mahasiswa
+        // Tombol Akses Izin Mahasiswa
         if (widget.leaveRepository != null)
-          PixelPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.mark_email_read_outlined, color: AppTheme.red, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'SURAT IZIN & DISPENSASI MAHASISWA',
-                        style: AppTheme.pixel(8, color: AppTheme.red),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Lihat permohonan izin sakit, dispensasi kegiatan, atau ketidakhadiran resmi yang diajukan mahasiswa untuk kelas Anda.',
-                  style: TextStyle(fontSize: 11.5, color: AppTheme.muted),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => LeavePage(
-                        repository: widget.leaveRepository!,
-                      ),
+          InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (ctx) =>
+                    LeavePage(repository: widget.leaveRepository!),
+              ),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                border: Border.all(color: const Color(0xFFF87171), width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.mail_outline,
+                    color: Color(0xFFDC2626),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Pusat Surat Izin & Dispensasi Kuliah Mahasiswa',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: Color(0xFF991B1B),
+                          ),
+                        ),
+                        Text(
+                          'Tinjau surat izin sakit & tugas resmi mahasiswa kelas Anda',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFFB91C1C),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  icon: const Icon(Icons.folder_shared_outlined, size: 16),
-                  label: const Text('Buka Kotak Surat Izin Kuliah'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.red,
-                    side: const BorderSide(color: AppTheme.red, width: 2),
-                    shape: const RoundedRectangleBorder(),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: Color(0xFFDC2626),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildTimelineClassItem(TeachingScheduleItem item) {
+    final isLive = item.status == 'Berlangsung';
+    final statusColor = isLive
+        ? const Color(0xFF16A34A)
+        : (item.status == 'Selesai' ? AppTheme.muted : const Color(0xFF2563EB));
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        border: Border.all(
+          color: isLive ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                color: AppTheme.blue,
+                child: Text(
+                  '${item.courseCode} · ${item.classSection}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                '${item.credits} SKS',
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: AppTheme.muted,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                color: statusColor.withValues(alpha: 0.12),
+                child: Text(
+                  item.status,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.courseName,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: AppTheme.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 12,
+            children: [
+              Text(
+                '${item.day}, ${item.time}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+              ),
+              Text(
+                'Ruang: ${item.room}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+              ),
+              Text(
+                'Pertemuan ${item.currentMeeting}/${item.totalMeetings}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 420;
+              final bapText = Text(
+                item.bapSubmitted
+                    ? '✓ BAP: "${item.bapTopic}"'
+                    : '⚠ BAP belum terisi untuk pertemuan ini',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontStyle: FontStyle.italic,
+                  color: item.bapSubmitted
+                      ? const Color(0xFF15803D)
+                      : const Color(0xFFB45309),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              );
+
+              final actionButtons = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => _openAttendanceDialog(item),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    child: const Text(
+                      'Presensi',
+                      style: TextStyle(fontSize: 10.5),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  FilledButton(
+                    onPressed: () => _openBapDialog(item),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: item.bapSubmitted
+                          ? const Color(0xFF0F766E)
+                          : AppTheme.blue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    child: Text(
+                      item.bapSubmitted ? 'BAP' : 'Isi BAP',
+                      style: const TextStyle(fontSize: 10.5),
+                    ),
+                  ),
+                ],
+              );
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [bapText, const SizedBox(height: 8), actionButtons],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: bapText),
+                  const SizedBox(width: 8),
+                  actionButtons,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

@@ -130,12 +130,12 @@ class AuthService {
         latestGpa: 3.85,
         passedCredits: 86,
       ),
-      '20240801002' => const StudentProfile(
-        nim: '20240801002',
+      '20240803067' => const StudentProfile(
+        nim: '20240803067',
         role: UserRole.student,
-        name: 'Siti Rahmawati',
+        name: 'Salsabila Hamka',
         faculty: 'Fakultas Ilmu Komputer',
-        major: 'Teknik Informatika',
+        major: 'Sistem Informasi',
         status: 'Aktif',
         entryYear: 2024,
         semester: 5,
