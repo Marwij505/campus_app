@@ -1,4 +1,5 @@
-// Halaman percakapan. Controller milik dashboard menjaga draf saat halaman ditutup.
+// Halaman percakapan Smart Chatbot bertema ramah pengguna (friendly)
+// yang berfokus pada isi SIAKAD aktif sesuai peran (Mahasiswa / Dosen).
 import 'package:flutter/material.dart';
 
 import '../../core/app_motion.dart';
@@ -7,8 +8,8 @@ import '../../shared/pixel_widgets.dart';
 import 'chat_controller.dart';
 import 'chat_models.dart';
 import 'chat_widgets.dart';
-import 'draft_page.dart';
 import 'connection_settings.dart';
+import 'draft_page.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -56,8 +57,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         if (mounted && _scroll.hasClients) {
           _scroll.animateTo(
             _scroll.position.maxScrollExtent,
-            duration: AppMotion.duration(context, 200),
-            curve: Curves.easeOut,
+            duration: AppMotion.duration(context, 220),
+            curve: Curves.easeOutCubic,
           );
         }
       });
@@ -100,31 +101,54 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             ? IconButton(
                 tooltip: 'Tutup chatbot',
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
               )
             : null,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'Smart Chatbot',
-              style: AppTheme.pixel(10, color: Colors.white),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .18),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: .45),
+                  width: 1.5,
+                ),
+              ),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
             ),
-            const Text(
-              'KHUSUS INFORMASI SIAKAD FASILKOM',
-              style: TextStyle(fontSize: 9, color: Color(0xFFFFD6BD)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Smart Chatbot',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Asisten SIAKAD · ${chat.activeRoleLabel}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFFFFE4D6),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         backgroundColor: AppTheme.red,
         foregroundColor: Colors.white,
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(4),
-          child: ColoredBox(
-            color: AppTheme.ink,
-            child: SizedBox(height: 4, width: double.infinity),
-          ),
-        ),
+        elevation: 0,
         actions: [
           IconButton(
             tooltip: 'Percakapan baru',
@@ -158,23 +182,62 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                       children: [
                         if (wide)
                           SizedBox(
-                            width: 260,
+                            width: 270,
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('BANTUAN', style: AppTheme.pixel(10)),
-                                  const SizedBox(height: 20),
-                                  ChatHelpOptions(
-                                    onChoose: chat.busy ? null : _choose,
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .94),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: const Color(0xFFD7E3EE),
+                                    width: 1.5,
                                   ),
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    'Draf dan percakapan disimpan sementara selama sesi login. Lampiran tidak dikirim ke AI.',
-                                    style: TextStyle(fontSize: 11),
-                                  ),
-                                ],
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x1008142A),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.auto_awesome_rounded,
+                                          size: 16,
+                                          color: AppTheme.blue,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Text(
+                                          'BANTUAN CEPAT',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.blue,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ChatHelpOptions(
+                                      onChoose: chat.busy ? null : _choose,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'Riwayat chat disimpan lokal di perangkat untuk akun ini. Lampiran tidak dikirim ke AI.',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        color: AppTheme.muted,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -189,23 +252,49 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                     _modePanel(),
                                     if (!wide) ...[
                                       const SizedBox(height: 12),
-                                      // Bantuan dapat dilipat agar HP dan keyboard tetap punya ruang.
-                                      Card(
-                                        child: ExpansionTile(
-                                          title: const Text(
-                                            'Pilihan bantuan & draf',
-                                            style: TextStyle(fontSize: 12),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
                                           ),
-                                          childrenPadding: const EdgeInsets.all(
-                                            12,
+                                          border: Border.all(
+                                            color: const Color(0xFFD7E3EE),
+                                            width: 1.5,
                                           ),
-                                          children: [
-                                            ChatHelpOptions(
-                                              onChoose: chat.busy
-                                                  ? null
-                                                  : _choose,
+                                        ),
+                                        child: Theme(
+                                          data: Theme.of(context).copyWith(
+                                            dividerColor: Colors.transparent,
+                                          ),
+                                          child: ExpansionTile(
+                                            leading: const Icon(
+                                              Icons.auto_awesome_rounded,
+                                              size: 18,
+                                              color: AppTheme.blue,
                                             ),
-                                          ],
+                                            title: const Text(
+                                              'Pilihan bantuan & draf',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            childrenPadding:
+                                                const EdgeInsets.fromLTRB(
+                                                  12,
+                                                  0,
+                                                  12,
+                                                  12,
+                                                ),
+                                            children: [
+                                              ChatHelpOptions(
+                                                onChoose: chat.busy
+                                                    ? null
+                                                    : _choose,
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -217,79 +306,53 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                         onPrompt: chat.busy ? null : chat.send,
                                       ),
                                     if (chat.busy)
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Container(
-                                          constraints: const BoxConstraints(
-                                            maxWidth: 420,
-                                          ),
-                                          margin: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            border: Border.all(
-                                              color: AppTheme.ink,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const LinearProgressIndicator(
-                                                minHeight: 4,
-                                              ),
-                                              const SizedBox(height: 10),
-                                              const Text(
-                                                'Menyusun jawaban dari isi SIAKAD…',
-                                                style: TextStyle(fontSize: 11),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              TextButton(
-                                                onPressed: chat.useGuided,
-                                                style: TextButton.styleFrom(
-                                                  padding: EdgeInsets.zero,
-                                                ),
-                                                child: const Text(
-                                                  'Batalkan · kembali ke terpandu',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                      ChatTypingBubble(
+                                        onCancel: chat.useGuided,
                                       ),
                                     if (chat.error != null) ...[
                                       Container(
                                         margin: const EdgeInsets.only(
-                                          bottom: 10,
+                                          bottom: 12,
                                         ),
-                                        padding: const EdgeInsets.all(12),
+                                        padding: const EdgeInsets.all(14),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFFFF0F0),
+                                          color: const Color(0xFFFFF4F4),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                           border: Border.all(
-                                            color: AppTheme.red,
-                                            width: 2,
+                                            color: AppTheme.red.withValues(
+                                              alpha: .55,
+                                            ),
+                                            width: 1.5,
                                           ),
                                         ),
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              chat.error!,
-                                              style: const TextStyle(
-                                                color: AppTheme.red,
-                                                fontSize: 11,
-                                              ),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.info_outline_rounded,
+                                                  size: 16,
+                                                  color: AppTheme.red,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    chat.error!,
+                                                    style: const TextStyle(
+                                                      color: AppTheme.red,
+                                                      fontSize: 11.5,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             if (chat.canRetry) ...[
-                                              const SizedBox(height: 6),
-                                              TextButton(
+                                              const SizedBox(height: 8),
+                                              FilledButton.tonal(
                                                 onPressed: chat.retry,
                                                 child: const Text('Coba lagi'),
                                               ),
@@ -324,8 +387,20 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         : chat.mode == ChatMode.localAi
         ? const Color(0xFF198754)
         : AppTheme.blue;
-    return PixelPanel(
-      color: const Color(0xFFF8FBFF),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .96),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFD2E1F0), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1208142A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -335,63 +410,120 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  border: Border.all(color: AppTheme.ink, width: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
                 ),
-              ),
-              Text(
-                chat.connecting
-                    ? 'MENCARI AI LOKAL…'
-                    : chat.mode == ChatMode.localAi
-                    ? 'AI LOKAL AKTIF'
-                    : 'BANTUAN TERPANDU',
-                style: AppTheme.pixel(9, color: statusColor),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      chat.connecting
+                          ? 'Mencari AI lokal…'
+                          : chat.mode == ChatMode.localAi
+                          ? 'AI Lokal Aktif'
+                          : 'Mode Terpandu SIAKAD',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.blue.withValues(alpha: .1),
-                  border: Border.all(
-                    color: AppTheme.blue.withValues(alpha: .35),
-                  ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
                 ),
-                child: const Text(
-                  'Fokus SIAKAD · Tanpa Info Luar',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.blue,
-                  ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF6FF),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.verified_user_rounded,
+                      size: 13,
+                      color: AppTheme.blue,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      'Fokus SIAKAD · Tanpa Info Luar',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.blue,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Asisten hanya menjawab informasi di dalam SIAKAD FASILKOM (KRS, jadwal, nilai, izin online, perwalian PA, dan bimbingan TA) serta menolak pertanyaan di luar SIAKAD.',
-            style: TextStyle(fontSize: 11, height: 1.5),
+          Text(
+            chat.greetingName == null
+                ? 'Halo! Saya siap membantu informasi di dalam SIAKAD FASILKOM. Pertanyaan di luar SIAKAD akan ditolak otomatis.'
+                : 'Halo, ${chat.greetingName}! Saya terhubung dengan ringkasan data ${chat.activeRoleLabel} Anda di SIAKAD dan menolak info dari luar.',
+            style: const TextStyle(
+              fontSize: 11.5,
+              height: 1.5,
+              color: AppTheme.ink,
+            ),
           ),
           const SizedBox(height: 6),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: const Text(
-              'Ketersediaan layanan',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-            ),
-            children: [
-              Text(
-                chat.capabilities.summary,
-                style: const TextStyle(fontSize: 11, height: 1.5),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 6),
+              title: const Text(
+                'Ketersediaan layanan',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.muted,
+                ),
               ),
-            ],
+              children: [
+                Text(
+                  chat.capabilities.summary,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.5,
+                    color: AppTheme.muted,
+                  ),
+                ),
+              ],
+            ),
           ),
           Wrap(
             spacing: 8,
             children: [
-              TextButton.icon(
+              FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFEAF3FE),
+                  foregroundColor: AppTheme.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
                 onPressed: chat.busy || chat.connecting
                     ? null
                     : chat.mode == ChatMode.localAi
@@ -399,13 +531,18 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     : chat.enableAi,
                 icon: Icon(
                   chat.mode == ChatMode.localAi
-                      ? Icons.checklist
-                      : Icons.smart_toy_outlined,
+                      ? Icons.checklist_rounded
+                      : Icons.smart_toy_rounded,
+                  size: 16,
                 ),
                 label: Text(
                   chat.mode == ChatMode.localAi
                       ? 'Gunakan terpandu'
                       : 'Aktifkan AI lokal',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -415,100 +552,137 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     );
   }
 
-  static const _quickPrompts = [
-    ('Apa itu SIAKAD?', 'apa itu siakad'),
-    ('Apa itu KRS?', 'apa itu krs'),
-    ('Cara Izin Online', 'apa itu surat izin'),
-    ('Alur Perwalian PA', 'apa itu perwalian'),
-    ('Bimbingan & Sidang TA', 'apa itu sidang'),
-  ];
-
-  Widget _quickSiakadStrip() => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: const BoxDecoration(
-      color: Color(0xFFF3F8FC),
-      border: Border(top: BorderSide(color: Color(0xFFD5E0ED), width: 1.5)),
-    ),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < _quickPrompts.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            InkWell(
-              onTap: chat.busy ? null : () => chat.send(_quickPrompts[i].$2),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: AppTheme.blue.withValues(alpha: .45),
-                    width: 1.5,
-                  ),
-                ),
-                child: Text(
-                  _quickPrompts[i].$1,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.blue,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
-
-  Widget _composer() => Material(
-    color: Colors.white,
-    child: Container(
+  Widget _quickSiakadStrip() {
+    final prompts = chat.quickPrompts;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppTheme.ink, width: 3)),
+        color: Color(0xFFF4F9FE),
+        border: Border(top: BorderSide(color: Color(0xFFD8E5F2))),
       ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _input,
-              minLines: 1,
-              maxLines: 3,
-              maxLength: 2000,
-              style: const TextStyle(fontSize: 12),
-              textInputAction: TextInputAction.send,
-              onSubmitted: chat.busy ? null : (value) => chat.send(value),
-              decoration: const InputDecoration(
-                labelText: 'Tulis pesan',
-                hintText: 'Tanya seputar SIAKAD (KRS, jadwal, izin, PA, TA)...',
-                counterText: '',
-                border: OutlineInputBorder(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < prompts.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: chat.busy ? null : () => chat.send(prompts[i].$2),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppTheme.blue.withValues(alpha: .35),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 12,
+                          color: AppTheme.blue.withValues(alpha: .8),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          prompts[i].$1,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              onChanged: (value) => chat.input = value,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.blue,
-              border: Border.all(color: AppTheme.ink, width: 2),
-            ),
-            child: IconButton(
-              tooltip: 'Kirim pesan',
-              color: Colors.white,
-              onPressed: chat.busy ? null : () => chat.send(_input.text),
-              icon: const Icon(Icons.send),
-            ),
-          ),
-        ],
+            ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _composer() => Container(
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      border: Border(top: BorderSide(color: Color(0xFFD8E5F2), width: 1.5)),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x1008142A),
+          blurRadius: 8,
+          offset: Offset(0, -2),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _input,
+            minLines: 1,
+            maxLines: 3,
+            maxLength: 2000,
+            style: const TextStyle(fontSize: 12.5),
+            textInputAction: TextInputAction.send,
+            onSubmitted: chat.busy ? null : (value) => chat.send(value),
+            decoration: InputDecoration(
+              labelText: 'Tulis pesan',
+              hintText: 'Tanya seputar SIAKAD (${chat.activeRoleLabel})...',
+              counterText: '',
+              filled: true,
+              fillColor: const Color(0xFFF6FAFE),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: const BorderSide(
+                  color: Color(0xFFC3D7EC),
+                  width: 1.5,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: const BorderSide(
+                  color: Color(0xFFC3D7EC),
+                  width: 1.5,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: const BorderSide(color: AppTheme.blue, width: 2),
+              ),
+            ),
+            onChanged: (value) => chat.input = value,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Material(
+          color: chat.busy ? const Color(0xFFBACCE0) : AppTheme.blue,
+          shape: const CircleBorder(),
+          child: IconButton(
+            tooltip: 'Kirim pesan',
+            color: Colors.white,
+            onPressed: chat.busy ? null : () => chat.send(_input.text),
+            icon: const Icon(Icons.send_rounded, size: 20),
+          ),
+        ),
+      ],
     ),
   );
 }

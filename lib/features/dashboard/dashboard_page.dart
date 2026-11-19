@@ -56,7 +56,7 @@ class DashboardPage extends StatefulWidget {
 // Pusat penyimpanan kondisi pemuatan, data, waktu, dan menu yang sedang aktif.
 class _DashboardPageState extends State<DashboardPage> {
   // Chat dan draf bertahan saat kembali ke beranda, lalu dibersihkan ketika logout.
-  final _chat = ChatController();
+  late final ChatController _chat;
   late final LeaveRepository _leaves;
   // Kunci-kunci berikut menjadi penanda lokasi panel untuk tujuan gulir otomatis.
   final _profileKey = GlobalKey();
@@ -86,8 +86,9 @@ class _DashboardPageState extends State<DashboardPage> {
     _leaves =
         widget.leaveRepository ??
         LeaveRepository(session: () => widget.student);
+    _chat = ChatController(storageKey: widget.student.nim);
     _chat.openLeave = _openLeave;
-    _chat.siakadContextProvider = () => SiakadContextBuilder.fromStudent(
+    _chat.knowledgeProvider = () => SiakadContextBuilder.fromStudent(
       student: widget.student,
       data: _data,
       leaveCount: _leaves.inbox.length,

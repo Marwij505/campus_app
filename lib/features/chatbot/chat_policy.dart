@@ -93,6 +93,12 @@ class ChatPolicy {
       'ipkku': 'ipk saya',
       'jadwalku': 'jadwal saya',
       'tagihanku': 'tagihan saya',
+      'siakd': 'siakad',
+      'doswal': 'dosen wali',
+      'mhs': 'mahasiswa',
+      'kls': 'kelas',
+      'matkul': 'mata kuliah',
+      'skripsian': 'skripsi',
     };
     for (final entry in aliases.entries) {
       value = value.replaceAll(RegExp('\\b${entry.key}\\b'), entry.value);
@@ -107,6 +113,7 @@ class ChatPolicy {
     String input, {
     RequestPlan? previous,
     DateTime? now,
+    bool hasSiakadContext = false,
   }) {
     final v = normalize(input);
     // Pilihan angka berlaku hanya untuk jawaban terakhir. Tombol membawa
@@ -231,7 +238,7 @@ class ChatPolicy {
         actions: [HelpTopic.issue],
       );
     }
-    if (!explain && !drafting) {
+    if (!hasSiakadContext && !explain && !drafting) {
       final student = StudentIntents.resolve(
         v,
         questionMark: input.contains('?') || input.contains('？'),
@@ -248,7 +255,8 @@ class ChatPolicy {
         );
       }
     }
-    if (academic &&
+    if (!hasSiakadContext &&
+        academic &&
         !(_has(
               v,
               r'aturan|syarat|ketentuan|batas|deadline|tenggat|biaya|minimal|maksimal',
@@ -267,17 +275,18 @@ class ChatPolicy {
         actions: [HelpTopic.issue],
       );
     }
-    if ((_has(
-              v,
-              r'aturan|syarat|ketentuan|batas|deadline|tenggat|biaya|minimal|maksimal|resmi|policy|regulation|kurikulum',
-            ) &&
-            (academic ||
-                _has(
+    if (!hasSiakadContext &&
+        ((_has(
                   v,
-                  r'cuti|kuliah|kampus|dosen|semester|skripsi|magang|angkatan|prodi',
-                ) ||
-                previous?.kind == RequestKind.policy)) ||
-        (_has(v, r'kampus|siakad|esa unggul') && !explain)) {
+                  r'aturan|syarat|ketentuan|batas|deadline|tenggat|biaya|minimal|maksimal|resmi|policy|regulation|kurikulum',
+                ) &&
+                (academic ||
+                    _has(
+                      v,
+                      r'cuti|kuliah|kampus|dosen|semester|skripsi|magang|angkatan|prodi',
+                    ) ||
+                    previous?.kind == RequestKind.policy)) ||
+            (_has(v, r'kampus|siakad|esa unggul') && !explain))) {
       return const RequestPlan(
         RequestKind.policy,
         text: 'Panduan resmi kampus belum terhubung. Saya belum dapat memastikan aturan, biaya, tanggal, atau syarat yang berlaku untuk prodi dan angkatan Anda. Anda bisa meminta penjelasan konsep secara umum atau menyiapkan pertanyaan untuk petugas.',
@@ -374,12 +383,24 @@ class ChatPolicy {
   }
 
   /// Memeriksa apakah pertanyaan berada dalam lingkup SIAKAD Campus App.
-  static bool isSiakadTopic(String normalized) =>
-      studentTopics.any((topic) => topic.matcher.hasMatch(normalized)) ||
-      _has(
-        normalized,
-        r'\b(siakad|campus|fasilkom|kampus|kuliah|akademik|mahasiswa|dosen|bap|pa|ta|krs|khs|ipk|ips|sks|jadwal|nilai|presensi|absensi|tagihan|ukt|spp|pembayaran|izin|cuti|skripsi|tesis|disertasi|sempro|sidang|proposal|bimbingan|perwalian|wisuda|yudisium|beasiswa|konseling|biodata|profil|nim|nip|nidn|rps|kurikulum|ekivalensi|pengumuman|berita|panduan|pedoman|semester|prodi|fakultas|angkatan|kelas|ruang|matkul|mata kuliah|ujian|uts|uas|tugas|magang|kkp|pkl|kkn|login|password|akun|chatbot|surat|kendala|beranda|dashboard)\b',
-      );
+  /// Menolak topik eksternal meskipun mengandung kata umum seperti "jadwal" atau "nilai".
+  static bool isSiakadTopic(String normalized) {
+    final explicitSiakad = _has(
+      normalized,
+      r'\b(siakad|fasilkom|krs|khs|ipk|ips|sks|nim|nip|nidn|bap|perwalian|sempro|skripsi|tesis|disertasi|yudisium|wisuda|rps|ekivalensi|kkp|kkn|ukt|spp|dosen|mahasiswa|kuliah|semester|prodi|fakultas|bimbingan)\b',
+    );
+    final clearlyExternal = _has(
+      normalized,
+      r'\b(bola|liga|pertandingan|piala dunia|sepakbola|basket|badminton|kurs|tukar|rupiah|dolar|saham|crypto|bitcoin|emas|resep|masak|goreng|makanan|minuman|cuaca|hujan|gempa|presiden|menteri|politik|pemilu|film|drakor|anime|artis|lagu|musik|game|wisata|hotel|pesawat|kereta|tiket|python|javascript|php|html|css|java|golang)\b',
+    );
+    if (clearlyExternal && !explicitSiakad) return false;
+    return explicitSiakad ||
+        studentTopics.any((topic) => topic.matcher.hasMatch(normalized)) ||
+        _has(
+          normalized,
+          r'\b(campus|kampus|akademik|pa|ta|jadwal|nilai|presensi|absensi|tagihan|pembayaran|izin|cuti|sidang|proposal|beasiswa|konseling|biodata|profil|kurikulum|pengumuman|berita|panduan|pedoman|angkatan|kelas|ruang|mata kuliah|mk|ujian|uts|uas|tugas|magang|pkl|login|password|akun|chatbot|surat|kendala|beranda|dashboard|ampu|acc|revisi)\b',
+        );
+  }
 
   // Pengetahuan istilah SIAKAD yang aman ditampilkan lokal maupun menjadi acuan AI.
   static const glossary = {

@@ -48,7 +48,7 @@ class LecturerDashboardPage extends StatefulWidget {
 }
 
 class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
-  final _chat = ChatController();
+  late final ChatController _chat;
   late final LeaveRepository _leaves;
   final _profileKey = GlobalKey();
   final _scheduleKey = GlobalKey();
@@ -78,8 +78,9 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     _leaves =
         widget.leaveRepository ??
         LeaveRepository(session: () => widget.lecturer);
+    _chat = ChatController(storageKey: widget.lecturer.nim);
     _chat.openLeave = _openLeave;
-    _chat.siakadContextProvider = () => SiakadContextBuilder.fromLecturer(
+    _chat.knowledgeProvider = () => SiakadContextBuilder.fromLecturer(
       user: widget.lecturer,
       data: _data,
       leaveCount: _leaveInboxCount,

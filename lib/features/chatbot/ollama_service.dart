@@ -138,7 +138,12 @@ class OllamaService implements ChatService, DraftEditorService {
         ],
         format: ChatProtocol.schema(task),
       );
-      return ChatProtocol.parse(content, task);
+      return ChatProtocol.parse(
+        content,
+        task,
+        hasSiakadContext:
+            siakadContext != null && siakadContext.trim().isNotEmpty,
+      );
     } on ContextLimitException {
       throw const ChatServiceException(
         'Bagian percakapan terakhir terlalu panjang untuk diteruskan dengan utuh. Sebutkan kembali bagian yang ingin dibahas atau mulai percakapan baru.',

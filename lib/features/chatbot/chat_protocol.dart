@@ -69,7 +69,11 @@ ATURAN LINGKUP KETAT:
     },
   };
 
-  static String parse(String content, ChatTask task) {
+  static String parse(
+    String content,
+    ChatTask task, {
+    bool hasSiakadContext = false,
+  }) {
     final data = jsonDecode(content);
     if (data is! Map<String, dynamic> ||
         data.length != 6 ||
@@ -85,12 +89,22 @@ ATURAN LINGKUP KETAT:
       throw const FormatException('Struktur jawaban tidak sesuai.');
     }
     final missing = data['missing_information'] as List;
-    // Lapisan tambahan untuk klaim tindakan/sumber yang tidak mungkin ada pada versi ini.
-    // Pemeriksaan ini terbatas; kebenaran semantik seluruh jawaban tetap perlu ditinjau.
+    final answerText = data['answer'] as String;
+    // Selalu tolak klaim mutasi/pengiriman ke server karena chatbot bersifat baca-saja.
     if (RegExp(
-      r'saya (telah|sudah|berhasil) (mengirim|menyetujui|mengubah)|pengajuan (anda|kamu) (telah |sudah )?disetujui|berdasarkan (database|data akademik anda)|menurut (peraturan|pedoman) resmi kampus',
+      r'saya (telah|sudah|berhasil) (mengirim|menyetujui|mengubah)|pengajuan (anda|kamu) (telah |sudah )?disetujui',
       caseSensitive: false,
-    ).hasMatch(data['answer'] as String)) {
+    ).hasMatch(answerText)) {
+      throw const FormatException(
+        'Jawaban mengklaim tindakan yang belum tersedia.',
+      );
+    }
+    // Klaim merujuk data/pedoman hanya ditolak bila konteks SIAKAD memang belum disuntikkan.
+    if (!hasSiakadContext &&
+        RegExp(
+          r'berdasarkan (database|data akademik anda)|menurut (peraturan|pedoman) resmi kampus',
+          caseSensitive: false,
+        ).hasMatch(answerText)) {
       throw const FormatException(
         'Jawaban mengklaim layanan/sumber yang belum tersedia.',
       );

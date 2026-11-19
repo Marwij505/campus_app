@@ -6,9 +6,13 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:campus_app/data/lecturer_repository.dart';
+import 'package:campus_app/data/student_profile.dart';
 import 'package:campus_app/features/chatbot/chat_models.dart';
 import 'package:campus_app/features/chatbot/chat_controller.dart';
+import 'package:campus_app/features/chatbot/chat_protocol.dart';
 import 'package:campus_app/features/chatbot/ollama_service.dart';
+import 'package:campus_app/features/chatbot/siakad_context.dart';
 
 void main() {
   test('Surat wajib bukti, tanggal valid, dan urutan tanggal', () {
@@ -192,7 +196,19 @@ void main() {
     await chat.send('Resep nasi goreng paling enak');
     expect(fake.calls, 0);
     expect(chat.messages.last.label, 'Di luar lingkup SIAKAD');
-    expect(chat.messages.last.text, contains('khusus membantu informasi di dalam SIAKAD'));
+    expect(
+      chat.messages.last.text,
+      contains('khusus membantu informasi di dalam SIAKAD'),
+    );
+
+    // False positive trap: mengandung kata "jadwal" & "nilai" tapi topik eksternal.
+    await chat.send('Jadwal pertandingan bola malam ini jam berapa?');
+    expect(fake.calls, 0);
+    expect(chat.messages.last.label, 'Di luar lingkup SIAKAD');
+
+    await chat.send('Berapa nilai tukar rupiah ke dolar hari ini?');
+    expect(fake.calls, 0);
+    expect(chat.messages.last.label, 'Di luar lingkup SIAKAD');
 
     final future = chat.send('Bagaimana alur KRS di SIAKAD?');
     expect(fake.calls, 1);
@@ -200,6 +216,74 @@ void main() {
     fake.pending.complete('Gunakan menu KRS di SIAKAD.');
     await future;
     expect(chat.messages.last.isAi, isTrue);
+
+    final mkFuture = chat.send(
+      'Apa saja mata kuliah yang saya ampu di SIAKAD semester ini?',
+    );
+    expect(fake.calls, 2);
+    fake.pending.complete('Anda mengampu IF2104 dan IF3201.');
+    await mkFuture;
+    expect(chat.messages.last.text, contains('IF2104'));
+    chat.dispose();
+  });
+
+  test('Mode terpandu dosen menjawab spesifik dari SiakadKnowledge & quickPrompts sesuai peran', () async {
+    const repo = DemoLecturerRepository();
+    final dos1Data = await repo.load('DOS001', now: DateTime(2026, 10, 12, 9));
+    final dos2Data = await repo.load('DOS002', now: DateTime(2026, 10, 12, 9));
+
+    final k1 = SiakadContextBuilder.fromLecturer(
+      user: const StudentProfile(
+        nim: 'DOS001',
+        role: UserRole.lecturer,
+        lecturerType: LecturerType.academic,
+      ),
+      data: dos1Data,
+    );
+    final k2 = SiakadContextBuilder.fromLecturer(
+      user: const StudentProfile(
+        nim: 'DOS002',
+        role: UserRole.lecturer,
+        lecturerType: LecturerType.academicAndThesis,
+      ),
+      data: dos2Data,
+    );
+
+    expect(k1.quickPrompts.any((p) => p.$1.contains('TA')), isFalse);
+    expect(k2.quickPrompts.any((p) => p.$1.contains('TA')), isTrue);
+
+    final chat = ChatController(service: _FakeChat());
+    chat.knowledgeProvider = () => k2;
+
+    await chat.send('Siapa saja mahasiswa PA yang menunggu ACC KRS?');
+    expect(chat.messages.last.text, contains('Rizky Maulana'));
+    expect(chat.messages.last.label, 'Info SIAKAD · data akun aktif');
+
+    await chat.send('Siapa mahasiswa bimbingan TA yang siap sidang?');
+    expect(chat.messages.last.text, contains('Fajar Ramadhan'));
+
+    // ChatProtocol.parse memperbolehkan rujukan data akademik saat konteks SIAKAD tersedia.
+    final validJson = jsonEncode({
+      'category': 'study',
+      'status': 'general',
+      'answer': 'Berdasarkan data akademik Anda, Fajar Ramadhan siap sidang.',
+      'missing_information': <String>[],
+      'references': <String>[],
+      'action': 'none',
+    });
+    expect(
+      ChatProtocol.parse(validJson, ChatTask.study, hasSiakadContext: true),
+      contains('Fajar Ramadhan'),
+    );
+    expect(
+      () => ChatProtocol.parse(
+        validJson,
+        ChatTask.study,
+        hasSiakadContext: false,
+      ),
+      throwsFormatException,
+    );
+
     chat.dispose();
   });
 }
