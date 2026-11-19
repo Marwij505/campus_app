@@ -162,4 +162,34 @@ const studentTopics = [
     r'konseling',
     'Konseling adalah layanan pendampingan melalui konsultasi dengan petugas yang sesuai.',
   ),
+  StudentTopic(
+    'siakad',
+    'SIAKAD FASILKOM',
+    r'siakad|campus app|portal akademik',
+    'SIAKAD FASILKOM adalah sistem informasi akademik untuk mengelola jadwal kuliah/mengajar, KRS, KHS/nilai, presensi, perwalian PA, bimbingan TA, izin online, pengumuman, dan panduan kampus.',
+  ),
+  StudentTopic(
+    'perwalian',
+    'Perwalian PA',
+    r'perwalian|dosen pa|pembimbing akademik|acc krs',
+    'Perwalian PA adalah proses konsultasi dan persetujuan KRS antara mahasiswa dan Dosen Pembimbing Akademik (PA) melalui menu Perwalian PA di SIAKAD.',
+  ),
+  StudentTopic(
+    'bap',
+    'BAP',
+    r'bap|berita acara perkuliahan',
+    'Dalam SIAKAD ini, BAP berperan sebagai unit pemeriksa pengajuan Izin Online mahasiswa. Selain itu, Berita Acara Perkuliahan adalah catatan kegiatan pertemuan kelas oleh dosen.',
+  ),
+  StudentTopic(
+    'sidang',
+    'Seminar & Sidang TA',
+    r'sidang|sempro|seminar proposal|sidang skripsi',
+    'Seminar Proposal dan Sidang Skripsi adalah tahapan evaluasi Tugas Akhir. Dosen Pembimbing TA memantau progres, memberi ACC tahap, dan mengelola jadwal sidang melalui menu Bimbingan TA & Jadwal Sidang.',
+  ),
+  StudentTopic(
+    'rps',
+    'RPS & Materi',
+    r'rps|silabus|materi kuliah',
+    'RPS (Rencana Pembelajaran Semester) memuat rencana materi, capaian pembelajaran, dan pertemuan mata kuliah pada SIAKAD.',
+  ),
 ];

@@ -12,6 +12,7 @@ enum RequestKind {
   draft,
   clarify,
   files,
+  outOfScope,
 }
 
 // Status belum terhubung berbeda dari daftar kosong, nilai nol, atau kegagalan server AI.
@@ -21,8 +22,9 @@ class ChatCapabilities {
   const ChatCapabilities();
   String status(CampusSource source) => 'Belum terhubung';
   String get summary =>
-      'Data akademik, panduan resmi, kontak dosen, dan pengiriman belum terhubung. '
-      'Penjelasan umum dan draf dari isian manual tersedia; lampiran hanya diperiksa format/ukurannya.';
+      'Asisten ini khusus melayani informasi dan alur di dalam SIAKAD FASILKOM '
+      '(KRS, jadwal, nilai, presensi, perwalian PA, bimbingan TA, izin online, dan panduan). '
+      'Pertanyaan di luar SIAKAD ditolak agar tidak mengambil info dari luar.';
 }
 
 class RequestPlan {
@@ -42,11 +44,12 @@ class RequestPlan {
   final String? studentTopic;
   bool get usesAi => kind == RequestKind.study || kind == RequestKind.writing;
   String get label => switch (kind) {
-    RequestKind.study => 'Penjelasan umum',
+    RequestKind.study => 'Info SIAKAD',
     RequestKind.writing => 'Bantuan menulis · isian manual',
     RequestKind.clarify => 'Perlu penjelasan',
     RequestKind.draft => 'Draf · belum dikirim',
     RequestKind.files => 'Pemeriksaan lokal',
+    RequestKind.outOfScope => 'Di luar lingkup SIAKAD',
     _ => 'Sumber belum terhubung',
   };
 }
@@ -343,22 +346,61 @@ class ChatPolicy {
     }
     // Definisi eksplisit memakai kamus yang sama dengan tombol pilihan.
     final known = definition(input);
-    return RequestPlan(
-      RequestKind.study,
-      text: known,
-      studentTopic: known == null
-          ? null
-          : StudentIntents.matchTopics(v).firstOrNull?.id,
-    );
+    if (known != null) {
+      return RequestPlan(
+        RequestKind.study,
+        text: known,
+        studentTopic: StudentIntents.matchTopics(v).firstOrNull?.id,
+      );
+    }
+    // Tolak pertanyaan di luar lingkup SIAKAD agar AI tidak mengambil/mengarang info luar.
+    if (!isSiakadTopic(v)) {
+      return const RequestPlan(
+        RequestKind.outOfScope,
+        text:
+            'Maaf, asisten ini khusus membantu informasi di dalam SIAKAD FASILKOM '
+            '(seperti KRS, jadwal kuliah/mengajar, nilai, presensi, perwalian PA, '
+            'bimbingan & sidang TA, izin online/BAP, tagihan, dan panduan kampus). '
+            'Saya tidak mengambil atau menjawab informasi dari luar SIAKAD.',
+        choices: [
+          ChatChoice('Apa itu SIAKAD?', 'apa itu siakad'),
+          ChatChoice('Apa itu KRS?', 'apa itu krs'),
+          ChatChoice('Cara buat Izin Online', 'apa itu surat izin'),
+          ChatChoice('Alur Perwalian PA', 'apa itu perwalian'),
+        ],
+      );
+    }
+    return const RequestPlan(RequestKind.study);
   }
 
-  // Pengetahuan istilah umum, bukan data mahasiswa atau kebijakan kampus.
+  /// Memeriksa apakah pertanyaan berada dalam lingkup SIAKAD Campus App.
+  static bool isSiakadTopic(String normalized) =>
+      studentTopics.any((topic) => topic.matcher.hasMatch(normalized)) ||
+      _has(
+        normalized,
+        r'\b(siakad|campus|fasilkom|kampus|kuliah|akademik|mahasiswa|dosen|bap|pa|ta|krs|khs|ipk|ips|sks|jadwal|nilai|presensi|absensi|tagihan|ukt|spp|pembayaran|izin|cuti|skripsi|tesis|disertasi|sempro|sidang|proposal|bimbingan|perwalian|wisuda|yudisium|beasiswa|konseling|biodata|profil|nim|nip|nidn|rps|kurikulum|ekivalensi|pengumuman|berita|panduan|pedoman|semester|prodi|fakultas|angkatan|kelas|ruang|matkul|mata kuliah|ujian|uts|uas|tugas|magang|kkp|pkl|kkn|login|password|akun|chatbot|surat|kendala|beranda|dashboard)\b',
+      );
+
+  // Pengetahuan istilah SIAKAD yang aman ditampilkan lokal maupun menjadi acuan AI.
   static const glossary = {
-    'krs': 'KRS (Kartu Rencana Studi) adalah daftar mata kuliah yang direncanakan untuk satu semester. Prosedur pengisian dan persetujuannya mengikuti ketentuan kampus.',
-    'ipk': 'IPK (Indeks Prestasi Kumulatif) menggambarkan hasil belajar kumulatif. Nilai IPK pribadi dan aturan perhitungannya harus diambil dari sistem serta pedoman kampus.',
-    'presensi': 'Presensi adalah pencatatan kehadiran dalam kegiatan perkuliahan. Batas kehadiran dan konsekuensinya mengikuti aturan resmi kampus.',
-    'sks': 'SKS (Satuan Kredit Semester) menyatakan bobot kegiatan pembelajaran mata kuliah. Batas pengambilan SKS memerlukan pedoman resmi yang berlaku.',
-    'cuti': 'Cuti kuliah secara umum berarti penghentian studi sementara melalui prosedur kampus. Durasi, biaya, dan persetujuannya memerlukan aturan resmi.',
+    'siakad':
+        'SIAKAD FASILKOM adalah portal akademik di aplikasi ini untuk mengelola jadwal kuliah/mengajar, KRS, nilai, presensi, perwalian PA, bimbingan TA, izin online, pengumuman, dan panduan.',
+    'krs':
+        'KRS (Kartu Rencana Studi) adalah daftar mata kuliah yang direncanakan untuk satu semester dan disetujui oleh Dosen PA di SIAKAD.',
+    'ipk':
+        'IPK (Indeks Prestasi Kumulatif) menggambarkan hasil belajar kumulatif mahasiswa pada SIAKAD.',
+    'presensi':
+        'Presensi adalah pencatatan kehadiran perkuliahan oleh dosen pada setiap pertemuan kelas di SIAKAD.',
+    'sks':
+        'SKS (Satuan Kredit Semester) menyatakan bobot kegiatan pembelajaran mata kuliah pada SIAKAD.',
+    'cuti':
+        'Cuti kuliah adalah penghentian studi sementara melalui prosedur akademik kampus.',
+    'perwalian':
+        'Perwalian PA adalah konsultasi dan persetujuan KRS oleh Dosen Pembimbing Akademik melalui menu Perwalian PA di SIAKAD.',
+    'bap':
+        'Dalam SIAKAD ini, BAP bertugas memeriksa pengajuan Izin Online mahasiswa. Berita Acara Perkuliahan adalah catatan pertemuan kelas oleh dosen.',
+    'sidang':
+        'Seminar Proposal dan Sidang Skripsi dikelola bersama Dosen Pembimbing TA melalui menu Bimbingan TA dan Jadwal Sidang di SIAKAD.',
   };
 
   static String? definition(String text) {
@@ -371,13 +413,13 @@ class ChatPolicy {
     }
     final entries = StudentIntents.matchTopics(value);
     if (entries.isEmpty) return null;
-    return '${entries.map((e) => glossary[e.id] ?? e.definition).join('\n\n')}\n\nIni penjelasan umum, bukan data atau ketentuan resmi kampus Anda.';
+    return '${entries.map((e) => glossary[e.id] ?? e.definition).join('\n\n')}\n\nInformasi ini berasal dari kamus internal SIAKAD Campus App.';
   }
 
-  // Penjelasan dasar tetap tersedia ketika model mati, tanpa syarat kampus buatan.
+  // Penjelasan dasar tetap tersedia ketika model mati, tanpa mengambil info luar.
   static String offlineStudy(String text) {
     final known = definition(text);
     if (known != null) return known;
-    return 'Untuk penjelasan belajar atau penyuntingan bebas, sambungkan AI lokal melalui tombol Aktifkan AI lokal. Sementara itu, bantuan terpandu dan formulir draf tetap tersedia. Data kampus belum terhubung.';
+    return 'Untuk penjelasan lanjutan seputar SIAKAD, aktifkan AI lokal melalui tombol Aktifkan AI lokal. Sementara itu, bantuan terpandu SIAKAD dan formulir draf tetap tersedia.';
   }
 }

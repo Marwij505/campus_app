@@ -82,15 +82,15 @@ void main() {
     final fake = _FakeChat();
     final chat = ChatController(service: fake);
     await chat.enableAi();
-    final first = chat.send('Apa itu variabel?');
-    await chat.send('Apa itu variabel?');
+    final first = chat.send('Bagaimana alur KRS di SIAKAD?');
+    await chat.send('Bagaimana alur KRS di SIAKAD?');
     expect(fake.calls, 1);
     fake.pending.completeError(const ChatServiceException('Tidak tersambung'));
     await first;
     expect(chat.canRetry, isTrue);
     final retry = chat.retry();
     expect(chat.messages.where((m) => m.isUser).length, 1);
-    fake.pending.complete('Variabel menyimpan nilai.');
+    fake.pending.complete('Alur KRS dilakukan pada menu KRS SIAKAD.');
     await retry;
     expect(chat.messages.last.isAi, isTrue);
     final canceled = chat.send('Jelaskan lebih lanjut');
@@ -99,7 +99,7 @@ void main() {
     await canceled;
     expect(chat.messages.any((m) => m.text == 'Balasan terlambat'), isFalse);
     await chat.enableAi();
-    final afterLogout = chat.send('Apa itu fungsi?');
+    final afterLogout = chat.send('Bagaimana alur bimbingan TA di SIAKAD?');
     chat.dispose();
     fake.pending.complete('Tidak boleh tampil');
     await afterLogout;
@@ -183,17 +183,38 @@ void main() {
       );
     },
   );
+  test('Pertanyaan di luar SIAKAD ditolak tanpa memanggil AI dan konteks SIAKAD diteruskan', () async {
+    final fake = _FakeChat();
+    final chat = ChatController(service: fake);
+    chat.siakadContextProvider = () => 'Konteks SIAKAD uji';
+    await chat.enableAi();
+
+    await chat.send('Resep nasi goreng paling enak');
+    expect(fake.calls, 0);
+    expect(chat.messages.last.label, 'Di luar lingkup SIAKAD');
+    expect(chat.messages.last.text, contains('khusus membantu informasi di dalam SIAKAD'));
+
+    final future = chat.send('Bagaimana alur KRS di SIAKAD?');
+    expect(fake.calls, 1);
+    expect(fake.lastContext, 'Konteks SIAKAD uji');
+    fake.pending.complete('Gunakan menu KRS di SIAKAD.');
+    await future;
+    expect(chat.messages.last.isAi, isTrue);
+    chat.dispose();
+  });
 }
 
 // Model tiruan memberi kendali kapan jawaban selesai agar balapan async bisa diuji.
 class _FakeChat implements ChatService {
   int calls = 0;
+  String? lastContext;
   Completer<String> pending = Completer<String>();
   @override
   Future<void> check() async {}
   @override
-  Future<String> reply(List<ChatMessage> history) {
+  Future<String> reply(List<ChatMessage> history, {String? siakadContext}) {
     calls++;
+    lastContext = siakadContext;
     pending = Completer<String>();
     return pending.future;
   }

@@ -17,6 +17,7 @@ import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import '../chatbot/chat_controller.dart';
 import '../chatbot/chat_launcher.dart';
+import '../chatbot/siakad_context.dart';
 import '../leave/leave_page.dart';
 import '../leave/leave_repository.dart';
 import 'dashboard_detail_page.dart';
@@ -78,6 +79,11 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
         widget.leaveRepository ??
         LeaveRepository(session: () => widget.lecturer);
     _chat.openLeave = _openLeave;
+    _chat.siakadContextProvider = () => SiakadContextBuilder.fromLecturer(
+      user: widget.lecturer,
+      data: _data,
+      leaveCount: _leaveInboxCount,
+    );
     _now = (widget.clock ?? DateTime.now)().toLocal();
     _scroll.addListener(_onScroll);
     _load();

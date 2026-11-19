@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'chat_models.dart';
 import 'chat_protocol.dart';
 import 'draft_language.dart';
+import 'siakad_context.dart';
 
 class ChatServiceException implements Exception {
   const ChatServiceException(this.message);
@@ -15,7 +16,7 @@ class ChatServiceException implements Exception {
 
 abstract interface class ChatService {
   Future<void> check();
-  Future<String> reply(List<ChatMessage> history);
+  Future<String> reply(List<ChatMessage> history, {String? siakadContext});
   void cancel();
 }
 
@@ -115,7 +116,10 @@ class OllamaService implements ChatService, DraftEditorService {
   }
 
   @override
-  Future<String> reply(List<ChatMessage> history) async {
+  Future<String> reply(
+    List<ChatMessage> history, {
+    String? siakadContext,
+  }) async {
     try {
       final recent = ChatProtocol.context(history);
       final task = history.last.task;
@@ -123,6 +127,7 @@ class OllamaService implements ChatService, DraftEditorService {
         system: ChatProtocol.instructions(
           task,
           topicText: recent.map((m) => m.text).join('\n'),
+          siakadContext: siakadContext ?? SiakadContextBuilder.appCatalog,
         ),
         messages: [
           for (final message in recent)
@@ -201,7 +206,7 @@ class OllamaService implements ChatService, DraftEditorService {
                 ...messages,
               ],
               'options': {
-                'temperature': 0.2,
+                'temperature': 0.1,
                 'repeat_penalty': 1.2,
                 'repeat_last_n': 512,
                 'num_ctx': 8192,

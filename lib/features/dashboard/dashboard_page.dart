@@ -16,6 +16,7 @@ import '../../data/student_profile.dart';
 import '../../shared/pixel_widgets.dart';
 import '../chatbot/chat_controller.dart';
 import '../chatbot/chat_launcher.dart';
+import '../chatbot/siakad_context.dart';
 import '../leave/leave_page.dart';
 import '../leave/leave_repository.dart';
 import 'dashboard_detail_page.dart';
@@ -86,6 +87,11 @@ class _DashboardPageState extends State<DashboardPage> {
         widget.leaveRepository ??
         LeaveRepository(session: () => widget.student);
     _chat.openLeave = _openLeave;
+    _chat.siakadContextProvider = () => SiakadContextBuilder.fromStudent(
+      student: widget.student,
+      data: _data,
+      leaveCount: _leaves.inbox.length,
+    );
     _now = (widget.clock ?? DateTime.now)().toLocal();
     _load();
     // Timer hanya mengubah status/tanggal setiap menit, bukan setiap frame.

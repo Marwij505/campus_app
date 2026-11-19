@@ -249,7 +249,8 @@ class _ConnectionFake implements ChatService {
   }
 
   @override
-  Future<String> reply(List<ChatMessage> history) async => 'Jawaban lokal';
+  Future<String> reply(List<ChatMessage> history, {String? siakadContext}) async =>
+      'Jawaban lokal';
   @override
   void cancel() {}
 }

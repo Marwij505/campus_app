@@ -293,7 +293,7 @@ class _StudentService implements ChatService {
   @override
   Future<void> check() async {}
   @override
-  Future<String> reply(List<ChatMessage> history) async {
+  Future<String> reply(List<ChatMessage> history, {String? siakadContext}) async {
     requests++;
     return 'Jawaban tutor';
   }

@@ -12,11 +12,13 @@ class ChatController extends ChangeNotifier {
   final ChatService _service;
   final capabilities = const ChatCapabilities();
   RequestPlan? _plan;
-  // Halaman induk menghubungkan formulir izin dengan akun dan antrean yang sama.
+  // Halaman induk menghubungkan formulir izin dan konteks SIAKAD aktif.
   VoidCallback? openLeave;
+  String Function()? siakadContextProvider;
   final messages = <ChatMessage>[
     const ChatMessage(
-      'Halo! Ketik jadwal, ipk, atau krs untuk cek cepat; tambahkan ? untuk pilihan bantuan. Saya membantu kebutuhan mahasiswa semester 1–14, belajar, dan draf. Data kampus belum terhubung.',
+      'Halo! Saya Asisten Khusus SIAKAD FASILKOM. Ketik topik SIAKAD seperti jadwal, KRS, IPK, Izin Online, Perwalian PA, atau Bimbingan TA. Saya hanya menjawab dari isi SIAKAD dan tidak mengambil informasi dari luar.',
+      label: 'Asisten SIAKAD · fokus internal',
     ),
   ];
   final _aiHistory = <ChatMessage>[];
@@ -170,15 +172,18 @@ class ChatController extends ChangeNotifier {
     canRetry = false;
     notifyListeners();
     try {
-      final text = await _service.reply(List.of(_aiHistory));
+      final text = await _service.reply(
+        List.of(_aiHistory),
+        siakadContext: siakadContextProvider?.call(),
+      );
       if (_disposed || request != _request) return;
       final answer = ChatMessage(
         text,
         isAi: true,
         task: _aiHistory.last.task,
         label: _aiHistory.last.task == ChatTask.writing
-            ? 'AI lokal · usulan bahasa, perlu diperiksa'
-            : 'AI lokal · penjelasan umum',
+            ? 'AI lokal · usulan bahasa draf SIAKAD'
+            : 'AI lokal · khusus SIAKAD',
       );
       messages.add(answer);
       _aiHistory.add(answer);
@@ -210,7 +215,8 @@ class ChatController extends ChangeNotifier {
       ..clear()
       ..add(
         const ChatMessage(
-          'Percakapan baru. Sebutkan topik yang ingin dibahas. Data kampus belum terhubung.',
+          'Percakapan baru dimulai. Silakan tanyakan topik seputar SIAKAD FASILKOM (KRS, jadwal, nilai, izin online, perwalian PA, atau bimbingan TA).',
+          label: 'Asisten SIAKAD · fokus internal',
         ),
       );
     notifyListeners();
@@ -226,6 +232,7 @@ class ChatController extends ChangeNotifier {
     _plan = null;
     letter.attachments.clear();
     openLeave = null;
+    siakadContextProvider = null;
     issue.attachments.clear();
     letter.fields.clear();
     issue.fields.clear();
