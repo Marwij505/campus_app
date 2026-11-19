@@ -82,8 +82,8 @@ void main() {
     final fake = _FakeChat();
     final chat = ChatController(service: fake);
     await chat.enableAi();
-    final first = chat.send('Apa itu variabel?');
-    await chat.send('Apa itu variabel?');
+    final first = chat.send('Jelaskan fungsi KRS');
+    await chat.send('Jelaskan fungsi KRS');
     expect(fake.calls, 1);
     fake.pending.completeError(const ChatServiceException('Tidak tersambung'));
     await first;
@@ -93,13 +93,13 @@ void main() {
     fake.pending.complete('Variabel menyimpan nilai.');
     await retry;
     expect(chat.messages.last.isAi, isTrue);
-    final canceled = chat.send('Jelaskan lebih lanjut');
+    final canceled = chat.send('Jelaskan lagi lebih sederhana');
     chat.useGuided();
     fake.pending.complete('Balasan terlambat');
     await canceled;
     expect(chat.messages.any((m) => m.text == 'Balasan terlambat'), isFalse);
     await chat.enableAi();
-    final afterLogout = chat.send('Apa itu fungsi?');
+    final afterLogout = chat.send('Jelaskan fungsi KRS');
     chat.dispose();
     fake.pending.complete('Tidak boleh tampil');
     await afterLogout;

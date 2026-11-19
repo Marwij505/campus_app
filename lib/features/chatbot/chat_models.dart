@@ -58,8 +58,8 @@ enum HelpTopic {
     'Data KRS, nilai, presensi, dan tagihan belum terhubung. Tampilan kosong tidak berarti nilai nol atau tagihan lunas.',
   ),
   study(
-    'Pendamping Belajar',
-    'Aktifkan AI lokal untuk bertanya tentang konsep umum. Materi dosen dan panduan skripsi atau magang resmi belum tersedia.',
+    'Panduan Akademik',
+    'Aktifkan AI lokal untuk bertanya tentang konsep akademik dan penggunaan fitur SIAKAD. Panduan resmi kampus belum terhubung.',
   );
 
   const HelpTopic(this.label, this.reply);

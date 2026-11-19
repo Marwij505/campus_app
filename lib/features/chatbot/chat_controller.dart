@@ -16,7 +16,7 @@ class ChatController extends ChangeNotifier {
   VoidCallback? openLeave;
   final messages = <ChatMessage>[
     const ChatMessage(
-      'Halo! Ketik jadwal, ipk, atau krs untuk cek cepat; tambahkan ? untuk pilihan bantuan. Saya membantu kebutuhan mahasiswa semester 1–14, belajar, dan draf. Data kampus belum terhubung.',
+      'Halo! Saya membantu penggunaan SIAKAD dan fitur akademik di aplikasi ini. Ketik jadwal, IPK, KRS, atau tambahkan ? untuk melihat pilihan bantuan. Data kampus belum terhubung.',
     ),
   ];
   final _aiHistory = <ChatMessage>[];
@@ -210,7 +210,7 @@ class ChatController extends ChangeNotifier {
       ..clear()
       ..add(
         const ChatMessage(
-          'Percakapan baru. Sebutkan topik yang ingin dibahas. Data kampus belum terhubung.',
+          'Percakapan baru. Tanyakan fitur atau penggunaan SIAKAD yang ingin dibahas. Data kampus belum terhubung.',
         ),
       );
     notifyListeners();

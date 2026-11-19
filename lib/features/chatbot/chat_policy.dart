@@ -4,6 +4,7 @@ import 'student_intents.dart';
 import 'student_topics.dart';
 
 enum RequestKind {
+  outOfScope,
   study,
   writing,
   personal,
@@ -42,6 +43,7 @@ class RequestPlan {
   final String? studentTopic;
   bool get usesAi => kind == RequestKind.study || kind == RequestKind.writing;
   String get label => switch (kind) {
+    RequestKind.outOfScope => 'Di luar cakupan SIAKAD',
     RequestKind.study => 'Penjelasan umum',
     RequestKind.writing => 'Bantuan menulis · isian manual',
     RequestKind.clarify => 'Perlu penjelasan',
@@ -52,6 +54,9 @@ class RequestPlan {
 }
 
 class ChatPolicy {
+  static const outOfScopeReply =
+      'Maaf, saya hanya dapat membantu informasi dan penggunaan SIAKAD serta fitur akademik di aplikasi ini.';
+
   // Variasi bahasa umum dinormalisasi; teks asli tetap dipakai dalam percakapan.
   static String normalize(String text) {
     var value = text
@@ -100,12 +105,59 @@ class ChatPolicy {
   static bool _has(String value, String pattern) =>
       RegExp(pattern).hasMatch(value);
 
+  // Tolak percobaan mengganti aturan sebelum melihat topik lain dalam pesan.
+  // Ini adalah pagar deterministik di klien; backend tetap diperlukan untuk
+  // mencegah klien yang dimodifikasi melewati aturan.
+  static bool _containsOverride(String value) => _has(
+    value,
+    r'\b(abaikan|lupakan|hapus|lewati|langgar|bypass|ignore|disregard|forget|override)\b.{0,100}\b(instruksi|aturan|prompt|system|sistem|instruction|rule|policy|kebijakan)\b|\b(reveal|tampilkan|bocorkan|ungkapkan|print|cetak)\b.{0,80}\b(system prompt|instruksi sistem|aturan tersembunyi)\b|\b(jailbreak|developer mode|mode pengembang|act as|berpura pura menjadi)\b',
+  );
+
+  // Anchor luas untuk nama SIAKAD, istilah akademik, atau fitur yang sudah
+  // tersedia di aplikasi. Pola ditujukan pada konsep/panduan, bukan data pribadi.
+  static bool isSiakadRelated(String input) {
+    final value = normalize(input);
+    if (_containsOverride(value) || _containsUnrelatedTask(value)) return false;
+    if (_has(
+      value,
+      r'^(lanjut|lanjutkan|contoh(nya)?|lebih sederhana|lebih singkat|jelaskan lagi|sederhanakan|yang tadi|itu tadi|kenapa begitu|latihan|buat lebih|perjelas|syaratnya|aturannya|berapa biayanya|kapan batasnya)\b|^bagaimana dengan itu$|^(bagaimana|gimana|cara|terus|lalu).*(nya|tadi|itu)$',
+    )) {
+      return true;
+    }
+    if (_has(value, r'\b(surat ini|draf ini|pengajuan ini)\b')) return true;
+    if (_has(value, r'\b(bantuan|menu|help|info)\b')) return true;
+    final programming = _has(
+      value,
+      r'\b(pemrograman|programming|python|javascript|dart|flutter|coding|kode|array|variabel|variable|pointer|algoritma|compiler|compile)\b',
+    );
+    final siakadAnchor = _has(
+      value,
+      r'\b(siakad|sistem informasi akademik|portal akademik|krs|khs|ipk|ips|sks|presensi|absensi|ukt|spp|nim|izin|ijin|surat izin|kendala login|lapor kendala|draf kendala|bap)\b',
+    );
+    if (programming && !siakadAnchor) return false;
+    return _has(
+      value,
+      r'\b(siakad|sistem informasi akademik|akademik|kampus|perkuliahan|mahasiswa|dosen|prodi|program studi|semester|kuliah|krs|khs|ipk|ips|sks|nilai|presensi|absensi|jadwal|ujian|tugas|tagihan|ukt|spp|pembayaran|pengumuman|skripsi|tugas akhir|bimbingan|magang|kkp|pkl|kkn|beasiswa|cuti|kelulusan|yudisium|wisuda|biodata|nim|profil|izin online|izin|ijin|surat izin|kendala login|kendala|lapor kendala|draf kendala|berkas|lampiran|pdf|bap|portal akademik|dpa|dosen wali)\b',
+    );
+  }
+
+  static bool _containsUnrelatedTask(String value) => _has(
+    value,
+    r'\b(buatkan|buat|tuliskan|karang|ceritakan|nyanyikan|generate|write|create)\b.{0,100}\b(puisi|pantun|cerita|novel|lelucon|joke|resep|lagu|lirik)\b|\b(cuaca|ramalan cuaca|berita politik|presiden|sepak bola|hasil pertandingan)\b|\b(buatkan|tuliskan|jelaskan|debug|perbaiki)\b.{0,80}\b(program|kode|script|python|javascript|dart|flutter|array|algoritma)\b',
+  );
+
   static RequestPlan route(
     String input, {
     RequestPlan? previous,
     DateTime? now,
   }) {
     final v = normalize(input);
+    if (!isSiakadRelated(v)) {
+      return const RequestPlan(
+        RequestKind.outOfScope,
+        text: outOfScopeReply,
+      );
+    }
     // Pilihan angka berlaku hanya untuk jawaban terakhir. Tombol membawa
     // pertanyaan lengkap, sehingga tombol chat lama tidak memakai konteks baru.
     if (previous != null && previous.choices.isNotEmpty) {
