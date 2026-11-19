@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'chat_models.dart';
+import 'chat_policy.dart';
 import 'chat_protocol.dart';
 import 'draft_language.dart';
 
@@ -133,7 +134,11 @@ class OllamaService implements ChatService, DraftEditorService {
         ],
         format: ChatProtocol.schema(task),
       );
-      return ChatProtocol.parse(content, task);
+      final answer = ChatProtocol.parse(content, task);
+      if (ChatProtocol.mentionsOtherInstitution(answer)) {
+        return ChatPolicy.esaUnggulDataUnavailableReply;
+      }
+      return answer;
     } on ContextLimitException {
       throw const ChatServiceException(
         'Bagian percakapan terakhir terlalu panjang untuk diteruskan dengan utuh. Sebutkan kembali bagian yang ingin dibahas atau mulai percakapan baru.',

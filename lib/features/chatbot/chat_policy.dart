@@ -55,7 +55,9 @@ class RequestPlan {
 
 class ChatPolicy {
   static const outOfScopeReply =
-      'Maaf, saya hanya dapat membantu informasi dan penggunaan SIAKAD serta fitur akademik di aplikasi ini.';
+      'Maaf, saya hanya dapat membantu informasi dan penggunaan SIAKAD Universitas Esa Unggul serta fitur akademik di aplikasi ini.';
+  static const esaUnggulDataUnavailableReply =
+      'Maaf, data tersebut belum tersedia di chatbot SIAKAD Universitas Esa Unggul. Silakan periksa SIAKAD atau tanyakan ke bagian akademik Esa Unggul.';
 
   // Variasi bahasa umum dinormalisasi; teks asli tetap dipakai dalam percakapan.
   static String normalize(String text) {
@@ -113,11 +115,25 @@ class ChatPolicy {
     r'\b(abaikan|lupakan|hapus|lewati|langgar|bypass|ignore|disregard|forget|override)\b.{0,100}\b(instruksi|aturan|prompt|system|sistem|instruction|rule|policy|kebijakan)\b|\b(reveal|tampilkan|bocorkan|ungkapkan|print|cetak)\b.{0,80}\b(system prompt|instruksi sistem|aturan tersembunyi)\b|\b(jailbreak|developer mode|mode pengembang|act as|berpura pura menjadi)\b',
   );
 
+  static bool _mentionsOtherInstitution(String value) {
+    if (_has(
+      value,
+      r'\b(undip|diponegoro|ugm|itb|ipb|unpad|unair|its|upi|unj|usu|unhas|unsri|untirta)\b',
+    )) {
+      return true;
+    }
+    return _has(value, r'\buniversitas\s+(?!esa unggul\b)[a-z]+\b');
+  }
+
   // Anchor luas untuk nama SIAKAD, istilah akademik, atau fitur yang sudah
   // tersedia di aplikasi. Pola ditujukan pada konsep/panduan, bukan data pribadi.
   static bool isSiakadRelated(String input) {
     final value = normalize(input);
-    if (_containsOverride(value) || _containsUnrelatedTask(value)) return false;
+    if (_containsOverride(value) ||
+        _containsUnrelatedTask(value) ||
+        _mentionsOtherInstitution(value)) {
+      return false;
+    }
     if (_has(
       value,
       r'^(lanjut|lanjutkan|contoh(nya)?|lebih sederhana|lebih singkat|jelaskan lagi|sederhanakan|yang tadi|itu tadi|kenapa begitu|latihan|buat lebih|perjelas|syaratnya|aturannya|berapa biayanya|kapan batasnya)\b|^bagaimana dengan itu$|^(bagaimana|gimana|cara|terus|lalu).*(nya|tadi|itu)$',
@@ -137,7 +153,7 @@ class ChatPolicy {
     if (programming && !siakadAnchor) return false;
     return _has(
       value,
-      r'\b(siakad|sistem informasi akademik|akademik|kampus|perkuliahan|mahasiswa|dosen|prodi|program studi|semester|kuliah|krs|khs|ipk|ips|sks|nilai|presensi|absensi|jadwal|ujian|tugas|tagihan|ukt|spp|pembayaran|pengumuman|skripsi|tugas akhir|bimbingan|magang|kkp|pkl|kkn|beasiswa|cuti|kelulusan|yudisium|wisuda|biodata|nim|profil|izin online|izin|ijin|surat izin|kendala login|kendala|lapor kendala|draf kendala|berkas|lampiran|pdf|bap|portal akademik|dpa|dosen wali)\b',
+      r'\b(siakad|sistem informasi akademik|akademik|kampus|perkuliahan|mahasiswa|dosen|prodi|program studi|fakultas|fasilkom|semester|kuliah|krs|khs|ipk|ips|sks|nilai|presensi|absensi|jadwal|ujian|tugas|tagihan|ukt|spp|pembayaran|pengumuman|skripsi|tugas akhir|bimbingan|magang|kkp|pkl|kkn|beasiswa|cuti|kelulusan|yudisium|wisuda|biodata|nim|profil|izin online|izin|ijin|surat izin|kendala login|kendala|lapor kendala|draf kendala|berkas|lampiran|pdf|bap|portal akademik|dpa|dosen wali|esa unggul)\b',
     );
   }
 
@@ -153,10 +169,7 @@ class ChatPolicy {
   }) {
     final v = normalize(input);
     if (!isSiakadRelated(v)) {
-      return const RequestPlan(
-        RequestKind.outOfScope,
-        text: outOfScopeReply,
-      );
+      return const RequestPlan(RequestKind.outOfScope, text: outOfScopeReply);
     }
     // Pilihan angka berlaku hanya untuk jawaban terakhir. Tombol membawa
     // pertanyaan lengkap, sehingga tombol chat lama tidak memakai konteks baru.
@@ -256,6 +269,18 @@ class ChatPolicy {
         RequestKind.action,
         text: 'Pengiriman, pelacakan, dan persetujuan belum terhubung. Saya belum mengirim atau mengubah apa pun. Anda dapat menyiapkan draf untuk diperiksa sendiri.',
         actions: [HelpTopic.letter, HelpTopic.issue],
+      );
+    }
+    final asksInstitutionSpecificData =
+        _has(v, r'\b(berapa|jumlah|nama|siapa|daftar|kontak|alamat)\b') &&
+        _has(
+          v,
+          r'\b(dosen|pengajar|fakultas|fasilkom|prodi|program studi|mahasiswa|kampus|universitas|esa unggul)\b',
+        );
+    if (asksInstitutionSpecificData) {
+      return const RequestPlan(
+        RequestKind.policy,
+        text: esaUnggulDataUnavailableReply,
       );
     }
     if (academic && _has(v, r'hitung|simulasi|calculate')) {
