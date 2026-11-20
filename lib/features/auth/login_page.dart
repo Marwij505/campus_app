@@ -137,8 +137,8 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 PixelField(
-                  label: 'NIM / NIP',
-                  hint: 'Masukkan NIM / NIP',
+                  label: 'NIM / NIP / NIDN',
+                  hint: 'Masukkan NIM / NIP / NIDN',
                   controller: _identity,
                   icon: Icons.person_outline,
 

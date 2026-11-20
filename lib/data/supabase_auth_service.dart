@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
+import 'account_operation.dart';
 import 'auth_service.dart';
 import 'password_reset_validation.dart';
 import 'profile_repository.dart';
@@ -13,6 +14,14 @@ class SupabaseAuthService extends AuthService {
   SupabaseAuthService(this.client) {
     _subscription = client.auth.onAuthStateChange.listen(
       (event) {
+        // Browser broadcasts can replace the SDK session from another tab.
+        // Discard the old profile without revoking the other tab's session.
+        if (_account != null && !_matchesSession) {
+          ++_generation;
+          _clear();
+          _notify();
+          return;
+        }
         if (event.event == sb.AuthChangeEvent.passwordRecovery) {
           _recovering = true;
           _notify();
@@ -38,6 +47,7 @@ class SupabaseAuthService extends AuthService {
     sessionGeneration: () => _generation,
   );
   StudentProfile? _user;
+  AccountOperation? _account;
   bool _recovering = false, _loggingIn = false;
   bool _disposed = false;
   Future<void>? _logoutTask;
@@ -53,7 +63,18 @@ class SupabaseAuthService extends AuthService {
   @override
   StudentProfile? get currentUser => hasSession ? _user : null;
   @override
-  bool get hasSession => _user != null && remainingSession > Duration.zero;
+  bool get hasSession =>
+      _user != null && _matchesSession && remainingSession > Duration.zero;
+  bool get _matchesSession {
+    try {
+      if (_account == null) return false;
+      _account!.check();
+      return true;
+    } on ProfileException {
+      return false;
+    }
+  }
+
   @override
   Duration get remainingSession {
     final left = _budget - _elapsed.elapsed;
@@ -104,9 +125,11 @@ class SupabaseAuthService extends AuthService {
         throw const AuthException('Login dibatalkan. Silakan masuk ulang.');
       }
       _timing(data, network.elapsed);
+      final account = AccountOperation(client, () => _generation);
       final student = await profiles.load().timeout(
         const Duration(seconds: 30),
       );
+      account.check();
       if (request != _generation || _disposed) {
         throw const AuthException('Login dibatalkan. Silakan masuk ulang.');
       }
@@ -116,6 +139,7 @@ class SupabaseAuthService extends AuthService {
           'Sesi telah berakhir. Silakan masuk kembali.',
         );
       }
+      _account = account;
       _user = student;
       _notify();
       return student;
@@ -152,6 +176,12 @@ class SupabaseAuthService extends AuthService {
   @override
   Future<void> checkSession() async {
     if (_user == null) return;
+    if (!_matchesSession) {
+      ++_generation;
+      _clear();
+      _notify();
+      return;
+    }
     if (!hasSession) {
       await logout();
       return;
@@ -272,6 +302,7 @@ class SupabaseAuthService extends AuthService {
   }
 
   void _clear() {
+    _account = null;
     _user = null;
     _budget = Duration.zero;
     _elapsed.stop();

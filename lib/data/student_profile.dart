@@ -45,7 +45,7 @@ class StudentProfile {
     this.verificationStatus = 'unverified',
   });
 
-  // NIM berasal dari baris students milik akun; bukan tebakan dari input login.
+  // NIM berasal dari students; untuk staf, NIDN berasal dari identitas privat server.
   final String nim;
   // Peran resmi ditentukan server; peran staf juga dipakai tes alur izin lokal.
   final UserRole role;
@@ -70,6 +70,30 @@ class StudentProfile {
   // Foto privat hanya berada di memori sesi, bukan URL publik atau cache disk.
   final Uint8List? avatarBytes;
   String get greetingName => preferredName ?? name ?? 'Mahasiswa';
+
+  /// Staf tidak memerlukan baris mahasiswa atau data akademik buatan.
+  factory StudentProfile.fromStaffRows(
+    Map<String, dynamic> profile,
+    Map<String, dynamic> identity, {
+    String? email,
+  }) {
+    if (profile['id'] != identity['user_id'] ||
+        !['lecturer', 'bap'].contains(profile['role']) ||
+        profile['is_enabled'] != true ||
+        identity['login_id'] is! String ||
+        !RegExp(r'^[0-9]{6,20}$').hasMatch(identity['login_id'] as String)) {
+      throw const FormatException('Identitas petugas tidak sesuai.');
+    }
+    return StudentProfile(
+      id: profile['id'] as String,
+      nim: identity['login_id'] as String,
+      name: profile['full_name'] as String,
+      role: profile['role'] == 'lecturer' ? UserRole.lecturer : UserRole.bap,
+      preferredName: profile['preferred_name'] as String?,
+      email: email,
+      avatarVariant: profile['avatar_variant'] as String? ?? 'neutral',
+    );
+  }
 
   /// Gabungkan dua baris yang kepemilikannya telah diperiksa database.
   factory StudentProfile.fromRows(

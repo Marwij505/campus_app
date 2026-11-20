@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     const raw = await req.text();
     if (raw.length > 4096) return reply(400, { message: "Masukan terlalu panjang." });
     const { nim, password } = JSON.parse(raw);
-    if (typeof nim !== "string" || !/^[0-9]{8,20}$/.test(nim) || typeof password !== "string" || password.length < 1 || password.length > 256)
+    if (typeof nim !== "string" || !/^[0-9]{6,20}$/.test(nim) || typeof password !== "string" || password.length < 1 || password.length > 256)
       return reply(401, { message: "NIM atau password salah." });
     const url = Deno.env.get("SUPABASE_URL")!;
     const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

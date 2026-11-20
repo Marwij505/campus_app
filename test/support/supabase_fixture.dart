@@ -36,6 +36,7 @@ class SupabaseFixture {
   final sections = <String, Map<String, dynamic>>{};
   final documentRows = <Map<String, dynamic>>[];
   final financeRows = <Map<String, dynamic>>[];
+  Map<String, dynamic>? staffIdentity;
   bool conflict = false, failSections = false;
   int revision = 0;
   int loginStatus = 200;
@@ -81,6 +82,11 @@ class SupabaseFixture {
   Future<http.Response> handle(http.Request request) async {
     requests.add(request);
     final path = request.url.path;
+    if (path.endsWith('/rpc/m2_staff_identity')) {
+      return sessionValid
+          ? json(staffIdentity)
+          : json({'message': 'session invalid', 'code': '42501'}, 403);
+    }
     if (path.endsWith('/rpc/load_student_biodata') ||
         path.endsWith('/rpc/save_student_biodata')) {
       if (missingBiodataRpc) {
@@ -209,10 +215,13 @@ class SupabaseFixture {
       }
       return json({'message': 'Foto tidak tersedia'}, 404);
     }
-    if (failSections && path.split('/').last.startsWith('student_')) {
+    if (failSections &&
+        (path.split('/').last.startsWith('student_') ||
+            path.endsWith('/rpc/m2_finance'))) {
       return json({'message': 'unavailable'}, 503);
     }
     if (path.endsWith('/student_finance')) return json(financeRows);
+    if (path.endsWith('/rpc/m2_finance')) return json(financeRows);
     if (path.endsWith('/student_documents')) {
       if (request.method == 'GET') return json(documentRows);
       if (request.method == 'POST') {

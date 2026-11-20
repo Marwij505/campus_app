@@ -160,7 +160,7 @@ bool sameDay(DateTime a, DateTime b) =>
 // toList membuat daftar baru; ..sort mengurutkannya tanpa mengubah daftar masukan.
 List<ClassSchedule> todayClasses(List<ClassSchedule> classes, DateTime now) =>
     (classes
-        .where((item) => sameDay(item.startsAt.toLocal(), now.toLocal()))
+        .where((item) => sameDay(campusWib(item.startsAt), campusWib(now)))
         .toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt)));
 
@@ -214,6 +214,10 @@ String campusDate(DateTime date) {
 
 // Ubah waktu ke zona lokal perangkat, lalu tampilkan jam:menit dengan dua digit.
 String campusTime(DateTime value) {
-  final local = value.toLocal();
+  final local = campusWib(value);
   return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 }
+
+/// WIB has no daylight-saving changes. Never use the device zone for schedules.
+DateTime campusWib(DateTime value) =>
+    value.toUtc().add(const Duration(hours: 7));

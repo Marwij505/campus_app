@@ -20,6 +20,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import 'features/auth/reset_password_page.dart';
 import 'data/dashboard_repository.dart';
+import 'features/academic/academic_repository.dart';
+import 'features/academic/academic_page.dart';
 import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
 import 'features/dashboard/dashboard_page.dart';
@@ -49,15 +51,12 @@ Future<void> main() async {
 
 /// Menetapkan tema, nama aplikasi, dan halaman pembuka.
 class CampusApp extends StatelessWidget {
-  const CampusApp({
-    super.key,
-    this.dashboardRepository = const EmptyDashboardRepository(),
-    this.authService,
-  });
+  const CampusApp({super.key, this.dashboardRepository, this.authService});
 
   // Sumber data beranda masih mengembalikan data kosong.
   // Nantinya dapat diganti dengan repository yang memanggil API.
-  final DashboardRepository dashboardRepository;
+  // M2: null now selects SupabaseAcademicRepository in the authenticated gate.
+  final DashboardRepository? dashboardRepository;
   // Tes menyuntikkan fake; aplikasi normal selalu memakai Supabase.
   final AuthService? authService;
 
@@ -72,14 +71,10 @@ class CampusApp extends StatelessWidget {
 
 /// Memilih halaman login atau beranda berdasarkan sesi pengguna.
 class AuthGate extends StatefulWidget {
-  const AuthGate({
-    super.key,
-    this.repository = const EmptyDashboardRepository(),
-    this.service,
-  });
+  const AuthGate({super.key, this.repository, this.service});
 
   // Teruskan sumber data ke dashboard setelah login.
-  final DashboardRepository repository;
+  final DashboardRepository? repository;
   final AuthService? service;
 
   @override
@@ -94,6 +89,11 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   // Satu layanan digunakan bersama untuk login, reset, dan logout.
   late final _service =
       widget.service ?? SupabaseAuthService(Supabase.instance.client);
+  late final DashboardRepository _repository =
+      widget.repository ??
+      (widget.service == null
+          ? SupabaseAcademicRepository(Supabase.instance.client)
+          : const EmptyDashboardRepository());
   // Antrean simulasi bertahan saat berganti akun untuk mencoba alur lintas peran.
   late final _leaves = LeaveRepository(session: () => _service.currentUser);
 
@@ -265,15 +265,21 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
             onLogin: _onLogin,
           )
         : _student!.role != UserRole.student
-        ? LeavePage(
-            key: ValueKey('staff-${_student!.nim}'),
-            repository: _leaves,
-            onLogout: _logout,
-          )
+        ? _repository is AcademicRepository
+              ? AcademicPage(
+                  key: ValueKey('academic-staff-${_student!.id}'),
+                  repository: _repository,
+                  onLogout: _logout,
+                )
+              : LeavePage(
+                  key: ValueKey('staff-${_student!.nim}'),
+                  repository: _leaves,
+                  onLogout: _logout,
+                )
         : DashboardPage(
             key: const ValueKey('dashboard'),
             student: _student!,
-            repository: widget.repository,
+            repository: _repository,
             leaveRepository: _leaves,
             authService: _service,
             onLogout: _logout,

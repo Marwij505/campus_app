@@ -15,9 +15,16 @@ import '../../shared/student_profile_avatar.dart';
 // Kartu profil yang menyesuaikan susunan identitas dan statistik dengan lebar layar.
 class ProfilePanel extends StatelessWidget {
   // Constructor menerima data/pengaturan awal ketika objek ini dibuat.
-  const ProfilePanel({super.key, required this.student});
+  const ProfilePanel({
+    super.key,
+    required this.student,
+    this.academicSemester,
+    this.academicEntryYear,
+  });
   // Seluruh isi panel berasal dari satu profil ini.
   final StudentProfile student;
+  // M2 context comes from the authorized period, independently of M1 identity.
+  final int? academicSemester, academicEntryYear;
 
   @override
   // build menyusun tampilan ketika Flutter memintanya.
@@ -93,8 +100,14 @@ class ProfilePanel extends StatelessWidget {
               children: [
                 // Label-label berikut menampilkan status, angkatan, semester, dan pembimbing akademik.
                 InfoChip('Status: ${student.status ?? '—'}', onDark: true),
-                InfoChip('Angkatan: ${student.entryYear ?? '—'}', onDark: true),
-                InfoChip('Semester: ${student.semester ?? '—'}', onDark: true),
+                InfoChip(
+                  'Angkatan: ${academicEntryYear ?? student.entryYear ?? '—'}',
+                  onDark: true,
+                ),
+                InfoChip(
+                  'Semester: ${academicSemester ?? student.semester ?? '—'}',
+                  onDark: true,
+                ),
                 InfoChip('DPA: ${student.advisor ?? '—'}', onDark: true),
               ],
             ),

@@ -30,6 +30,20 @@ class SupabaseProfileRepository implements ProfileRepository {
     final id = _id;
     final p = await client.from('profiles').select().eq('id', id).maybeSingle();
     operation.check();
+    if (p != null && ['lecturer', 'bap'].contains(p['role'])) {
+      final identity = await client.rpc('m2_staff_identity');
+      operation.check();
+      if (identity is! Map) {
+        throw const ProfileException(
+          'Akses petugas belum tersedia. Hubungi pengelola.',
+        );
+      }
+      return StudentProfile.fromStaffRows(
+        p,
+        Map<String, dynamic>.from(identity),
+        email: client.auth.currentUser?.email,
+      );
+    }
     final s = await client
         .from('students')
         .select()

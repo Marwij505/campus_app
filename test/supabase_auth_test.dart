@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:campus_app/data/auth_service.dart';
 import 'package:campus_app/data/supabase_auth_service.dart';
 
@@ -29,6 +30,34 @@ void main() {
     expect((await auth.profiles.load()).nim, '20240801001');
   });
 
+  for (final identity in ['0221028503', '112233']) {
+    test(
+      'Staff $identity loads without a student record and preserves session guards',
+      () async {
+        final role = identity == '112233' ? 'bap' : 'lecturer';
+        server.profile['role'] = role;
+        server.staffIdentity = {
+          'user_id': SupabaseFixture.id,
+          'login_id': identity,
+        };
+        final user = await auth.login(
+          identity: identity,
+          password: 'test-only-password',
+        );
+        expect(user.nim, identity);
+        expect(user.role.name, role);
+        expect(user.semester, isNull);
+        expect(
+          server.requests.where((r) => r.url.path.endsWith('/students')),
+          isEmpty,
+        );
+        server.staffIdentity!['user_id'] =
+            '33333333-3333-4333-8333-333333333333';
+        await expectLater(auth.profiles.load(), throwsFormatException);
+      },
+    );
+  }
+
   test(
     'Login memuat profil asli dan mempertahankan data akademik null',
     () async {
@@ -50,6 +79,51 @@ void main() {
       expect(auth.currentUser, isNull);
       expect(
         server.requests.where((r) => r.url.path.endsWith('/profiles')),
+        isEmpty,
+      );
+    });
+  }
+  for (final changed in ['account', 'session', 'refresh']) {
+    test('SDK session $changed preserves the profile boundary', () async {
+      await login();
+      final session = server.client.auth.currentSession!.toJson();
+      final parts = (session['access_token'] as String).split('.');
+      final claims = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+      if (changed == 'account') {
+        const other = '33333333-3333-4333-8333-333333333333';
+        claims['sub'] = other;
+        session['user'] = {...session['user'] as Map, 'id': other};
+      } else if (changed == 'session') {
+        claims['session_id'] = '44444444-4444-4444-8444-444444444444';
+      } else {
+        claims['exp'] = (claims['exp'] as int) + 60;
+      }
+      parts[1] = base64Url
+          .encode(utf8.encode(jsonEncode(claims)))
+          .replaceAll('=', '');
+      session['access_token'] = parts.join('.');
+      var notified = false;
+      auth.addListener(() => notified = true);
+      server.requests.clear();
+      await server.client.auth.recoverSession(jsonEncode(session));
+      // Browser BroadcastChannel emits even for a new session of the same user.
+      // Test-only SDK event injection reproduces that browser event on the VM.
+      // ignore: invalid_use_of_internal_member
+      server.client.auth.notifyAllSubscribers(
+        sb.AuthChangeEvent.tokenRefreshed,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(auth.hasSession, changed == 'refresh');
+      expect(auth.currentUser != null, changed == 'refresh');
+      if (changed != 'refresh') expect(notified, isTrue);
+      expect(
+        server.requests.where(
+          (r) =>
+              r.url.path.endsWith('/revoke_profile_session') ||
+              r.url.path.endsWith('/logout'),
+        ),
         isEmpty,
       );
     });

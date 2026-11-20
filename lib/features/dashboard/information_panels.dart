@@ -274,11 +274,13 @@ class SchedulePanel extends StatelessWidget {
     required this.onAll,
     required this.onOpen,
     this.next,
+    this.emptyTitle,
   });
   // Jadwal hari ini; sudah disaring oleh halaman beranda sebelum dikirim ke panel.
   final List<ClassSchedule> items;
   // Kelas terdekat bisa berada pada hari berikutnya atau tidak tersedia sama sekali.
   final ClassSchedule? next;
+  final String? emptyTitle;
   // Waktu acuan diberikan induk agar tanggal dan status kartu konsisten.
   final DateTime now;
   // Aksi untuk membuka daftar lengkap di halaman lain.
@@ -300,7 +302,7 @@ class SchedulePanel extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              campusDate(now),
+              campusDate(campusWib(now)),
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -312,8 +314,8 @@ class SchedulePanel extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (items.isEmpty)
-          const DashboardEmpty(
-            title: 'Belum ada jadwal kuliah hari ini',
+          DashboardEmpty(
+            title: emptyTitle ?? 'Belum ada jadwal kuliah hari ini',
             message: 'Jadwal akan tampil setelah data tersedia.',
             icon: Icons.event_available_outlined,
           )
@@ -321,14 +323,15 @@ class SchedulePanel extends StatelessWidget {
           for (final item in items)
             ClassScheduleCard(item: item, now: now, onTap: () => onOpen(item)),
         // Tambahkan kelas terdekat dari hari lain tanpa menggandakannya dalam daftar hari ini.
-        if (next != null && !sameDay(next!.startsAt.toLocal(), now)) ...[
+        if (next != null &&
+            !sameDay(campusWib(next!.startsAt), campusWib(now))) ...[
           const Divider(),
           Text(
             'KEGIATAN BERIKUTNYA',
             style: AppTheme.pixel(7, color: AppTheme.blue),
           ),
           const SizedBox(height: 10),
-          Text(campusDate(next!.startsAt.toLocal())),
+          Text(campusDate(campusWib(next!.startsAt))),
           ClassScheduleCard(item: next!, now: now, onTap: () => onOpen(next!)),
         ],
       ],

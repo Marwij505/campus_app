@@ -20,6 +20,8 @@ import '../chatbot/chat_controller.dart';
 import '../chatbot/chat_launcher.dart';
 import '../leave/leave_page.dart';
 import '../leave/leave_repository.dart';
+import '../academic/academic_repository.dart';
+import '../academic/academic_page.dart';
 import 'dashboard_detail_page.dart';
 import 'dashboard_navigation.dart';
 import 'dashboard_widgets.dart';
@@ -58,7 +60,8 @@ class DashboardPage extends StatefulWidget {
 }
 
 // Pusat penyimpanan kondisi pemuatan, data, waktu, dan menu yang sedang aktif.
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage>
+    with WidgetsBindingObserver {
   // Chat dan draf bertahan saat kembali ke beranda, lalu dibersihkan ketika logout.
   final _chat = ChatController();
   late final LeaveRepository _leaves;
@@ -87,6 +90,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // Saat halaman muncul pertama kali, baca jam, muat data, dan mulai pembaruan per menit.
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _leaves =
         widget.leaveRepository ??
         LeaveRepository(session: () => widget.student);
@@ -97,6 +101,10 @@ class _DashboardPageState extends State<DashboardPage> {
     // Timer hanya mengubah status/tanggal setiap menit, bukan setiap frame.
     _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) {
+        if (widget.repository is AcademicRepository) {
+          _load(silent: true);
+          return;
+        }
         setState(() => _now = (widget.clock ?? DateTime.now)().toLocal());
       }
     });
@@ -117,11 +125,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   /// Respons permintaan lama diabaikan bila permintaan baru sudah dimulai.
   /// Kesalahan ditampilkan terpisah, tidak diubah menjadi data kosong.
-  Future<void> _load() async {
+  Future<void> _load({bool silent = false}) async {
     // Tambah nomor permintaan lalu simpan salinannya untuk memeriksa respons nanti.
     final request = ++_requestId;
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _error = null;
     });
     try {
@@ -134,16 +142,22 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() {
         // Simpan hasil dan hentikan loading dalam setState agar panel diperbarui.
         _data = result;
+        final repository = widget.repository;
+        if (repository is AcademicRepository && repository.latest != null) {
+          _now = repository.latest!.now;
+        }
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       // Jika sumber data gagal, tampilkan kesalahan yang bisa dicoba ulang.
       // Abaikan hasil jika halaman sudah ditutup atau sudah ada permintaan yang lebih baru.
       if (!mounted || request != _requestId) {
         return;
       }
       setState(() {
-        _error = 'Data beranda gagal dimuat. Silakan coba lagi.';
+        _error = e is AcademicException
+            ? e.message
+            : 'Data beranda gagal dimuat. Silakan coba lagi.';
         _loading = false;
       });
     }
@@ -152,11 +166,32 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   // Hentikan jam berkala dan lepaskan pengendali gulir saat beranda ditutup.
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _chat.dispose();
     if (widget.leaveRepository == null) _leaves.dispose();
     _clockTimer?.cancel();
     _scroll.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        widget.repository is AcademicRepository) {
+      _load(silent: true);
+    }
+  }
+
+  Future<void> _openAcademic(String title) async {
+    final repository = widget.repository;
+    if (repository is! AcademicRepository) {
+      _unavailable(title);
+      return;
+    }
+    await Navigator.of(context).push(
+      AppMotion.route(AcademicPage(repository: repository, initialTab: title)),
+    );
+    if (mounted) _load();
   }
 
   /// Navigasi bawah hanya berpindah posisi di dalam dashboard.
@@ -260,6 +295,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // Tampilkan seluruh jadwal berurutan, termasuk yang bukan hari ini.
   void _allSchedules() {
+    if (widget.repository is AcademicRepository) {
+      _openAcademic('Jadwal Kuliah');
+      return;
+    }
     // Buat salinan daftar agar pengurutan halaman detail tidak mengubah data asal.
     final items = [..._data.classes]
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
@@ -274,7 +313,7 @@ class _DashboardPageState extends State<DashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final item in items) ...[
-                  Text(campusDate(item.startsAt.toLocal())),
+                  Text(campusDate(campusWib(item.startsAt))),
                   const SizedBox(height: 8),
                   ClassScheduleCard(
                     item: item,
@@ -293,7 +332,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(campusDate(item.startsAt.toLocal())),
+        Text(campusDate(campusWib(item.startsAt))),
         const SizedBox(height: 12),
         ClassScheduleCard(item: item, now: _now, onTap: () {}),
       ],
@@ -303,6 +342,11 @@ class _DashboardPageState extends State<DashboardPage> {
   // Akses Cepat dan Executive Menu memakai tujuan yang sama.
   // Biodata memakai layanan profil; modul yang belum siap membuka halaman kosong.
   void _quickAction(String label) {
+    if (widget.repository is AcademicRepository &&
+        (academicDestinations.contains(label) || label == 'Tagihan')) {
+      _openAcademic(label == 'Tagihan' ? 'Pembayaran' : label);
+      return;
+    }
     switch (label) {
       case 'Biodata':
         if (widget.authService == null) {
@@ -393,7 +437,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _topMenu(
                           'Pembayaran',
                           Icons.account_balance_outlined,
-                          () => _unavailable('Pembayaran'),
+                          () => _quickAction('Pembayaran'),
                         ),
                         // Tiga kelompok menu berbagi daftar dengan versi HP.
                         ExecutiveDesktopMenu(onSelected: _quickAction),
@@ -405,6 +449,17 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           actions: [
+            if (widget.repository is AcademicRepository)
+              IconButton(
+                tooltip: 'Notifikasi',
+                onPressed: () => _openAcademic('Notifikasi'),
+                icon: Badge(
+                  label: Text(
+                    '${(widget.repository as AcademicRepository).latest?.unread ?? 0}',
+                  ),
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+              ),
             IconButton(
               // Tombol refresh mengambil ulang data dan dikunci selama proses masih berjalan.
               tooltip: 'Muat ulang beranda',
@@ -605,20 +660,73 @@ class _DashboardPageState extends State<DashboardPage> {
                 Text(
                   'Ada ${_data.outstandingBillCount} tagihan belum dibayar.',
                 ),
-                DashboardAction('Lihat tagihan', () => _unavailable('Tagihan')),
+                DashboardAction('Lihat tagihan', () => _quickAction('Tagihan')),
               ],
             ),
           ),
           const SizedBox(height: 20),
         ],
         if (!_loading && _error == null) ...[
+          if (widget.repository is AcademicRepository &&
+              (widget.repository as AcademicRepository).latest != null) ...[
+            PixelPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (widget.repository as AcademicRepository).latest!.stage,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Semester ${(widget.repository as AcademicRepository).latest!.registration['semester'] ?? '-'} · ${(widget.repository as AcademicRepository).latest!.period['label'] ?? ''}',
+                  ),
+                  if ((widget.repository as AcademicRepository).latest!.demo)
+                    Text(
+                      'Simulasi — Kurikulum 2026 · ${academicTime((widget.repository as AcademicRepository).latest!.data['server_now'])}',
+                    ),
+                  for (final alert
+                      in (widget.repository as AcademicRepository)
+                          .latest!
+                          .alerts)
+                    Text(alert),
+                  Wrap(
+                    children: [
+                      DashboardAction(
+                        'Aktivasi Semester',
+                        () => _openAcademic('Registrasi'),
+                      ),
+                      DashboardAction(
+                        'KRS & Jadwal',
+                        () => _openAcademic('KRS'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           _agendaBanner(),
           const SizedBox(height: 20),
         ],
         // Profil pada navigasi bawah menggulir ke kartu informasi mahasiswa.
         Entrance(
           key: _profileKey,
-          child: ProfilePanel(student: profile),
+          child: ProfilePanel(
+            student: profile,
+            academicSemester: widget.repository is AcademicRepository
+                ? (widget.repository as AcademicRepository)
+                          .latest
+                          ?.registration['semester']
+                      as int?
+                : null,
+            academicEntryYear: widget.repository is AcademicRepository
+                ? (widget.repository as AcademicRepository)
+                          .latest
+                          ?.registration['entry_year']
+                      as int?
+                : null,
+          ),
         ),
         const SizedBox(height: 24),
         Text('AKSES CEPAT', style: AppTheme.pixel(9, color: AppTheme.blue)),
@@ -673,7 +781,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Text(
                   next == null
                       ? 'Informasi akan muncul setelah jadwal tersedia.'
-                      : '${next.code} · ${next.title}\n${campusDate(next.startsAt.toLocal())} · ${campusTime(next.startsAt)} – ${campusTime(next.endsAt)}',
+                      : '${next.code} · ${next.title}\n${campusDate(campusWib(next.startsAt))} · ${campusTime(next.startsAt)} – ${campusTime(next.endsAt)}',
                   style: const TextStyle(fontSize: 11, color: AppTheme.muted),
                 ),
                 if (next != null) ...[
@@ -743,6 +851,12 @@ class _DashboardPageState extends State<DashboardPage> {
       // Panel jadwal menerima kelas hari ini serta kelas terdekat untuk informasi tambahan.
       final schedule = SchedulePanel(
         key: _scheduleKey,
+        emptyTitle: widget.repository is AcademicRepository
+            ? ((widget.repository as AcademicRepository).latest?.liveSchedule ==
+                      true
+                  ? 'Tidak ada kelas hari ini'
+                  : (widget.repository as AcademicRepository).latest?.stage)
+            : null,
         items: todayClasses(_data.classes, _now),
         now: _now,
         next: activeOrNextClass(_data.classes, _now),

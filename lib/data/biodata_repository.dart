@@ -144,14 +144,25 @@ class BiodataRepository {
     return result;
   }
 
-  Future<List<Map<String, dynamic>>> finance() => _read(
-    () => client
-        .from('student_finance')
-        .select()
-        .eq('user_id', userId)
-        .order('billed_on', ascending: false)
-        .timeout(const Duration(seconds: 20)),
-  );
+  Future<List<Map<String, dynamic>>> finance() => _read(() async {
+    try {
+      final value = await client
+          .rpc('m2_finance')
+          .timeout(const Duration(seconds: 20));
+      return (value as List)
+          .map((r) => Map<String, dynamic>.from(r as Map))
+          .toList();
+    } on PostgrestException catch (e) {
+      // Preserve M1 reads until the additive M2 backend has been authorized/deployed.
+      if (e.code != 'PGRST202' && e.code != '42883') rethrow;
+      return await client
+          .from('student_finance')
+          .select()
+          .eq('user_id', userId)
+          .order('billed_on', ascending: false)
+          .timeout(const Duration(seconds: 20));
+    }
+  });
 
   Future<List<Map<String, dynamic>>> documents() => _read(
     () => client
