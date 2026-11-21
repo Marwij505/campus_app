@@ -479,7 +479,7 @@ class _TeachingPanelState extends State<TeachingPanel> {
                 ),
                 ModernStatPill(
                   label: 'RATA PRESENSI',
-                  value: '${widget.stats.averageAttendance.toStringAsFixed(1)}',
+                  value: widget.stats.averageAttendance.toStringAsFixed(1),
                   suffix: '%',
                   color: const Color(0xFFD97706),
                   icon: Icons.fact_check_outlined,
@@ -487,7 +487,7 @@ class _TeachingPanelState extends State<TeachingPanel> {
                 ),
                 ModernStatPill(
                   label: 'PENGISIAN BAP',
-                  value: '${widget.stats.bapCompletionRate.toStringAsFixed(0)}',
+                  value: widget.stats.bapCompletionRate.toStringAsFixed(0),
                   suffix: '%',
                   color: const Color(0xFF8B5CF6),
                   icon: Icons.task_alt_outlined,

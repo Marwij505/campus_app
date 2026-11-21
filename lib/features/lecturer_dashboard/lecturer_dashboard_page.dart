@@ -74,7 +74,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
     _thesisAdvisees = LecturerDemoData.getThesisAdvisees(nip);
 
     // Validasi tab jika berpindah ke akun tanpa skripsi
-    final maxTabs = _thesisAdvisees.isNotEmpty ? 4 : 3;
+    final maxTabs = _thesisAdvisees.isNotEmpty ? 5 : 4;
     if (_selectedTabIndex >= maxTabs) {
       _selectedTabIndex = maxTabs - 1;
     }
@@ -240,7 +240,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       );
     }
 
-    // Tab 1: Perwalian Mahasiswa (KRS & Mahasiswa Bimbingan)
+    // Tab 1: Validasi KRS Mahasiswa
     if (_selectedTabIndex == 1) {
       return AdvisorPanel(
         key: ValueKey('advisor-$_currentNip-krs'),
@@ -254,8 +254,22 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       );
     }
 
-    // Tab 2 (Khusus Dosen Pembimbing yang memiliki bimbingan skripsi):
-    if (hasThesisTab && _selectedTabIndex == 2) {
+    // Tab 2: Daftar Mahasiswa Wali
+    if (_selectedTabIndex == 2) {
+      return AdvisorPanel(
+        key: ValueKey('advisor-$_currentNip-advisees'),
+        krsRequests: _krsRequests,
+        advisees: _advisees,
+        thesisAdvisees: _thesisAdvisees,
+        stats: _stats,
+        initialSubTab: 1,
+        onKrsUpdated: (updated) => setState(() => _krsRequests = updated),
+        onThesisUpdated: (updated) => setState(() => _thesisAdvisees = updated),
+      );
+    }
+
+    // Tab 3 (Khusus Dosen Pembimbing yang memiliki bimbingan skripsi):
+    if (hasThesisTab && _selectedTabIndex == 3) {
       return AdvisorPanel(
         key: ValueKey('advisor-$_currentNip-thesis'),
         krsRequests: _krsRequests,
@@ -268,7 +282,7 @@ class _LecturerDashboardPageState extends State<LecturerDashboardPage> {
       );
     }
 
-    // Tab Terakhir: Rekap Nilai & Kelas (Index 3 untuk DOS002 atau Index 2 untuk DOS001)
+    // Tab Terakhir: Rekap Nilai & Kelas (Index 4 untuk DOS002 atau Index 3 untuk DOS001)
     return _buildGradeOverviewPanel();
   }
 

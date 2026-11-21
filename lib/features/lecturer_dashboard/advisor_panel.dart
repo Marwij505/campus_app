@@ -602,36 +602,6 @@ class _AdvisorPanelState extends State<AdvisorPanel> {
 
         const SizedBox(height: 16),
 
-        // Sub Tab Selector Responsif
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _subTabButton(
-                0,
-                'Validasi KRS Mahasiswa',
-                pendingKrs > 0 ? '$pendingKrs' : null,
-              ),
-              const SizedBox(width: 8),
-              _subTabButton(
-                1,
-                'Daftar Mahasiswa Wali',
-                '${widget.advisees.length}',
-              ),
-              if (hasThesis) ...[
-                const SizedBox(width: 8),
-                _subTabButton(
-                  2,
-                  'Bimbingan Skripsi',
-                  '${widget.thesisAdvisees.length}',
-                ),
-              ],
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 14),
-
         // Sub Tab 0: Validasi KRS
         if (_activeSubTab == 0) ...[
           Container(
@@ -792,52 +762,6 @@ class _AdvisorPanelState extends State<AdvisorPanel> {
           ),
         ],
       ],
-    );
-  }
-
-  Widget _subTabButton(int index, String title, String? badge) {
-    final isSelected = _activeSubTab == index;
-    return InkWell(
-      onTap: () => setState(() => _activeSubTab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.blue : Colors.white,
-          border: Border.all(color: AppTheme.ink, width: 2),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : AppTheme.ink,
-                fontFamily: 'SpaceMono',
-              ),
-            ),
-            if (badge != null) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : const Color(0xFFDC2626),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  badge,
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? AppTheme.blue : Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 

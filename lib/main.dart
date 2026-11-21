@@ -15,10 +15,10 @@ import 'data/auth_service.dart';
 import 'data/dashboard_repository.dart';
 import 'data/student_profile.dart';
 import 'features/auth/login_page.dart';
+import 'features/bap_dashboard/bap_dashboard_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 import 'features/lecturer_dashboard/lecturer_dashboard_page.dart';
 import 'features/leave/leave_repository.dart';
-import 'features/leave/leave_page.dart';
 
 void main() {
   // Siapkan Flutter sebelum menggunakan layanan dan aset.
@@ -215,7 +215,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 
     // Tanpa profil: tampilkan login.
     // Dosen: tampilkan Dashboard Dosen Akademik & Pembimbing.
-    // BAP: tampilkan pemeriksaan izin BAP.
+    // BAP: tampilkan Dashboard Administrasi Perkuliahan.
     // Mahasiswa: tampilkan Dashboard Mahasiswa.
     child: _student == null
         ? LoginPage(
@@ -231,9 +231,9 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
             onLogout: _logout,
           )
         : _student!.role == UserRole.bap
-        ? LeavePage(
-            key: ValueKey('staff-${_student!.nim}'),
-            repository: _leaves,
+        ? BapDashboardPage(
+            key: ValueKey('bap-${_student!.nim}'),
+            staffProfile: _student!,
             onLogout: _logout,
           )
         : DashboardPage(

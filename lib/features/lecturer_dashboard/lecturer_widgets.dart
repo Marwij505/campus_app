@@ -662,20 +662,26 @@ class ModernLecturerSideBar extends StatelessWidget {
                       ),
                       _buildItem(
                         index: 1,
-                        icon: Icons.school_outlined,
-                        label: 'Perwalian Mahasiswa',
+                        icon: Icons.assignment_turned_in_outlined,
+                        label: 'Validasi KRS Mahasiswa',
                         badge: pendingKrsCount > 0 ? '$pendingKrsCount' : null,
+                        showLabel: showLabels,
+                      ),
+                      _buildItem(
+                        index: 2,
+                        icon: Icons.people_alt_outlined,
+                        label: 'Daftar Mahasiswa Wali',
                         showLabel: showLabels,
                       ),
                       if (hasThesisTab)
                         _buildItem(
-                          index: 2,
+                          index: 3,
                           icon: Icons.auto_stories_outlined,
                           label: 'Bimbingan Skripsi',
                           showLabel: showLabels,
                         ),
                       _buildItem(
-                        index: hasThesisTab ? 3 : 2,
+                        index: hasThesisTab ? 4 : 3,
                         icon: Icons.assessment_outlined,
                         label: 'Rekap Nilai & Kelas',
                         showLabel: showLabels,
